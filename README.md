@@ -64,6 +64,15 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+### Deploy to GitHub Pages
+
+This repository can also be published via GitHub Pages. The project is configured to build with Vite and deploy the `dist/` folder.
+
+- The `vite` config includes a `base` for repository pages (`/julin-real-estate-hub/`).
+- A GitHub Actions workflow is included at `.github/workflows/pages.yml` which runs on pushes to `main`, builds the app, and uploads the `dist/` artifact to GitHub Pages.
+
+If you prefer to host the site at `https://<username>.github.io` (user/organization pages), change the `base` in `vite.config.ts` to `/` and update Pages settings in the repository.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!
