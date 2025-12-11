@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import PropertyCard from "./PropertyCard";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 
 type Property = {
   id: string;
@@ -21,67 +24,60 @@ const Properties = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchProperties = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("status", "available")
+        .order("created_at", { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+
+      const rows = (data || []) as Property[];
+
+      // Resolve first image public URLs where needed
+      const resolved = rows.map((p) => {
+        const images = p.images || [];
+        let firstImage = images[0] || undefined;
+        return { ...p, _firstImage: firstImage } as any;
+      });
+
+      setProperties(resolved as unknown as Property[]);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to load properties");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-
-    const fetchProperties = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        // Check if Supabase is properly configured
-        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
-          console.warn('Supabase is not configured. Displaying empty properties list.');
-          setProperties([]);
-          setLoading(false);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("properties")
-          .select("*")
-          .eq("status", "available")
-          .not("approved_at", "is", null)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        if (!mounted) return;
-
-        const rows = (data || []) as Property[];
-
-        // Resolve first image public URLs where needed
-        const resolved = await Promise.all(
-          rows.map(async (p) => {
-            const images = p.images || [];
-            let firstImage = undefined;
-            if (images.length > 0) {
-              const img = images[0];
-              if (img?.startsWith("http")) {
-                firstImage = img;
-              } else {
-                // assume stored in 'properties' bucket
-                const { data: publicData } = supabase.storage
-                  .from("properties")
-                  .getPublicUrl(img || "");
-                firstImage = publicData?.publicUrl || undefined;
-              }
-            }
-            return { ...p, _firstImage: firstImage } as any;
-          }),
-        );
-
-        setProperties(resolved as unknown as Property[]);
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Failed to load properties");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProperties();
 
+    // Set up real-time subscription for properties
+    const channel = supabase
+      .channel("properties-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "properties",
+        },
+        (payload) => {
+          console.log("Real-time update:", payload);
+          // Refetch properties on any change
+          fetchProperties();
+        }
+      )
+      .subscribe();
+
     return () => {
-      mounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -96,36 +92,49 @@ const Properties = () => {
             Discover Our Properties
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Explore approved properties. Click "Contact for More Info" to record an inquiry and continue the conversation on WhatsApp.
+            Explore verified properties. Click on a property to view details or contact the seller directly.
           </p>
         </div>
 
         {loading ? (
-          <p className="text-center">Loading properties…</p>
+          <div className="flex justify-center py-12">
+            <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
         ) : error ? (
           <p className="text-center text-red-500">{error}</p>
         ) : properties.length === 0 ? (
-          <p className="text-center">No properties available right now.</p>
+          <p className="text-center text-muted-foreground">No properties available right now.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {properties.map((property, index) => (
-              <div key={property.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
-                <PropertyCard
-                  id={property.id}
-                  title={property.title}
-                  location={property.location}
-                  price={`KES ${Number(property.price).toLocaleString()}`}
-                  size={property.size || "-"}
-                  details={property.description || ""}
-                  phone={property.seller_phone || "+254725671504"}
-                  hasVideo={!!property.video_url}
-                  image={(property as any)._firstImage}
-                  imageCount={(property.images || []).length}
-                  status={property.status === "available" ? "For Sale" : (property.status || "Available")}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {properties.map((property, index) => (
+                <div key={property.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                  <PropertyCard
+                    id={property.id}
+                    title={property.title}
+                    location={property.location}
+                    price={`KES ${Number(property.price).toLocaleString()}`}
+                    size={property.size || "-"}
+                    details={property.description || ""}
+                    phone={property.seller_phone || "+254725671504"}
+                    hasVideo={!!property.video_url}
+                    image={(property as any)._firstImage}
+                    imageCount={(property.images || []).length}
+                    status={property.status === "available" ? "For Sale" : (property.status || "Available")}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-12">
+              <Button asChild size="lg">
+                <Link to="/properties" className="inline-flex items-center gap-2">
+                  View All Properties
+                  <ArrowRight size={18} />
+                </Link>
+              </Button>
+            </div>
+          </>
         )}
       </div>
     </section>

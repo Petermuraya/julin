@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -7,7 +7,7 @@ import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { Search } from "lucide-react";
 
 const PROPERTY_TYPES = ["plot", "house", "land", "apartment", "commercial"] as const;
 
@@ -17,46 +17,24 @@ const PropertiesPage = () => {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [properties, setProperties] = useState<any[]>([]);
+  const [allProperties, setAllProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fetch = async () => {
+  const fetchProperties = async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      // Fetch all properties without filters first
-      let builder = supabase.from("properties").select("*");
-
-      const { data, error } = await builder.order("created_at", { ascending: false });
-      
-      console.log("Query error:", error);
-      console.log("Query result:", data);
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("status", "available")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      let rows = data || [];
-      
-      // Apply filters client-side
-      rows = rows.filter((p: any) => {
-        if (type && p.property_type !== type) return false;
-        if (minPrice && Number(p.price) < Number(minPrice)) return false;
-        if (maxPrice && Number(p.price) > Number(maxPrice)) return false;
-        if (query && !p.location?.toLowerCase().includes(query.toLowerCase())) return false;
-        return true;
-      });
-      
-      // resolve first image public url if stored
-      const resolved = await Promise.all(rows.map(async (p: any) => {
-        const images = p.images || [];
-        let first = images[0];
-        if (first && !first.startsWith("http")) {
-          const { data: url } = supabase.storage.from("properties").getPublicUrl(first || "");
-          first = url.publicUrl;
-        }
-        return { ...p, _firstImage: first };
-      }));
-
-      setProperties(resolved);
+      setAllProperties(data || []);
+      applyFilters(data || []);
     } catch (err: any) {
       console.error("Error fetching properties:", err);
       setErrorMsg(err?.message ? String(err.message) : String(err));
@@ -65,14 +43,69 @@ const PropertiesPage = () => {
     }
   };
 
+  const applyFilters = (data: any[]) => {
+    let rows = data;
+
+    // Apply filters
+    rows = rows.filter((p: any) => {
+      if (type && p.property_type !== type) return false;
+      if (minPrice && Number(p.price) < Number(minPrice)) return false;
+      if (maxPrice && Number(p.price) > Number(maxPrice)) return false;
+      if (query) {
+        const searchLower = query.toLowerCase();
+        const matchesLocation = p.location?.toLowerCase().includes(searchLower);
+        const matchesTitle = p.title?.toLowerCase().includes(searchLower);
+        const matchesCounty = p.county?.toLowerCase().includes(searchLower);
+        if (!matchesLocation && !matchesTitle && !matchesCounty) return false;
+      }
+      return true;
+    });
+
+    setProperties(rows);
+  };
+
   useEffect(() => {
-    fetch();
+    fetchProperties();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel("properties-page-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "properties",
+        },
+        (payload) => {
+          console.log("Real-time update:", payload);
+          fetchProperties();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSearch = async (e?: any) => {
+  // Re-apply filters when filter values change
+  useEffect(() => {
+    applyFilters(allProperties);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, type, minPrice, maxPrice]);
+
+  const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    await fetch();
+    applyFilters(allProperties);
+  };
+
+  const clearFilters = () => {
+    setQuery("");
+    setType(undefined);
+    setMinPrice("");
+    setMaxPrice("");
   };
 
   return (
@@ -87,69 +120,91 @@ const PropertiesPage = () => {
           <section>
             <div className="container mx-auto px-4">
               <div className="mb-8">
-                <h1 className="text-3xl font-bold">Properties</h1>
-                <p className="text-muted-foreground">Search, filter and discover approved properties.</p>
+                <h1 className="text-3xl font-bold text-foreground">Properties</h1>
+                <p className="text-muted-foreground">Search, filter and discover available properties.</p>
               </div>
 
-              <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <Input placeholder="Search location (e.g. Nairobi)" value={query} onChange={(e) => setQuery(e.target.value)} />
-                <Select value={type ?? ""} onValueChange={(v) => setType(v === "all" ? undefined : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Property Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {PROPERTY_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input placeholder="Min price" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
-                <div className="flex gap-2">
-                  <Input placeholder="Max price" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
-                  <Button type="submit">Search</Button>
+              {/* Search & Filters */}
+              <form onSubmit={handleSearch} className="bg-card rounded-xl p-6 shadow-sm border border-border mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="relative lg:col-span-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by location, title..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={type ?? ""} onValueChange={(v) => setType(v === "all" ? undefined : v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Property Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      {PROPERTY_TYPES.map((t) => (
+                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="Min Price"
+                    type="number"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Max Price"
+                    type="number"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button type="submit">Apply Filters</Button>
+                  <Button type="button" variant="outline" onClick={clearFilters}>Clear</Button>
                 </div>
               </form>
 
+              {/* Results */}
               {errorMsg ? (
-                <div className="bg-red-50 border border-red-200 text-red-800 rounded p-4 mb-6">
+                <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 mb-6">
                   <p className="font-semibold">Unable to load properties</p>
                   <pre className="whitespace-pre-wrap text-sm mt-2">{errorMsg}</pre>
-                  <div className="mt-3">
-                    <Button onClick={() => fetch()}>Retry</Button>
-                  </div>
+                  <Button onClick={fetchProperties} className="mt-3">Retry</Button>
                 </div>
               ) : loading ? (
                 <div className="flex items-center justify-center py-20">
-                  <p className="text-lg text-muted-foreground">Loading properties…</p>
+                  <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
                 </div>
               ) : properties.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20">
                   <p className="text-xl font-semibold text-muted-foreground mb-2">No properties found</p>
                   <p className="text-muted-foreground mb-6">Try adjusting your filters or search criteria.</p>
-                  <Button onClick={() => { setQuery(""); setType(undefined); setMinPrice(""); setMaxPrice(""); fetch(); }}>
-                    Clear Filters
-                  </Button>
+                  <Button onClick={clearFilters}>Clear Filters</Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {properties.map((p) => (
-                    <PropertyCard
-                      key={p.id}
-                      id={p.id}
-                      title={p.title}
-                      location={p.location}
-                      price={`KES ${Number(p.price).toLocaleString()}`}
-                      size={p.size || "-"}
-                      details={p.description || ""}
-                      phone={p.seller_phone || "+254725671504"}
-                      hasVideo={!!p.video_url}
-                      image={p._firstImage}
-                      imageCount={(p.images || []).length}
-                      status={p.status === "available" ? "For Sale" : p.status}
-                    />
-                  ))}
-                </div>
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">{properties.length} properties found</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {properties.map((p) => (
+                      <PropertyCard
+                        key={p.id}
+                        id={p.id}
+                        title={p.title}
+                        location={p.location}
+                        price={`KES ${Number(p.price).toLocaleString()}`}
+                        size={p.size || "-"}
+                        details={p.description || ""}
+                        phone={p.seller_phone || "+254725671504"}
+                        hasVideo={!!p.video_url}
+                        image={p.images?.[0]}
+                        imageCount={(p.images || []).length}
+                        status={p.status === "available" ? "For Sale" : p.status}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </section>
