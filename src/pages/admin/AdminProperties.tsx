@@ -7,16 +7,29 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Search, ChevronDown } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon } from "lucide-react";
+
+const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
 
 const AdminProperties = () => {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", location: "", price: "", property_type: "plot", description: "", seller_name: "", seller_phone: "", images: "" });
-  const [useUpload, setUseUpload] = useState(false);
-  const [files, setFiles] = useState<FileList | null>(null as any);
+  const [form, setForm] = useState({ 
+    title: "", 
+    location: "", 
+    price: "", 
+    property_type: "land" as "land" | "plot" | "house" | "apartment" | "commercial",
+    description: "", 
+    seller_name: "", 
+    seller_phone: "", 
+    size: "",
+    images: "" 
+  });
+  const [useUpload, setUseUpload] = useState(true);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredProperties = properties.filter(
@@ -43,6 +56,162 @@ const AdminProperties = () => {
     } catch (err) {
       console.error(err);
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    const validFiles = selectedFiles.filter(f => {
+      if (f.size > 5 * 1024 * 1024) {
+        toast({ title: "File too large", description: `${f.name} exceeds 5MB limit`, variant: "destructive" });
+        return false;
+      }
+      if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)) {
+        toast({ title: "Invalid file type", description: `${f.name} is not a supported image format`, variant: "destructive" });
+        return false;
+      }
+      return true;
+    });
+    setFiles(prev => [...prev, ...validFiles].slice(0, 10)); // Max 10 images
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (propertyId: string): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgress(`Uploading ${i + 1}/${files.length}...`);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${propertyId}/${Date.now()}-${i}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('property-images')
+        .upload(fileName, file, { cacheControl: '3600', upsert: false });
+      
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+      }
+      
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/property-images/${fileName}`;
+      uploadedUrls.push(publicUrl);
+    }
+    
+    setUploadProgress("");
+    return uploadedUrls;
+  };
+
+  const handleCreateProperty = async () => {
+    setAdding(true);
+    try {
+      // Validation
+      if (!form.title.trim()) throw new Error("Title is required");
+      if (!form.location.trim()) throw new Error("Location is required");
+      if (!form.price || Number(form.price) <= 0) throw new Error("Price must be a positive number");
+
+      let imageUrls: string[] = [];
+
+      // If using URL input
+      if (!useUpload && form.images) {
+        imageUrls = form.images.split(",").map(s => s.trim()).filter(Boolean);
+      }
+
+      // Create property first (to get the ID for image folder)
+      const { data: newProperty, error: insertError } = await supabase
+        .from("properties")
+        .insert({
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          property_type: form.property_type,
+          price: Number(form.price),
+          location: form.location.trim(),
+          size: form.size.trim() || null,
+          seller_name: form.seller_name.trim() || null,
+          seller_phone: form.seller_phone.trim() || null,
+          images: imageUrls.length > 0 ? imageUrls : null,
+          is_admin_property: true,
+          status: "available" as const,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Upload images if using file upload
+      if (useUpload && files.length > 0) {
+        const uploadedUrls = await uploadImages(newProperty.id);
+        
+        // Update property with image URLs
+        const { error: updateError } = await supabase
+          .from("properties")
+          .update({ images: uploadedUrls })
+          .eq("id", newProperty.id);
+        
+        if (updateError) throw updateError;
+        
+        newProperty.images = uploadedUrls;
+      }
+
+      setProperties((p) => [newProperty, ...p]);
+      setAddOpen(false);
+      setForm({
+        title: "",
+        location: "",
+        price: "",
+        property_type: "land",
+        description: "",
+        seller_name: "",
+        seller_phone: "",
+        size: "",
+        images: "",
+      });
+      setFiles([]);
+      toast({ title: "Success", description: "Property created successfully." });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to create property.",
+        variant: "destructive",
+      });
+    } finally {
+      setAdding(false);
+      setUploadProgress("");
+    }
+  };
+
+  const deleteProperty = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this property?")) return;
+    
+    try {
+      // Delete images from storage first
+      const property = properties.find(p => p.id === id);
+      if (property?.images?.length) {
+        const filePaths = property.images
+          .map((url: string) => {
+            const match = url.match(/property-images\/(.+)$/);
+            return match ? match[1] : null;
+          })
+          .filter(Boolean);
+        
+        if (filePaths.length > 0) {
+          await supabase.storage.from('property-images').remove(filePaths);
+        }
+      }
+
+      const { error } = await supabase.from("properties").delete().eq("id", id);
+      if (error) throw error;
+      
+      setProperties((p) => p.filter((x) => x.id !== id));
+      toast({ title: "Deleted", description: "Property removed successfully." });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to delete property.", variant: "destructive" });
     }
   };
 
@@ -92,35 +261,31 @@ const AdminProperties = () => {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Property
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Location
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Price
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Status
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">
-                    Type
-                  </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900 dark:text-white">
-                    Actions
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Property</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Location</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Price</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Type</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900 dark:text-white">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredProperties.map((p) => (
-                  <tr
-                    key={p.id}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                  >
+                  <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-900 dark:text-white">{p.title}</div>
-                      <p className="text-xs text-slate-600 dark:text-slate-400">{p.id.slice(0, 8)}...</p>
+                      <div className="flex items-center gap-3">
+                        {p.images?.[0] ? (
+                          <img src={p.images[0]} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
+                            <ImageIcon size={20} className="text-slate-400" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="font-medium text-slate-900 dark:text-white">{p.title}</div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">{p.images?.length || 0} images</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{p.location || "—"}</td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
@@ -142,10 +307,7 @@ const AdminProperties = () => {
                       </Select>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge
-                        variant="outline"
-                        className="capitalize text-xs"
-                      >
+                      <Badge variant="outline" className="capitalize text-xs">
                         {p.property_type || "land"}
                       </Badge>
                     </td>
@@ -161,6 +323,7 @@ const AdminProperties = () => {
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => deleteProperty(p.id)}
                           className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
                         >
                           <Trash2 size={16} />
@@ -175,8 +338,8 @@ const AdminProperties = () => {
         )}
       </div>
 
-      {/* Add/Edit Property Dialog */}
-      <Dialog open={addOpen} onOpenChange={(v) => setAddOpen(v)}>
+      {/* Add Property Dialog */}
+      <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) { setFiles([]); setUploadProgress(""); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">Add New Property</DialogTitle>
@@ -184,36 +347,43 @@ const AdminProperties = () => {
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <Input
-                placeholder="Title"
+                placeholder="Property Title *"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 className="col-span-2"
               />
               <Input
-                placeholder="Location"
+                placeholder="Location *"
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
               />
               <Input
-                placeholder="Price (KES)"
+                placeholder="Price (KES) *"
                 type="number"
                 value={form.price}
                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
               />
             </div>
 
-            <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Property Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="plot">Plot</SelectItem>
-                <SelectItem value="house">House</SelectItem>
-                <SelectItem value="land">Land</SelectItem>
-                <SelectItem value="apartment">Apartment</SelectItem>
-                <SelectItem value="commercial">Commercial</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v as any }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Property Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="land">Land</SelectItem>
+                  <SelectItem value="plot">Plot</SelectItem>
+                  <SelectItem value="house">House</SelectItem>
+                  <SelectItem value="apartment">Apartment</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                placeholder="Size (e.g., 1/8 Acre, 50x100)"
+                value={form.size}
+                onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
+              />
+            </div>
 
             <Textarea
               placeholder="Description"
@@ -235,17 +405,9 @@ const AdminProperties = () => {
               />
             </div>
 
+            {/* Image Upload Section */}
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
               <div className="flex items-center gap-6 mb-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={!useUpload}
-                    onChange={() => setUseUpload(false)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Image URLs</span>
-                </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
@@ -255,133 +417,81 @@ const AdminProperties = () => {
                   />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Images</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={!useUpload}
+                    onChange={() => setUseUpload(false)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Image URLs</span>
+                </label>
               </div>
-              {!useUpload ? (
+
+              {useUpload ? (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="file-input"
+                    />
+                    <label htmlFor="file-input" className="cursor-pointer block">
+                      <Upload className="mx-auto h-10 w-10 text-slate-400 mb-2" />
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Click to select images
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        PNG, JPG, WEBP, GIF up to 5MB each (max 10 images)
+                      </p>
+                    </label>
+                  </div>
+
+                  {files.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {files.map((file, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={URL.createObjectURL(file)}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-20 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <Input
-                  placeholder="Images (comma separated URLs)"
+                  placeholder="Image URLs (comma separated)"
                   value={form.images}
                   onChange={(e) => setForm((f) => ({ ...f, images: e.target.value }))}
                   className="text-sm"
                 />
-              ) : (
-                <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={(e) => setFiles(e.target.files)}
-                    className="hidden"
-                    id="file-input"
-                  />
-                  <label htmlFor="file-input" className="cursor-pointer block">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {files && files.length > 0
-                        ? `${files.length} file(s) selected`
-                        : "Click to select images"}
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      PNG, JPG, WEBP up to 5MB each
-                    </p>
-                  </label>
-                </div>
               )}
             </div>
           </div>
+
           <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={adding}>
               Cancel
             </Button>
             <Button
-              onClick={async () => {
-                setAdding(true);
-                try {
-                  // basic validation
-                  if (!form.title.trim()) throw new Error("Title is required");
-                  if (!form.price || Number(form.price) <= 0) throw new Error("Price must be a positive number");
-
-                  const endpoint = import.meta.env.VITE_ADMIN_API_URL || "http://localhost:8787/admin/properties";
-
-                  let response;
-                  if (useUpload && files && files.length > 0) {
-                    // Client-side validation to avoid sending bad files
-                    const MAX_FILES = 6;
-                    const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
-                    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-
-                    if (files.length > MAX_FILES) throw new Error(`Too many files. Maximum is ${MAX_FILES}.`);
-                    for (const f of Array.from(files)) {
-                      if (!ALLOWED_TYPES.includes(f.type))
-                        throw new Error(`Invalid file type: ${f.name}`);
-                      if (f.size > MAX_FILE_BYTES)
-                        throw new Error(`File too large: ${f.name}. Max size is ${MAX_FILE_BYTES} bytes.`);
-                    }
-
-                    const fd = new FormData();
-                    fd.append("title", form.title);
-                    fd.append("description", form.description || "");
-                    fd.append("property_type", form.property_type);
-                    fd.append("price", String(form.price));
-                    fd.append("location", form.location || "");
-                    fd.append("seller_name", form.seller_name || "");
-                    fd.append("seller_phone", form.seller_phone || "");
-                    for (const f of Array.from(files)) {
-                      fd.append("files", f, f.name);
-                    }
-
-                    response = await fetch(endpoint, { method: "POST", body: fd });
-                  } else {
-                    const payload = {
-                      title: form.title,
-                      description: form.description || null,
-                      property_type: form.property_type,
-                      price: Number(form.price || 0),
-                      location: form.location || "",
-                      images: form.images ? form.images.split(",").map((s) => s.trim()) : null,
-                      seller_name: form.seller_name || null,
-                      seller_phone: form.seller_phone || null,
-                    } as any;
-
-                    response = await fetch(endpoint, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(payload),
-                    });
-                  }
-
-                  const json = await response.json();
-                  if (!response.ok) throw new Error(json.error || "Failed to create property");
-
-                  const created = json.property || json;
-                  setProperties((p) => [created, ...p]);
-                  setAddOpen(false);
-                  setForm({
-                    title: "",
-                    location: "",
-                    price: "",
-                    property_type: "plot",
-                    description: "",
-                    seller_name: "",
-                    seller_phone: "",
-                    images: "",
-                  });
-                  setFiles(null as any);
-                  setUseUpload(false);
-                  toast({ title: "Success", description: "Property created successfully." });
-                } catch (err: any) {
-                  console.error(err);
-                  toast({
-                    title: "Error",
-                    description: err?.message || "Failed to create property.",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setAdding(false);
-                }
-              }}
+              onClick={handleCreateProperty}
               disabled={adding}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {adding ? "Creating..." : "Create Property"}
+              {adding ? (uploadProgress || "Creating...") : "Create Property"}
             </Button>
           </DialogFooter>
         </DialogContent>
