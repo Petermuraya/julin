@@ -1,5 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Phone, Mail, MapPin, Clock, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { useState } from "react";
 
 const Contact = () => {
   const contactInfo = [
@@ -73,54 +77,7 @@ const Contact = () => {
             <h3 className="font-display text-xl font-semibold mb-6">
               Send Us a Message
             </h3>
-            <form className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Your Name
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="John Doe"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-2">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    className="w-full px-4 py-3 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="+254 7XX XXX XXX"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  className="w-full px-4 py-3 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="you@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  Message
-                </label>
-                <textarea
-                  rows={4}
-                  className="w-full px-4 py-3 bg-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-                  placeholder="Tell us about the property you're looking for..."
-                />
-              </div>
-              <Button variant="default" size="lg" className="w-full">
-                <Send className="h-5 w-5" />
-                Send Message
-              </Button>
-            </form>
+            <ContactForm />
           </div>
         </div>
       </div>
@@ -129,3 +86,45 @@ const Contact = () => {
 };
 
 export default Contact;
+
+const ContactForm = () => {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  const adminPhone = "+254700000000"; // replace with your admin/office WhatsApp number
+
+  const handleSubmit = (e: any) => {
+    e.preventDefault();
+    const wa = generateWhatsAppLink(adminPhone, `Hello, my name is ${name}. ${message} (Phone: ${phone} | Email: ${email})`);
+    window.location.href = wa;
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Your Name</label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-muted-foreground mb-2">Phone Number</label>
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+254 7XX XXX XXX" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-2">Email Address</label>
+        <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-2">Message</label>
+        <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Tell us about the property you're looking for..." />
+      </div>
+      <Button variant="default" size="lg" className="w-full" type="submit">
+        <Send className="h-5 w-5" />
+        Send Message via WhatsApp
+      </Button>
+    </form>
+  );
+};

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Home, DollarSign } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import heroImage from "@/assets/hero-property.jpg";
 
 const Hero = () => {
@@ -29,28 +30,30 @@ const Hero = () => {
             Connecting buyers and sellers of real estate properties with a well-organized system that makes your property journey seamless.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 animate-slide-up" style={{ animationDelay: "0.3s" }}>
-            <Button variant="hero" size="xl">
-              <Search className="h-5 w-5" />
-              Browse Properties
-            </Button>
-            <Button variant="heroOutline" size="xl">
-              List Your Property
+            <Link to="/properties">
+              <Button variant="hero" size="xl">
+                <Search className="h-5 w-5" />
+                Browse Properties
+              </Button>
+            </Link>
+            <Button variant="heroOutline" size="xl" asChild>
+              <a href="#contact">List Your Property</a>
             </Button>
           </div>
         </div>
 
         {/* Search Bar */}
         <div className="mt-16 bg-card/95 backdrop-blur-md rounded-2xl p-6 shadow-xl max-w-4xl animate-slide-up" style={{ animationDelay: "0.4s" }}>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
               <MapPin className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-xs text-muted-foreground">Location</p>
-                <input
-                  type="text"
-                  placeholder="Enter location"
-                  className="bg-transparent text-foreground font-medium focus:outline-none w-full"
-                />
+                  <input
+                    type="text"
+                    placeholder="Enter location"
+                    className="bg-transparent text-foreground font-medium focus:outline-none w-full"
+                  />
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg">

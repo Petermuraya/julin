@@ -1,4 +1,5 @@
 import { Target, Eye, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const About = () => {
   const features = [
@@ -55,6 +56,11 @@ const About = () => {
                   </p>
                 </div>
               </div>
+            </div>
+            <div className="mt-6">
+              <a href="#contact">
+                <Button variant="heroOutline">Contact Us</Button>
+              </a>
             </div>
           </div>
 

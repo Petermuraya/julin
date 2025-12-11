@@ -1,48 +1,82 @@
+import { useEffect, useState } from "react";
 import PropertyCard from "./PropertyCard";
-import property1 from "@/assets/property-1.jpg";
-import property2 from "@/assets/property-2.jpg";
-import property3 from "@/assets/property-3.jpg";
+import { supabase } from "@/integrations/supabase/client";
 
-const properties = [
-  {
-    image: property1,
-    title: "Modern Luxury Apartments",
-    location: "Westlands, Nairobi",
-    price: "KES 15.5M",
-    size: "1,200 sq ft",
-    details: "Stunning 3-bedroom apartment with modern finishes, balcony views, and premium amenities. Perfect for families or professionals.",
-    phone: "+254700000000",
-    hasVideo: true,
-    imageCount: 12,
-    status: "For Sale" as const,
-  },
-  {
-    image: property2,
-    title: "Charming Family Home",
-    location: "Karen, Nairobi",
-    price: "KES 28M",
-    size: "3,500 sq ft",
-    details: "Beautiful 4-bedroom family home on a quarter acre. Features spacious garden, modern kitchen, and quiet neighborhood.",
-    phone: "+254700000000",
-    hasVideo: false,
-    imageCount: 8,
-    status: "For Sale" as const,
-  },
-  {
-    image: property3,
-    title: "Executive Penthouse Suite",
-    location: "Kilimani, Nairobi",
-    price: "KES 45M",
-    size: "2,800 sq ft",
-    details: "Luxury penthouse with panoramic city views, private terrace, high-end finishes, and exclusive building amenities.",
-    phone: "+254700000000",
-    hasVideo: true,
-    imageCount: 15,
-    status: "For Sale" as const,
-  },
-];
+type Property = {
+  id: string;
+  title: string;
+  location: string;
+  county?: string | null;
+  price: number;
+  size?: string | null;
+  description?: string | null;
+  images?: string[] | null;
+  video_url?: string | null;
+  seller_phone?: string | null;
+  status?: string;
+};
 
 const Properties = () => {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProperties = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error } = await supabase
+          .from("properties")
+          .select("*")
+          .eq("status", "available")
+          .not("approved_at", "is", null)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        if (!mounted) return;
+
+        const rows = (data || []) as Property[];
+
+        // Resolve first image public URLs where needed
+        const resolved = await Promise.all(
+          rows.map(async (p) => {
+            const images = p.images || [];
+            let firstImage = undefined;
+            if (images.length > 0) {
+              const img = images[0];
+              if (img?.startsWith("http")) {
+                firstImage = img;
+              } else {
+                // assume stored in 'properties' bucket
+                const { data: publicData } = supabase.storage
+                  .from("properties")
+                  .getPublicUrl(img || "");
+                firstImage = publicData?.publicUrl || undefined;
+              }
+            }
+            return { ...p, _firstImage: firstImage } as any;
+          }),
+        );
+
+        setProperties(resolved as unknown as Property[]);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to load properties");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <section id="properties" className="py-20 bg-secondary">
       <div className="container mx-auto px-4">
@@ -54,21 +88,37 @@ const Properties = () => {
             Discover Our Properties
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Explore our handpicked selection of premium properties. Each listing includes detailed information, photos, videos, and direct contact options.
+            Explore approved properties. Click "Contact for More Info" to record an inquiry and continue the conversation on WhatsApp.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {properties.map((property, index) => (
-            <div
-              key={index}
-              className="animate-slide-up"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <PropertyCard {...property} />
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-center">Loading properties…</p>
+        ) : error ? (
+          <p className="text-center text-red-500">{error}</p>
+        ) : properties.length === 0 ? (
+          <p className="text-center">No properties available right now.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {properties.map((property, index) => (
+              <div key={property.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                <PropertyCard
+                  id={property.id}
+                  title={property.title}
+                  location={property.location}
+                  price={`KES ${Number(property.price).toLocaleString()}`}
+                  size={property.size || "-"}
+                  details={property.description || ""}
+                  phone={property.seller_phone || "+254700000000"}
+                  hasVideo={!!property.video_url}
+                  image={(property as any)._firstImage}
+                  imageCount={(property.images || []).length}
+                  status={property.status === "available" ? "For Sale" : (property.status || "Available")}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

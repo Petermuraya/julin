@@ -1,9 +1,16 @@
 import { MapPin, Maximize, Phone, Play, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { generateWhatsAppLink } from "@/lib/whatsapp";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react";
 
 interface PropertyCardProps {
-  image: string;
+  id: string;
+  image?: string | undefined;
   title: string;
   location: string;
   price: string;
@@ -12,10 +19,11 @@ interface PropertyCardProps {
   phone: string;
   hasVideo?: boolean;
   imageCount?: number;
-  status?: "For Sale" | "For Rent" | "Sold";
+  status?: "For Sale" | "For Rent" | "Sold" | string;
 }
 
 const PropertyCard = ({
+  id,
   image,
   title,
   location,
@@ -27,6 +35,45 @@ const PropertyCard = ({
   imageCount = 5,
   status = "For Sale",
 }: PropertyCardProps) => {
+  const [open, setOpen] = useState(false);
+  const [buyerName, setBuyerName] = useState("");
+  const [buyerPhone, setBuyerPhone] = useState("");
+  const [message, setMessage] = useState(`I'm interested in ${title}. Kindly share more details.`);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleContact = async () => {
+    if (!buyerName || !buyerPhone) {
+      window.alert("Please provide your name and phone number.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const { error } = await supabase.from("buyer_inquiries").insert([
+        {
+          property_id: id,
+          buyer_name: buyerName,
+          buyer_phone: buyerPhone,
+          message,
+        },
+      ]);
+
+      if (error) {
+        console.error(error);
+        window.alert("Failed to record inquiry. Please try again.");
+        return;
+      }
+
+      const waLink = generateWhatsAppLink(phone, message);
+      setOpen(false);
+      window.location.href = waLink;
+    } catch (err) {
+      console.error(err);
+      window.alert("An unexpected error occurred.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <article className="group bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
       {/* Image container */}
@@ -94,12 +141,36 @@ const PropertyCard = ({
               <p className="text-xs text-muted-foreground">Price</p>
               <p className="font-display text-2xl font-bold text-primary">{price}</p>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <a href={`tel:${phone}`} className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                Call Now
-              </a>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <a href={`tel:${phone}`} className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Call Now
+                </a>
+              </Button>
+
+              <Dialog open={open} onOpenChange={setOpen}>
+                <Dialog.Trigger asChild>
+                  <Button size="sm">Contact for More Info</Button>
+                </Dialog.Trigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Contact Seller</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-2">
+                    <Input placeholder="Your name" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} />
+                    <Input placeholder="Your phone (e.g. 07xxxxxxxx)" value={buyerPhone} onChange={(e) => setBuyerPhone(e.target.value)} />
+                    <Textarea value={message} onChange={(e) => setMessage(e.target.value)} />
+                  </div>
+                  <DialogFooter>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                      <Button onClick={handleContact} disabled={submitting}>{submitting ? 'Sending…' : 'Send & Open WhatsApp'}</Button>
+                    </div>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </div>
       </div>
