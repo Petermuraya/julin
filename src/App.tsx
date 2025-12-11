@@ -15,6 +15,7 @@ import AdminSubmissions from "./pages/admin/AdminSubmissions";
 import AdminInquiries from "./pages/admin/AdminInquiries";
 
 import PropertiesPage from "./pages/PropertiesPage";
+import PropertyDetailPage from "./pages/PropertyDetailPage";
 import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
 
@@ -30,6 +31,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/properties" element={<PropertiesPage />} />
+            <Route path="/property/:id" element={<PropertyDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
 
