@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const AdminInquiries = () => {
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -22,7 +23,7 @@ const AdminInquiries = () => {
       setInquiries((q) => q.map((x) => (x.id === id ? { ...x, lead_status: status } : x)));
     } catch (err) {
       console.error(err);
-      window.alert("Failed to update lead status");
+      toast({ title: "Error", description: "Failed to update lead status", variant: "destructive" });
     }
   };
 

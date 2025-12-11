@@ -13,4 +13,9 @@
     "noUnusedLocals": false,
     "strictNullChecks": false
   }
+  ,
+  "exclude": [
+    "PropertyDetailPage_NEW.tsx",
+    "PropertiesPage_OPTIMIZED.tsx"
+  ]
 }

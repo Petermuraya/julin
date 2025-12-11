@@ -18,11 +18,9 @@ const Index = () => {
       </Helmet>
       <div className="min-h-screen">
         <Navbar />
-        <main>
+        <main className="pt-28">
           <Hero />
           <Properties />
-          <About />
-          <Contact />
         </main>
         <Footer />
       </div>

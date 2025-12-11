@@ -12,6 +12,8 @@ import AdminProperties from "./pages/admin/AdminProperties";
 import AdminSubmissions from "./pages/admin/AdminSubmissions";
 import AdminInquiries from "./pages/admin/AdminInquiries";
 import PropertiesPage from "./pages/PropertiesPage";
+import AboutPage from "./pages/About";
+import ContactPage from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/properties" element={<PropertiesPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="properties" element={<AdminProperties />} />

@@ -1,4 +1,5 @@
 import { Phone, Mail, MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -23,24 +24,16 @@ const Footer = () => {
             <h4 className="font-display text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <a href="#home" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Home
-                </a>
+                <Link to="/" className="text-primary-foreground/70 hover:text-accent transition-colors">Home</Link>
               </li>
               <li>
-                <a href="#properties" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Properties
-                </a>
+                <Link to="/properties" className="text-primary-foreground/70 hover:text-accent transition-colors">Properties</Link>
               </li>
               <li>
-                <a href="#about" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  About Us
-                </a>
+                <Link to="/about" className="text-primary-foreground/70 hover:text-accent transition-colors">About Us</Link>
               </li>
               <li>
-                <a href="#contact" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  Contact
-                </a>
+                <Link to="/contact" className="text-primary-foreground/70 hover:text-accent transition-colors">Contact</Link>
               </li>
             </ul>
           </div>
@@ -51,8 +44,8 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-accent" />
-                <a href="tel:+254700000000" className="text-primary-foreground/70 hover:text-accent transition-colors">
-                  +254 700 000 000
+                <a href="tel:+254725671504" className="text-primary-foreground/70 hover:text-accent transition-colors">
+                  +254725671504
                 </a>
               </li>
               <li className="flex items-center gap-3">

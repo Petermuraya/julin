@@ -5,12 +5,22 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  // Helpful runtime warning during development if env vars are missing
+  // (don't throw — allow server-side tooling to import the file safely)
+  // eslint-disable-next-line no-console
+  console.warn('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Supabase client may not work.');
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Guard access to `localStorage` to avoid errors in non-browser environments
+const storage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined' ? window.localStorage : undefined;
+
+export const supabase = createClient<Database>(SUPABASE_URL ?? '', SUPABASE_PUBLISHABLE_KEY ?? '', {
   auth: {
-    storage: localStorage,
+    storage,
     persistSession: true,
     autoRefreshToken: true,
   }

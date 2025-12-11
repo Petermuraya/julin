@@ -109,7 +109,7 @@ const Properties = () => {
                   price={`KES ${Number(property.price).toLocaleString()}`}
                   size={property.size || "-"}
                   details={property.description || ""}
-                  phone={property.seller_phone || "+254700000000"}
+                  phone={property.seller_phone || "+254725671504"}
                   hasVideo={!!property.video_url}
                   image={(property as any)._firstImage}
                   imageCount={(property.images || []).length}

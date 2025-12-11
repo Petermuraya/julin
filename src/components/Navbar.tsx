@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NavLink, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Phone, Mail } from "lucide-react";
 
@@ -6,10 +7,10 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
-    { label: "Home", href: "#home" },
-    { label: "Properties", href: "#properties" },
-    { label: "About", href: "#about" },
-    { label: "Contact", href: "#contact" },
+    { label: "Home", to: "/" },
+    { label: "Properties", to: "/properties" },
+    { label: "About", to: "/about" },
+    { label: "Contact", to: "/contact" },
   ];
 
   return (
@@ -18,9 +19,9 @@ const Navbar = () => {
       <div className="bg-primary text-primary-foreground py-2 px-4">
         <div className="container mx-auto flex justify-between items-center text-sm">
           <div className="flex items-center gap-6">
-            <a href="tel:+254700000000" className="flex items-center gap-2 hover:text-accent transition-colors">
+            <a href="tel:+254725671504" className="flex items-center gap-2 hover:text-accent transition-colors">
               <Phone className="h-4 w-4" />
-              <span className="hidden sm:inline">+254 700 000 000</span>
+              <span className="hidden sm:inline">+254725671504</span>
             </a>
             <a href="mailto:juliusmurigi90@gmail.com" className="flex items-center gap-2 hover:text-accent transition-colors">
               <Mail className="h-4 w-4" />
@@ -33,24 +34,26 @@ const Navbar = () => {
       {/* Main nav */}
       <nav className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <a href="#home" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <span className="font-display text-2xl font-bold text-primary">JULIN</span>
             <span className="font-display text-2xl font-light text-foreground">REAL ESTATE</span>
-          </a>
+          </Link>
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <a
+              <NavLink
                 key={link.label}
-                href={link.href}
-                className="font-medium text-muted-foreground hover:text-primary transition-colors"
+                to={link.to}
+                className={({ isActive }) =>
+                  `font-medium ${isActive ? "text-primary" : "text-muted-foreground"} hover:text-primary transition-colors`
+                }
               >
                 {link.label}
-              </a>
+              </NavLink>
             ))}
-            <Button variant="default" size="lg">
-              List Property
+            <Button variant="default" size="lg" asChild>
+              <Link to="/contact">List Property</Link>
             </Button>
           </div>
 
@@ -69,17 +72,19 @@ const Navbar = () => {
           <div className="md:hidden mt-4 pb-4 animate-fade-in">
             <div className="flex flex-col gap-4">
               {navLinks.map((link) => (
-                <a
+                <NavLink
                   key={link.label}
-                  href={link.href}
-                  className="font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                  to={link.to}
+                  className={({ isActive }) =>
+                    `font-medium ${isActive ? "text-primary" : "text-muted-foreground"} hover:text-primary transition-colors py-2`
+                  }
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {link.label}
-                </a>
+                </NavLink>
               ))}
-              <Button variant="default" size="lg" className="mt-2">
-                List Property
+              <Button variant="default" size="lg" className="mt-2" asChild>
+                <Link to="/contact">List Property</Link>
               </Button>
             </div>
           </div>

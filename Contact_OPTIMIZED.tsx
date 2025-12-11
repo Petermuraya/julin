@@ -343,10 +343,10 @@ const Contact = () => {
                       Call us during business hours (9am - 6pm, Monday to Friday).
                     </p>
                     <a
-                      href="tel:+254700000000"
+                      href="tel:+254725671504"
                       className="text-blue-600 hover:text-blue-700 font-medium mt-2 inline-block"
                     >
-                      +254 700 000 000
+                      +254725671504
                     </a>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -54,9 +55,10 @@ const AdminSubmissions = () => {
       await supabase.from("property_submissions").update({ status: "approved", created_property_id: data.id, reviewed_at: new Date().toISOString() }).eq("id", submission.id);
 
       setSubmissions((s) => s.filter((x) => x.id !== submission.id));
+        toast({ title: "Approved", description: "Submission approved and published." });
     } catch (err) {
       console.error(err);
-      window.alert("Failed to approve submission");
+        toast({ title: "Error", description: "Failed to approve submission.", variant: "destructive" });
     }
   };
 
@@ -64,9 +66,10 @@ const AdminSubmissions = () => {
     try {
       await supabase.from("property_submissions").update({ status: "rejected", reviewed_at: new Date().toISOString() }).eq("id", submission.id);
       setSubmissions((s) => s.filter((x) => x.id !== submission.id));
+        toast({ title: "Rejected", description: "Submission rejected." });
     } catch (err) {
       console.error(err);
-      window.alert("Failed to reject submission");
+        toast({ title: "Error", description: "Failed to reject submission.", variant: "destructive" });
     }
   };
 
@@ -115,7 +118,7 @@ const AdminSubmissions = () => {
       closeReview();
     } catch (err) {
       console.error(err);
-      window.alert("Failed to approve submission");
+      toast({ title: "Error", description: "Failed to approve submission.", variant: "destructive" });
     }
   };
 

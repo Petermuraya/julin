@@ -6,7 +6,9 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface PropertyCardProps {
   id: string;
@@ -41,37 +43,40 @@ const PropertyCard = ({
   const [message, setMessage] = useState(`I'm interested in ${title}. Kindly share more details.`);
   const [submitting, setSubmitting] = useState(false);
 
+  const queryClient = useQueryClient();
+
+  const inquiryMutation = useMutation(
+    async (payload: { property_id: string; buyer_name: string; buyer_phone: string; message: string }) => {
+      const { error } = await supabase.from("buyer_inquiries").insert([payload]);
+      if (error) throw error;
+      return payload;
+    },
+    {
+      onSuccess: (vars) => {
+        // open whatsapp and close dialog
+        const waLink = generateWhatsAppLink(phone, vars.message);
+        setOpen(false);
+        // Invalidate properties to refresh any counts or recent inquiries UI
+        queryClient.invalidateQueries(["properties"]);
+        // navigate to whatsapp
+        window.location.href = waLink;
+      },
+      onError: (err: any) => {
+        console.error(err);
+        toast({ title: "Error", description: err?.message || "Failed to record inquiry.", variant: "destructive" });
+      },
+    },
+  );
+
   const handleContact = async () => {
     if (!buyerName || !buyerPhone) {
-      window.alert("Please provide your name and phone number.");
+      toast({ title: "Missing info", description: "Please provide your name and phone number.", variant: "destructive" });
       return;
     }
-    try {
-      setSubmitting(true);
-      const { error } = await supabase.from("buyer_inquiries").insert([
-        {
-          property_id: id,
-          buyer_name: buyerName,
-          buyer_phone: buyerPhone,
-          message,
-        },
-      ]);
 
-      if (error) {
-        console.error(error);
-        window.alert("Failed to record inquiry. Please try again.");
-        return;
-      }
-
-      const waLink = generateWhatsAppLink(phone, message);
-      setOpen(false);
-      window.location.href = waLink;
-    } catch (err) {
-      console.error(err);
-      window.alert("An unexpected error occurred.");
-    } finally {
-      setSubmitting(false);
-    }
+    setSubmitting(true);
+    inquiryMutation.mutate({ property_id: id, buyer_name: buyerName, buyer_phone: buyerPhone, message });
+    setSubmitting(false);
   };
 
   return (
