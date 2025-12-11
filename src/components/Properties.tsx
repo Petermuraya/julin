@@ -28,6 +28,14 @@ const Properties = () => {
       setLoading(true);
       setError(null);
       try {
+        // Check if Supabase is properly configured
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+          console.warn('Supabase is not configured. Displaying empty properties list.');
+          setProperties([]);
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase
           .from("properties")
           .select("*")

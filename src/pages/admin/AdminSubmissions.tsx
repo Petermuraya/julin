@@ -5,6 +5,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Check, X, Eye, Search } from "lucide-react";
 
 type Submission = {
   id: string;
@@ -19,6 +21,12 @@ type Submission = {
 const AdminSubmissions = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSubmissions = submissions.filter((s) =>
+    s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.seller_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -123,51 +131,201 @@ const AdminSubmissions = () => {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-6">Property Submissions</h1>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Property Submissions</h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1">Review and approve seller submissions</p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-3 text-slate-400" size={20} />
+        <Input
+          placeholder="Search by property title or seller name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 py-2 h-10"
+        />
+      </div>
+
+      {/* Submissions Cards */}
       {loading ? (
-        <p>Loading…</p>
-      ) : submissions.length === 0 ? (
-        <p>No submissions found.</p>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-24 bg-slate-100 dark:bg-slate-700 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      ) : filteredSubmissions.length === 0 ? (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
+          <p className="text-slate-600 dark:text-slate-400 text-lg">
+            {searchQuery ? "No submissions found matching your search" : "No pending submissions"}
+          </p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {submissions.map((s) => (
-            <div key={s.id} className="p-4 bg-card rounded flex items-center justify-between">
-              <div>
-                <div className="font-semibold">{s.title}</div>
-                <div className="text-sm text-muted-foreground">{s.seller_name} • {s.seller_phone}</div>
-                <div className="text-sm text-muted-foreground">KES {Number(s.price).toLocaleString()}</div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => handleReject(s)}>Reject</Button>
-                <Button onClick={() => openReview(s)}>Review & Approve</Button>
+        <div className="grid gap-4">
+          {filteredSubmissions.map((s) => (
+            <div
+              key={s.id}
+              className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Submission Info */}
+                <div className="col-span-2">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{s.title}</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                        Submitted by <strong>{s.seller_name}</strong>
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="ml-2">
+                      Pending
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                    <p>
+                      <strong>Price:</strong> KES {Number(s.price).toLocaleString()}
+                    </p>
+                    <p>
+                      <strong>Seller Phone:</strong> {s.seller_phone}
+                    </p>
+                    {s.images && s.images.length > 0 && (
+                      <p>
+                        <strong>Images:</strong> {s.images.length} file(s)
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2 md:justify-start">
+                  <Button
+                    onClick={() => openReview(s)}
+                    className="bg-blue-600 hover:bg-blue-700 inline-flex items-center justify-center gap-2"
+                  >
+                    <Eye size={18} />
+                    Review
+                  </Button>
+                  <Button
+                    onClick={() => handleReject(s)}
+                    variant="destructive"
+                    className="inline-flex items-center justify-center gap-2"
+                  >
+                    <X size={18} />
+                    Reject
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Review modal */}
+      {/* Review Modal */}
       <Dialog open={!!selected} onOpenChange={(v) => { if (!v) closeReview(); }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Review Submission</DialogTitle>
+            <DialogTitle className="text-2xl">Review & Approve Submission</DialogTitle>
           </DialogHeader>
           {selected && (
-            <div className="grid gap-2">
-              <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-              <Input value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} />
-              <Input placeholder="Location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
-              <Textarea placeholder="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-              <Input placeholder="Seller name" value={form.seller_name} onChange={(e) => setForm((f) => ({ ...f, seller_name: e.target.value }))} />
-              <Input placeholder="Seller phone" value={form.seller_phone} onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))} />
+            <div className="grid gap-4">
+              <div className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Original Submission Details</p>
+                <div className="mt-2 space-y-1 text-sm">
+                  <p className="font-medium text-slate-900 dark:text-white">{selected.title}</p>
+                  <p className="text-slate-600 dark:text-slate-400">Seller: {selected.seller_name}</p>
+                  <p className="text-slate-600 dark:text-slate-400">Phone: {selected.seller_phone}</p>
+                  <p className="text-slate-600 dark:text-slate-400">Price: KES {Number(selected.price).toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  Property Title
+                </label>
+                <Input
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  className="h-10"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                    Price (KES)
+                  </label>
+                  <Input
+                    value={form.price}
+                    onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
+                    type="number"
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                    Location
+                  </label>
+                  <Input
+                    placeholder="Location"
+                    value={form.location}
+                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  Description
+                </label>
+                <Textarea
+                  placeholder="Description"
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  className="min-h-24"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                    Seller Name
+                  </label>
+                  <Input
+                    placeholder="Seller name"
+                    value={form.seller_name}
+                    onChange={(e) => setForm((f) => ({ ...f, seller_name: e.target.value }))}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                    Seller Phone
+                  </label>
+                  <Input
+                    placeholder="Seller phone"
+                    value={form.seller_phone}
+                    onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))}
+                    className="h-10"
+                  />
+                </div>
+              </div>
             </div>
           )}
-          <DialogFooter>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={closeReview}>Cancel</Button>
-              <Button onClick={handleApproveFromModal}>Approve & Publish</Button>
-            </div>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button variant="outline" onClick={closeReview}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleApproveFromModal}
+              className="bg-green-600 hover:bg-green-700 inline-flex items-center gap-2"
+            >
+              <Check size={18} />
+              Approve & Publish
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

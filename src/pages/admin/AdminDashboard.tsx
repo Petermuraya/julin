@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/use-toast";
+import { Home, FileText, MessageSquare, CheckCircle, Clock, ArrowRight } from "lucide-react";
 
 type ConfirmAction = "approve" | "reject" | null;
 
@@ -146,77 +147,165 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Quick overview — manage properties, submissions and leads</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
+            Quick overview — manage properties, submissions and leads
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="hero" asChild>
-            <Link to="/admin/properties">Manage Properties</Link>
+        <div className="flex gap-3 flex-wrap">
+          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Link to="/admin/properties" className="inline-flex items-center gap-2">
+              <Home size={18} />
+              Properties
+            </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/admin/submissions">Review Submissions</Link>
+            <Link to="/admin/submissions" className="inline-flex items-center gap-2">
+              <FileText size={18} />
+              Submissions
+            </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="p-4 bg-card rounded flex flex-col">
-          <div className="text-sm text-muted-foreground">Total Properties</div>
-          <div className="text-3xl font-bold">{counts.properties}</div>
-          <div className="mt-2">
-            <Badge variant="outline">Verified: {counts.verified}</Badge>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Properties */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Properties</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{counts.properties}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
+                <span className="inline-block bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 px-2 py-1 rounded">
+                  {counts.verified} verified
+                </span>
+              </p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+              <Home size={24} className="text-blue-600 dark:text-blue-400" />
+            </div>
           </div>
         </div>
-        <div className="p-4 bg-card rounded flex flex-col">
-          <div className="text-sm text-muted-foreground">Pending Submissions</div>
-          <div className="text-3xl font-bold">{counts.submissions}</div>
-          <div className="mt-2 text-sm text-muted-foreground">Review and publish quality listings</div>
+
+        {/* Pending Submissions */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Submissions</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{counts.submissions}</p>
+              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-blue-600 dark:text-blue-400">
+                <Link to="/admin/submissions" className="inline-flex items-center gap-1">
+                  Review submissions <ArrowRight size={14} />
+                </Link>
+              </Button>
+            </div>
+            <div className="bg-orange-50 dark:bg-orange-950 p-3 rounded-lg">
+              <Clock size={24} className="text-orange-600 dark:text-orange-400" />
+            </div>
+          </div>
         </div>
-        <div className="p-4 bg-card rounded flex flex-col">
-          <div className="text-sm text-muted-foreground">Buyer Inquiries</div>
-          <div className="text-3xl font-bold">{counts.inquiries}</div>
-          <div className="mt-2 text-sm text-muted-foreground">Follow up leads and track status</div>
+
+        {/* Buyer Inquiries */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Buyer Inquiries</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{counts.inquiries}</p>
+              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-blue-600 dark:text-blue-400">
+                <Link to="/admin/inquiries" className="inline-flex items-center gap-1">
+                  View leads <ArrowRight size={14} />
+                </Link>
+              </Button>
+            </div>
+            <div className="bg-purple-50 dark:bg-purple-950 p-3 rounded-lg">
+              <MessageSquare size={24} className="text-purple-600 dark:text-purple-400" />
+            </div>
+          </div>
         </div>
-        <div className="p-4 bg-card rounded flex flex-col">
-          <div className="text-sm text-muted-foreground">Quick Actions</div>
-            <div className="mt-3 flex gap-2">
-            <Button asChild size="sm"><Link to="/admin/submissions">Review Submissions</Link></Button>
-            <Button variant="secondary" asChild size="sm"><Link to="/admin/inquiries">View Leads</Link></Button>
+
+        {/* Conversion Rate */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Status</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">Active</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">All systems operational</p>
+            </div>
+            <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
+              <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Recent Activity Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="col-span-1 lg:col-span-1">
-          <h2 className="text-lg font-medium mb-3">Recent Submissions</h2>
+        {/* Recent Submissions */}
+        <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Submissions</h2>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/submissions">View All</Link>
+            </Button>
+          </div>
           {loading ? (
-            <p>Loading…</p>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
+              ))}
+            </div>
           ) : recentSubmissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent submissions.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No recent submissions</p>
           ) : (
             <div className="space-y-3">
               {recentSubmissions.map((s) => (
-                <div key={s.id} className="p-3 bg-card rounded flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div
+                  key={s.id}
+                  className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                >
+                  <div className="flex gap-3">
                     {s._firstImage ? (
-                      <img src={s._firstImage} alt={s.title} className="w-20 h-14 object-cover rounded" />
+                      <img
+                        src={s._firstImage}
+                        alt={s.title}
+                        className="w-16 h-12 object-cover rounded flex-shrink-0"
+                      />
                     ) : (
-                      <div className="w-20 h-14 bg-muted rounded" />
+                      <div className="w-16 h-12 bg-slate-300 dark:bg-slate-600 rounded flex-shrink-0" />
                     )}
-                    <div>
-                      <div className="font-semibold">{s.title}</div>
-                      <div className="text-sm text-muted-foreground">{s.seller_name} • KES {Number(s.price || 0).toLocaleString()}</div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-slate-900 dark:text-white text-sm truncate">
+                        {s.title}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                        {s.seller_name}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        KES {Number(s.price || 0).toLocaleString()}
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{s.status || 'pending'}</span>
-                    <Button variant="destructive" size="sm" onClick={() => openConfirm('reject', s)}>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1 h-7 text-xs"
+                      onClick={() => openConfirm("reject", s)}
+                    >
                       Reject
                     </Button>
-                    <Button size="sm" onClick={() => openConfirm('approve', s)}>Approve</Button>
+                    <Button
+                      size="sm"
+                      className="flex-1 h-7 text-xs bg-green-600 hover:bg-green-700"
+                      onClick={() => openConfirm("approve", s)}
+                    >
+                      Approve
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -224,25 +313,54 @@ const AdminDashboard = () => {
           )}
         </section>
 
-        <section className="col-span-1 lg:col-span-1">
-          <h2 className="text-lg font-medium mb-3">Recent Inquiries</h2>
+        {/* Recent Inquiries */}
+        <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Inquiries</h2>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/inquiries">View All</Link>
+            </Button>
+          </div>
           {loading ? (
-            <p>Loading…</p>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
+              ))}
+            </div>
           ) : recentInquiries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent inquiries.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No recent inquiries</p>
           ) : (
             <div className="space-y-3">
               {recentInquiries.map((q) => (
-                <div key={q.id} className="p-3 bg-card rounded">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="font-semibold">{q.buyer_name} • {q.buyer_phone}</div>
-                      <div className="text-sm text-muted-foreground">{(q.message || '').slice(0, 80)}{(q.message || '').length > 80 ? '…' : ''}</div>
-                      <div className="text-sm text-muted-foreground">Property: {q.property_id}</div>
+                <div
+                  key={q.id}
+                  className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-slate-900 dark:text-white text-sm">
+                        {q.buyer_name}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        📱 {q.buyer_phone}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
+                        {(q.message || "").slice(0, 60)}
+                        {(q.message || "").length > 60 ? "..." : ""}
+                      </p>
                     </div>
-                    <div className="ml-2">
-                      <Badge variant="outline">{q.lead_status || 'warm'}</Badge>
-                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`flex-shrink-0 text-xs ${
+                        q.lead_status === "hot"
+                          ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-700"
+                          : q.lead_status === "warm"
+                          ? "bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-700"
+                          : "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700"
+                      }`}
+                    >
+                      {q.lead_status || "Warm"}
+                    </Badge>
                   </div>
                 </div>
               ))}
@@ -250,30 +368,57 @@ const AdminDashboard = () => {
           )}
         </section>
 
-        <section className="col-span-1 lg:col-span-1">
-          <h2 className="text-lg font-medium mb-3">Recent Properties</h2>
+        {/* Recent Properties */}
+        <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Properties</h2>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/admin/properties">View All</Link>
+            </Button>
+          </div>
           {loading ? (
-            <p>Loading…</p>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
+              ))}
+            </div>
           ) : recentProperties.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent properties.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No recent properties</p>
           ) : (
             <div className="space-y-3">
               {recentProperties.map((p) => (
-                <div key={p.id} className="p-3 bg-card rounded flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div
+                  key={p.id}
+                  className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+                >
+                  <div className="flex gap-3">
                     {p._firstImage ? (
-                      <img src={p._firstImage} alt={p.title} className="w-20 h-14 object-cover rounded" />
+                      <img
+                        src={p._firstImage}
+                        alt={p.title}
+                        className="w-16 h-12 object-cover rounded flex-shrink-0"
+                      />
                     ) : (
-                      <div className="w-20 h-14 bg-muted rounded" />
+                      <div className="w-16 h-12 bg-slate-300 dark:bg-slate-600 rounded flex-shrink-0" />
                     )}
-                    <div>
-                      <div className="font-semibold">{p.title}</div>
-                      <div className="text-sm text-muted-foreground">{p.location} • KES {Number(p.price || 0).toLocaleString()}</div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-slate-900 dark:text-white text-sm truncate">
+                        {p.title}
+                      </h3>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                        {p.location}
+                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          KES {Number(p.price || 0).toLocaleString()}
+                        </p>
+                        {p.is_verified && (
+                          <Badge variant="secondary" className="text-xs h-5">
+                            ✓ Verified
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {p.is_verified && <Badge variant="default">Verified</Badge>}
-                    <Button variant="ghost" size="sm" asChild><Link to="/admin/properties">Open</Link></Button>
                   </div>
                 </div>
               ))}
@@ -286,19 +431,38 @@ const AdminDashboard = () => {
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{confirmAction === "approve" ? "Approve Submission" : "Reject Submission"}</DialogTitle>
+            <DialogTitle className="text-lg">
+              {confirmAction === "approve" ? "✓ Approve Submission" : "✗ Reject Submission"}
+            </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             {confirmAction === "approve" ? (
-              <p>Are you sure you want to approve and publish this submission?</p>
+              <p className="text-slate-700 dark:text-slate-300">
+                Are you sure you want to approve and publish <strong>{confirmItem?.title}</strong>? It will be
+                visible to buyers immediately.
+              </p>
             ) : (
-              <p>Are you sure you want to reject this submission? This action can be reversed later.</p>
+              <p className="text-slate-700 dark:text-slate-300">
+                Are you sure you want to reject <strong>{confirmItem?.title}</strong>? The seller will be
+                notified.
+              </p>
             )}
           </div>
           <DialogFooter>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-              <Button onClick={onConfirm}>{confirmAction === "approve" ? "Approve" : "Reject"}</Button>
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={onConfirm}
+                className={
+                  confirmAction === "approve"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                }
+              >
+                {confirmAction === "approve" ? "Approve" : "Reject"}
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>
