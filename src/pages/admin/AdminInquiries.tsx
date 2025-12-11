@@ -29,7 +29,7 @@ const AdminInquiries = () => {
     load();
   }, []);
 
-  const updateLead = async (id: string, status: string) => {
+  const updateLead = async (id: string, status: "hot" | "warm" | "cold") => {
     try {
       await supabase.from("buyer_inquiries").update({ lead_status: status }).eq("id", id);
       setInquiries((q) => q.map((x) => (x.id === id ? { ...x, lead_status: status } : x)));
@@ -121,7 +121,7 @@ const AdminInquiries = () => {
                     <td className="px-6 py-4">
                       <Select
                         value={i.lead_status || "warm"}
-                        onValueChange={(v) => updateLead(i.id, v)}
+                        onValueChange={(v) => updateLead(i.id, v as "hot" | "warm" | "cold")}
                       >
                         <SelectTrigger className="w-32 h-8 text-xs">
                           <SelectValue />

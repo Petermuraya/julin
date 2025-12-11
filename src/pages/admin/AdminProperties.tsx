@@ -36,7 +36,7 @@ const AdminProperties = () => {
     load();
   }, []);
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, status: "available" | "pending" | "sold") => {
     try {
       await supabase.from("properties").update({ status }).eq("id", id);
       setProperties((p) => p.map((x) => (x.id === id ? { ...x, status } : x)));
@@ -129,7 +129,7 @@ const AdminProperties = () => {
                     <td className="px-6 py-4">
                       <Select
                         value={p.status || "available"}
-                        onValueChange={(v) => updateStatus(p.id, v)}
+                        onValueChange={(v) => updateStatus(p.id, v as "available" | "pending" | "sold")}
                       >
                         <SelectTrigger className="w-32 h-8 text-xs">
                           <SelectValue />

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
@@ -41,42 +41,33 @@ const PropertyCard = ({
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [message, setMessage] = useState(`I'm interested in ${title}. Kindly share more details.`);
-  const [submitting, setSubmitting] = useState(false);
 
   const queryClient = useQueryClient();
 
-  const inquiryMutation = useMutation(
-    async (payload: { property_id: string; buyer_name: string; buyer_phone: string; message: string }) => {
+  const inquiryMutation = useMutation({
+    mutationFn: async (payload: { property_id: string; buyer_name: string; buyer_phone: string; message: string }) => {
       const { error } = await supabase.from("buyer_inquiries").insert([payload]);
       if (error) throw error;
       return payload;
     },
-    {
-      onSuccess: (vars) => {
-        // open whatsapp and close dialog
-        const waLink = generateWhatsAppLink(phone, vars.message);
-        setOpen(false);
-        // Invalidate properties to refresh any counts or recent inquiries UI
-        queryClient.invalidateQueries(["properties"]);
-        // navigate to whatsapp
-        window.location.href = waLink;
-      },
-      onError: (err: any) => {
-        console.error(err);
-        toast({ title: "Error", description: err?.message || "Failed to record inquiry.", variant: "destructive" });
-      },
+    onSuccess: (vars) => {
+      const waLink = generateWhatsAppLink(phone, vars.message);
+      setOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      window.location.href = waLink;
     },
-  );
+    onError: (err: Error) => {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to record inquiry.", variant: "destructive" });
+    },
+  });
 
   const handleContact = async () => {
     if (!buyerName || !buyerPhone) {
       toast({ title: "Missing info", description: "Please provide your name and phone number.", variant: "destructive" });
       return;
     }
-
-    setSubmitting(true);
     inquiryMutation.mutate({ property_id: id, buyer_name: buyerName, buyer_phone: buyerPhone, message });
-    setSubmitting(false);
   };
 
   return (
@@ -155,9 +146,9 @@ const PropertyCard = ({
               </Button>
 
               <Dialog open={open} onOpenChange={setOpen}>
-                <Dialog.Trigger asChild>
+                <DialogTrigger asChild>
                   <Button size="sm">Contact for More Info</Button>
-                </Dialog.Trigger>
+                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Contact Seller</DialogTitle>
@@ -170,7 +161,9 @@ const PropertyCard = ({
                   <DialogFooter>
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                      <Button onClick={handleContact} disabled={submitting}>{submitting ? 'Sending…' : 'Send & Open WhatsApp'}</Button>
+                      <Button onClick={handleContact} disabled={inquiryMutation.isPending}>
+                        {inquiryMutation.isPending ? 'Sending…' : 'Send & Open WhatsApp'}
+                      </Button>
                     </div>
                   </DialogFooter>
                 </DialogContent>
