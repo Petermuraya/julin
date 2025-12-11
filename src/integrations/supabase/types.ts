@@ -14,16 +14,339 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      buyer_inquiries: {
+        Row: {
+          buyer_email: string | null
+          buyer_name: string
+          buyer_phone: string
+          created_at: string
+          follow_up_date: string | null
+          id: string
+          lead_status: Database["public"]["Enums"]["lead_status"] | null
+          message: string | null
+          notes: string | null
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_email?: string | null
+          buyer_name: string
+          buyer_phone: string
+          created_at?: string
+          follow_up_date?: string | null
+          id?: string
+          lead_status?: Database["public"]["Enums"]["lead_status"] | null
+          message?: string | null
+          notes?: string | null
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_email?: string | null
+          buyer_name?: string
+          buyer_phone?: string
+          created_at?: string
+          follow_up_date?: string | null
+          id?: string
+          lead_status?: Database["public"]["Enums"]["lead_status"] | null
+          message?: string | null
+          notes?: string | null
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buyer_inquiries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          amenities: string[] | null
+          approved_at: string | null
+          approved_by: string | null
+          county: string | null
+          created_at: string
+          description: string | null
+          id: string
+          images: string[] | null
+          is_admin_property: boolean | null
+          is_featured: boolean | null
+          is_verified: boolean | null
+          latitude: number | null
+          location: string
+          longitude: number | null
+          price: number
+          property_type: Database["public"]["Enums"]["property_type"]
+          rejection_reason: string | null
+          seller_email: string | null
+          seller_name: string | null
+          seller_phone: string | null
+          size: string | null
+          status: Database["public"]["Enums"]["property_status"]
+          submitted_by_user_id: string | null
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          amenities?: string[] | null
+          approved_at?: string | null
+          approved_by?: string | null
+          county?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          is_admin_property?: boolean | null
+          is_featured?: boolean | null
+          is_verified?: boolean | null
+          latitude?: number | null
+          location: string
+          longitude?: number | null
+          price: number
+          property_type?: Database["public"]["Enums"]["property_type"]
+          rejection_reason?: string | null
+          seller_email?: string | null
+          seller_name?: string | null
+          seller_phone?: string | null
+          size?: string | null
+          status?: Database["public"]["Enums"]["property_status"]
+          submitted_by_user_id?: string | null
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          amenities?: string[] | null
+          approved_at?: string | null
+          approved_by?: string | null
+          county?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          is_admin_property?: boolean | null
+          is_featured?: boolean | null
+          is_verified?: boolean | null
+          latitude?: number | null
+          location?: string
+          longitude?: number | null
+          price?: number
+          property_type?: Database["public"]["Enums"]["property_type"]
+          rejection_reason?: string | null
+          seller_email?: string | null
+          seller_name?: string | null
+          seller_phone?: string | null
+          size?: string | null
+          status?: Database["public"]["Enums"]["property_status"]
+          submitted_by_user_id?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      property_submissions: {
+        Row: {
+          admin_notes: string | null
+          county: string | null
+          created_at: string
+          created_property_id: string | null
+          description: string | null
+          documents: string[] | null
+          id: string
+          images: string[] | null
+          location: string
+          price: number
+          property_type: Database["public"]["Enums"]["property_type"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          seller_email: string | null
+          seller_name: string
+          seller_phone: string
+          size: string | null
+          status: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          county?: string | null
+          created_at?: string
+          created_property_id?: string | null
+          description?: string | null
+          documents?: string[] | null
+          id?: string
+          images?: string[] | null
+          location: string
+          price: number
+          property_type?: Database["public"]["Enums"]["property_type"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seller_email?: string | null
+          seller_name: string
+          seller_phone: string
+          size?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          county?: string | null
+          created_at?: string
+          created_property_id?: string | null
+          description?: string | null
+          documents?: string[] | null
+          id?: string
+          images?: string[] | null
+          location?: string
+          price?: number
+          property_type?: Database["public"]["Enums"]["property_type"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seller_email?: string | null
+          seller_name?: string
+          seller_phone?: string
+          size?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_submissions_created_property_id_fkey"
+            columns: ["created_property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_visits: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          preferred_date: string
+          preferred_time: string | null
+          property_id: string
+          status: string | null
+          updated_at: string
+          visit_type: string | null
+          visitor_email: string | null
+          visitor_name: string
+          visitor_phone: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          preferred_date: string
+          preferred_time?: string | null
+          property_id: string
+          status?: string | null
+          updated_at?: string
+          visit_type?: string | null
+          visitor_email?: string | null
+          visitor_name: string
+          visitor_phone: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          preferred_date?: string
+          preferred_time?: string | null
+          property_id?: string
+          status?: string | null
+          updated_at?: string
+          visit_type?: string | null
+          visitor_email?: string | null
+          visitor_name?: string
+          visitor_phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_visits_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      lead_status: "hot" | "warm" | "cold"
+      property_status: "available" | "pending" | "sold"
+      property_type: "plot" | "house" | "land" | "apartment" | "commercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +473,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      lead_status: ["hot", "warm", "cold"],
+      property_status: ["available", "pending", "sold"],
+      property_type: ["plot", "house", "land", "apartment", "commercial"],
+    },
   },
 } as const
