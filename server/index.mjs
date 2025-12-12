@@ -23,6 +23,28 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false }
 });
 
+// GET /api/properties
+// Proxy endpoint to fetch available properties (avoids CORS issues)
+app.get('/api/properties', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('properties')
+      .select('*')
+      .eq('status', 'available')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ properties: data || [] });
+  } catch (err) {
+    console.error('Error fetching properties:', err);
+    return res.status(500).json({ error: 'Failed to fetch properties' });
+  }
+});
+
 // POST /admin/properties
 // Accepts either JSON body with `images` as array of urls, or multipart/form-data with files + fields.
 app.post('/admin/properties', upload.array('files'), async (req, res) => {

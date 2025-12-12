@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { Phone, Mail, MapPin, Clock, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { Phone, Mail, MapPin, Clock, Send, CheckCircle, AlertCircle, Loader, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-// Types
 interface ContactInfo {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -22,6 +22,8 @@ interface FormData {
   phone: string;
   email: string;
   message: string;
+  subject?: string;
+  inquiryType?: string;
 }
 
 interface FormErrors {
@@ -38,117 +40,112 @@ const Contact = () => {
       label: "Phone",
       value: "+254725671504",
       href: "tel:+254725671504",
-      description: "Call us anytime"
+      description: "Call us anytime",
     },
     {
       icon: Mail,
       label: "Email",
       value: "juliusmurigi90@gmail.com",
       href: "mailto:juliusmurigi90@gmail.com",
-      description: "Response within 24 hours"
+      description: "Response within 24 hours",
     },
     {
       icon: MapPin,
       label: "Office Location",
       value: "Nairobi, Kenya",
       href: "https://maps.google.com/?q=Nairobi+Kenya",
-      description: "Visit our headquarters"
+      description: "Visit our headquarters",
     },
     {
       icon: Clock,
       label: "Working Hours",
       value: "Mon - Sat: 8AM - 6PM",
       href: "#",
-      description: "Sunday: 10AM - 4PM"
+      description: "Sunday: 10AM - 4PM",
     },
   ];
 
   return (
-    <section 
-      id="contact" 
-      className="py-20 bg-primary text-primary-foreground scroll-mt-16"
-      aria-labelledby="contact-heading"
+    <section
+      id="contact"
+      className="py-12 md:py-20 lg:py-24 bg-gradient-to-b from-slate-50 via-white to-slate-50 scroll-mt-16"
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <span className="inline-block text-accent font-semibold text-sm uppercase tracking-widest mb-4 px-4 py-1 bg-accent/10 rounded-full">
-            Get In Touch
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto mb-12 md:mb-20">
+          <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary font-semibold text-sm uppercase tracking-wider mb-6">
+            Get in Touch
           </span>
-          <h2 
-            id="contact-heading" 
-            className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-4"
-          >
+
+          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-slate-900">
             Contact Us Today
           </h2>
-          <p className="text-primary-foreground/80 max-w-2xl mx-auto text-lg">
-            Ready to find your dream property or list yours? Reach out to us and let our experts guide you through your real estate journey.
+
+          <p className="text-slate-600 text-base md:text-lg leading-relaxed">
+            Have questions about properties or need real estate support? Reach out to our expert team.
+            We're here to help with any inquiry.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Info */}
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {contactInfo.map((item, index) => (
-                <a
-                  key={index}
-                  href={item.href}
-                  className={cn(
-                    "flex items-start gap-4 p-6 bg-primary-foreground/10 rounded-xl",
-                    "hover:bg-primary-foreground/15 transition-all duration-300",
-                    "hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-primary"
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+          {/* Contact Info Cards */}
+          <div className="lg:col-span-1 space-y-6">
+            {contactInfo.map((item, index) => (
+              <a
+                key={index}
+                href={item.href}
+                className={cn(
+                  "flex items-start gap-4 p-6 bg-white rounded-2xl border border-slate-200",
+                  "hover:border-primary/30 hover:shadow-lg hover:bg-slate-50 transition-all duration-300"
+                )}
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <item.icon className="h-6 w-6 text-white" />
+                </div>
+
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.label}</p>
+                  <p className="font-semibold text-slate-900 text-sm md:text-base mt-1">{item.value}</p>
+                  {item.description && (
+                    <p className="text-xs text-slate-600 mt-1">{item.description}</p>
                   )}
-                  target={item.href.startsWith('http') ? '_blank' : undefined}
-                  rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                  aria-label={`${item.label}: ${item.value}`}
-                >
-                  <div className="w-12 h-12 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-                    <item.icon className="h-6 w-6 text-accent-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-primary-foreground/70 mb-1 font-medium">
-                      {item.label}
-                    </p>
-                    <p className="font-semibold text-lg mb-1">{item.value}</p>
-                    {item.description && (
-                      <p className="text-sm text-primary-foreground/60">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
-            
-            {/* Additional Information */}
-            <div className="p-6 bg-primary-foreground/10 rounded-xl">
-              <h3 className="font-semibold text-lg mb-3">Why Choose Us</h3>
-              <ul className="space-y-2 text-primary-foreground/80">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-accent" />
-                  <span>24/7 Customer Support</span>
+                </div>
+              </a>
+            ))}
+
+            {/* Why Choose Us */}
+            <div className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl border border-primary/10 mt-8">
+              <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                Why Choose Us
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-2 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span>24/7 Real Estate Support</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-accent" />
+                <li className="flex items-start gap-2 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
                   <span>Free Property Valuation</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-accent" />
-                  <span>Market Insights & Reports</span>
+                <li className="flex items-start gap-2 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span>Verified Listings</span>
                 </li>
               </ul>
             </div>
           </div>
 
           {/* Contact Form */}
-          <div className="bg-card text-card-foreground rounded-2xl p-8 shadow-2xl">
-            <h3 className="font-display text-2xl font-semibold mb-2">
-              Send Us a Message
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Fill out the form below and we'll get back to you within 24 hours.
-            </p>
-            <ContactForm />
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-100">
+              <h3 className="font-display text-2xl md:text-3xl font-bold text-slate-900 mb-2">Send Us a Message</h3>
+              <p className="text-slate-600 mb-8 text-sm md:text-base">
+                Fill in your details below. We'll save your inquiry and you'll be redirected to WhatsApp 
+                to continue the conversation.
+              </p>
+              <ContactForm />
+            </div>
           </div>
         </div>
       </div>
@@ -164,34 +161,34 @@ const ContactForm = () => {
     name: "",
     phone: "",
     email: "",
-    message: ""
+    message: "",
+    inquiryType: "general",
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const ADMIN_PHONE = "+254725671504";
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-    
+
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
     } else if (formData.name.trim().length < 2) {
       newErrors.name = "Name must be at least 2 characters";
     }
 
-    const phoneRegex = /^\+?[\d\s-]{10,}$/;
     if (!formData.phone.trim()) {
       newErrors.phone = "Phone number is required";
-    } else if (!phoneRegex.test(formData.phone)) {
-      newErrors.phone = "Please enter a valid phone number";
+    } else if (!/^(\+254|0)[0-9]{9}$/.test(formData.phone.replace(/\s+/g, ""))) {
+      newErrors.phone = "Invalid Kenyan phone number";
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Invalid email address";
     }
 
     if (!formData.message.trim()) {
@@ -205,20 +202,20 @@ const ContactForm = () => {
   };
 
   const handleChange = (field: keyof FormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[field as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast({
         title: "Validation Error",
-        description: "Please fix the errors in the form",
+        description: "Please check all fields and try again.",
         variant: "destructive",
       });
       return;
@@ -227,178 +224,228 @@ const ContactForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Optional: Store form data in your backend first
-      // await saveContactForm(formData);
-      
-      // Generate WhatsApp message
-      const whatsappMessage = `*New Contact Form Submission*
-      
-Name: ${formData.name}
-Phone: ${formData.phone}
-Email: ${formData.email}
-
-Message:
-${formData.message}
-
-Sent via Website Contact Form`;
-      
-      const whatsappLink = generateWhatsAppLink(
-        ADMIN_PHONE,
-        whatsappMessage
+      // Save to Supabase using direct API call
+      const response = await fetch(
+        `${process.env.VITE_SUPABASE_URL}/rest/v1/contact_submissions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: process.env.VITE_SUPABASE_ANON_KEY || "",
+          },
+          body: JSON.stringify({
+            name: formData.name.trim(),
+            phone: formData.phone.trim(),
+            email: formData.email.trim(),
+            message: formData.message.trim(),
+            subject: formData.subject || "General Inquiry",
+            inquiry_type: formData.inquiryType || "general",
+            status: "new",
+          }),
+        }
       );
 
-      // Success toast
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Supabase error:", errorData);
+        throw new Error("Failed to save message");
+      }
+
+      // Show success message
       toast({
-        title: "Redirecting to WhatsApp",
-        description: "Your message has been prepared. Opening WhatsApp...",
-        action: (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.location.href = whatsappLink}
-          >
-            Open Now
-          </Button>
-        ),
+        title: "Success!",
+        description: "Your message has been saved. Redirecting to WhatsApp...",
+        variant: "default",
       });
+
+      setIsSuccess(true);
+
+      // Create concise WhatsApp message
+      const whatsappMessage = `Hi! I'm reaching out about: ${formData.message.substring(0, 100)}${formData.message.length > 100 ? "..." : ""}%0A%0AYou can reach me at: ${formData.phone}`;
+      const link = generateWhatsAppLink(ADMIN_PHONE, whatsappMessage);
 
       // Redirect after a short delay
       setTimeout(() => {
-        window.open(whatsappLink, '_blank');
-        setIsSubmitting(false);
-        
-        // Clear form
-        setFormData({ name: "", phone: "", email: "", message: "" });
-      }, 2000);
-
+        window.open(link, "_blank");
+        // Reset form
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          message: "",
+          inquiryType: "general",
+        });
+        setIsSuccess(false);
+      }, 1000);
     } catch (error) {
+      console.error("Form submission error:", error);
       toast({
         title: "Error",
-        description: "Failed to process your request. Please try again.",
+        description: "Failed to save your message. Please try again.",
         variant: "destructive",
       });
+      setIsSuccess(false);
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+    <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
+      {/* Name and Inquiry Type */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name" className="text-muted-foreground">
-            Your Name *
+          <Label className="text-sm font-semibold text-slate-700">
+            Full Name <span className="text-red-500">*</span>
           </Label>
           <Input
-            id="name"
             value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
+            onChange={(e) => handleChange("name", e.target.value)}
             placeholder="John Doe"
-            className={errors.name ? "border-destructive" : ""}
-            aria-invalid={!!errors.name}
-            aria-describedby={errors.name ? "name-error" : undefined}
+            className={cn(
+              "h-11 rounded-xl border-slate-200 focus:border-primary focus:ring-primary",
+              errors.name && "border-red-500 focus:border-red-500"
+            )}
+            disabled={isSubmitting}
           />
           {errors.name && (
-            <div id="name-error" className="flex items-center gap-1 text-sm text-destructive">
-              <AlertCircle className="h-3 w-3" />
-              {errors.name}
-            </div>
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3" /> {errors.name}
+            </p>
           )}
         </div>
-        
+
         <div className="space-y-2">
-          <Label htmlFor="phone" className="text-muted-foreground">
-            Phone Number *
+          <Label className="text-sm font-semibold text-slate-700">
+            Inquiry Type
+          </Label>
+          <select
+            value={formData.inquiryType}
+            onChange={(e) => handleChange("inquiryType", e.target.value)}
+            className={cn(
+              "h-11 px-4 rounded-xl border border-slate-200 bg-white text-slate-900",
+              "focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all",
+              "text-sm font-medium disabled:bg-slate-50 disabled:text-slate-500"
+            )}
+            disabled={isSubmitting}
+          >
+            <option value="general">General Inquiry</option>
+            <option value="property_inquiry">Property Inquiry</option>
+            <option value="support">Support</option>
+            <option value="partnership">Partnership</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Phone and Email */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold text-slate-700">
+            Phone Number <span className="text-red-500">*</span>
           </Label>
           <Input
-            id="phone"
             value={formData.phone}
-            onChange={(e) => handleChange('phone', e.target.value)}
-            placeholder="+254 7XX XXX XXX"
-            className={errors.phone ? "border-destructive" : ""}
-            aria-invalid={!!errors.phone}
-            aria-describedby={errors.phone ? "phone-error" : undefined}
+            onChange={(e) => handleChange("phone", e.target.value)}
+            placeholder="+254 712 345 678"
+            className={cn(
+              "h-11 rounded-xl border-slate-200 focus:border-primary focus:ring-primary",
+              errors.phone && "border-red-500 focus:border-red-500"
+            )}
+            disabled={isSubmitting}
           />
           {errors.phone && (
-            <div id="phone-error" className="flex items-center gap-1 text-sm text-destructive">
-              <AlertCircle className="h-3 w-3" />
-              {errors.phone}
-            </div>
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3" /> {errors.phone}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold text-slate-700">
+            Email Address <span className="text-red-500">*</span>
+          </Label>
+          <Input
+            type="email"
+            value={formData.email}
+            onChange={(e) => handleChange("email", e.target.value)}
+            placeholder="you@example.com"
+            className={cn(
+              "h-11 rounded-xl border-slate-200 focus:border-primary focus:ring-primary",
+              errors.email && "border-red-500 focus:border-red-500"
+            )}
+            disabled={isSubmitting}
+          />
+          {errors.email && (
+            <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-3 w-3" /> {errors.email}
+            </p>
           )}
         </div>
       </div>
-      
+
+      {/* Message */}
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-muted-foreground">
-          Email Address *
-        </Label>
-        <Input
-          id="email"
-          type="email"
-          value={formData.email}
-          onChange={(e) => handleChange('email', e.target.value)}
-          placeholder="you@example.com"
-          className={errors.email ? "border-destructive" : ""}
-          aria-invalid={!!errors.email}
-          aria-describedby={errors.email ? "email-error" : undefined}
-        />
-        {errors.email && (
-          <div id="email-error" className="flex items-center gap-1 text-sm text-destructive">
-            <AlertCircle className="h-3 w-3" />
-            {errors.email}
-          </div>
-        )}
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor="message" className="text-muted-foreground">
-          Your Message *
+        <Label className="text-sm font-semibold text-slate-700">
+          Message <span className="text-red-500">*</span>
+          <span className="text-xs text-slate-500 font-normal ml-2">
+            ({formData.message.length}/500)
+          </span>
         </Label>
         <Textarea
-          id="message"
           value={formData.message}
-          onChange={(e) => handleChange('message', e.target.value)}
-          placeholder="Tell us about the property you're looking for, preferred location, budget, and any specific requirements..."
-          rows={5}
-          className={errors.message ? "border-destructive" : ""}
-          aria-invalid={!!errors.message}
-          aria-describedby={errors.message ? "message-error" : undefined}
+          onChange={(e) => {
+            if (e.target.value.length <= 500) {
+              handleChange("message", e.target.value);
+            }
+          }}
+          placeholder="Tell us what you need assistance with..."
+          className={cn(
+            "rounded-xl border-slate-200 focus:border-primary focus:ring-primary min-h-28 resize-none",
+            errors.message && "border-red-500 focus:border-red-500"
+          )}
+          maxLength={500}
+          disabled={isSubmitting}
         />
         {errors.message && (
-          <div id="message-error" className="flex items-center gap-1 text-sm text-destructive">
-            <AlertCircle className="h-3 w-3" />
-            {errors.message}
-          </div>
+          <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+            <AlertCircle className="h-3 w-3" /> {errors.message}
+          </p>
         )}
-        <p className="text-xs text-muted-foreground">
-          Please provide as much detail as possible for better assistance.
+        <p className="text-xs text-slate-500">
+          Keep your message brief. You'll continue on WhatsApp after submission.
         </p>
       </div>
-      
+
+      {/* Submit Button */}
       <Button
         type="submit"
-        size="lg"
-        className="w-full"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isSuccess}
+        className={cn(
+          "w-full h-12 text-base font-semibold rounded-xl transition-all duration-300",
+          "flex items-center justify-center gap-2",
+          isSuccess && "bg-green-600 hover:bg-green-600"
+        )}
       >
         {isSubmitting ? (
           <>
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-            Preparing message...
+            <Loader className="h-5 w-5 animate-spin" />
+            <span>Saving and redirecting...</span>
+          </>
+        ) : isSuccess ? (
+          <>
+            <CheckCircle className="h-5 w-5" />
+            <span>Redirecting to WhatsApp...</span>
           </>
         ) : (
           <>
-            <Send className="h-5 w-5 mr-2" />
-            Send Message via WhatsApp
+            <MessageCircle className="h-5 w-5" />
+            <span>Send via WhatsApp</span>
           </>
         )}
       </Button>
-      
-      <p className="text-xs text-center text-muted-foreground">
-        By submitting this form, you agree to our{" "}
-        <a href="/privacy" className="text-accent hover:underline">
-          Privacy Policy
-        </a>
-        . We'll respond within 24 hours.
+
+      <p className="text-xs text-slate-600 text-center">
+        Your message will be saved in our system and you'll continue the conversation on WhatsApp.
       </p>
     </form>
   );

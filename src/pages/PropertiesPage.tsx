@@ -11,6 +11,11 @@ import { Search } from "lucide-react";
 
 const PROPERTY_TYPES = ["plot", "house", "land", "apartment", "commercial"] as const;
 
+// Environment-controlled API base and realtime flag.
+// Set `VITE_API_URL` to your deployed server (e.g. https://api.example.com) when frontend
+// is hosted separately (GitHub Pages). Leave empty for relative `/api` during local dev.
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
+const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 const PropertiesPage = () => {
   const [query, setQuery] = useState("");
   const [type, setType] = useState<string | undefined>(undefined);
@@ -25,16 +30,25 @@ const PropertiesPage = () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const { data, error } = await supabase
-        .from("properties")
-        .select("*")
-        .eq("status", "available")
-        .order("created_at", { ascending: false });
+      // Use backend proxy to avoid CORS issues. If `VITE_API_URL` is set, call the
+      // deployed server; otherwise use a relative `/api/properties` path.
+      const base = API_BASE ? API_BASE.replace(/\/$/, "") : "";
+      const url = base ? `${base}/api/properties` : '/api/properties';
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch properties: ${response.statusText}`);
+      }
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      if (contentType.includes('text/html')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON but received HTML from ${url} (${response.status}). This usually means the API URL is incorrect or the server returned an HTML error page. Response snippet: ${text.slice(0,300)}`);
+      }
 
-      if (error) throw error;
-
-      setAllProperties(data || []);
-      applyFilters(data || []);
+      const json = await response.json();
+      // Support both { properties: [...] } and raw array responses
+      const properties = Array.isArray(json) ? json : json?.properties ?? [];
+      setAllProperties(properties || []);
+      applyFilters(properties || []);
     } catch (err: any) {
       console.error("Error fetching properties:", err);
       setErrorMsg(err?.message ? String(err.message) : String(err));
@@ -67,25 +81,44 @@ const PropertiesPage = () => {
   useEffect(() => {
     fetchProperties();
 
-    // Set up real-time subscription
-    const channel = supabase
-      .channel("properties-page-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "properties",
-        },
-        (payload) => {
-          console.log("Real-time update:", payload);
-          fetchProperties();
-        }
-      )
-      .subscribe();
+    // Set up real-time subscription only when explicitly enabled. Realtime
+    // connections from a static host (e.g. GitHub Pages) often fail with 403
+    // due to Supabase origin restrictions; enable this only when your frontend
+    // and Supabase are configured to allow it (set `VITE_ENABLE_REALTIME=true`).
+    if (!ENABLE_REALTIME) {
+      return;
+    }
+
+    let channel: any;
+    try {
+      channel = supabase
+        .channel("properties-page-realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "properties",
+          },
+          (payload: any) => {
+            console.log("Real-time update:", payload);
+            fetchProperties();
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      // Don't crash the page if realtime handshake fails (403, etc.)
+      // The console will still show the underlying error for debugging.
+      // eslint-disable-next-line no-console
+      console.warn('Realtime subscription failed:', err);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch (e) {
+        // ignore cleanup errors
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
