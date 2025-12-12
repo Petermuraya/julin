@@ -53,13 +53,6 @@ const PropertiesPage = () => {
       setLoading(false);
     }
   };
-    } catch (err: any) {
-      console.error("Error fetching properties:", err);
-      setErrorMsg(err?.message ? String(err.message) : String(err));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const applyFilters = (data: any[]) => {
     let rows = data;
