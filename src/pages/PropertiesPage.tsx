@@ -13,6 +13,7 @@ const PROPERTY_TYPES = ["plot", "house", "land", "apartment", "commercial"] as c
 
 // Supabase project URL for Edge Function calls (handles CORS for GitHub Pages)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 
 const PropertiesPage = () => {
@@ -31,7 +32,13 @@ const PropertiesPage = () => {
     try {
       // Call Supabase Edge Function (handles CORS for all origins)
       const url = `${SUPABASE_URL}/functions/v1/get-properties`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          // Include the public anon key so Supabase allows the request
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch properties: ${response.statusText}`);
       }
