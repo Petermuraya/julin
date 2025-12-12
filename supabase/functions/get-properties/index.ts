@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "*", // Replace * with your domain if needed
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
@@ -14,12 +14,11 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client with service role key for server-side access
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Missing SUPABASE_URL or SUPABASE_ANON_KEY");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         {
@@ -29,9 +28,9 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Fetch available properties
+    // Fetch properties marked as "available"
     const { data, error } = await supabase
       .from("properties")
       .select("*")
@@ -41,7 +40,10 @@ serve(async (req) => {
     if (error) {
       console.error("Supabase error:", error);
       return new Response(
-        JSON.stringify({ error: error.message, details: JSON.stringify(error) }),
+        JSON.stringify({
+          error: error.message,
+          details: error,
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -49,20 +51,18 @@ serve(async (req) => {
       );
     }
 
-    return new Response(
-      JSON.stringify({ properties: data || [] }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return new Response(JSON.stringify({ properties: data || [] }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   } catch (err) {
     console.error("Unexpected error:", err);
-    // Return CORS headers even on error
+
     return new Response(
-      JSON.stringify({ 
-        error: "Internal server error", 
-        details: err instanceof Error ? err.message : String(err) 
+      JSON.stringify({
+        error: "Internal server error",
+        details: err instanceof Error ? err.message : String(err),
       }),
       {
         status: 500,
@@ -71,4 +71,3 @@ serve(async (req) => {
     );
   }
 });
-
