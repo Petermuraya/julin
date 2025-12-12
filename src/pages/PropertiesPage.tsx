@@ -32,13 +32,8 @@ const PropertiesPage = () => {
     try {
       // Call Supabase Edge Function (handles CORS for all origins)
       const url = `${SUPABASE_URL}/functions/v1/get-properties`;
-      const response = await fetch(url, {
-        headers: {
-          // Include the public anon key so Supabase allows the request
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        },
-      });
+      // Call without custom headers to avoid CORS preflight redirects
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to fetch properties: ${response.statusText}`);
       }
