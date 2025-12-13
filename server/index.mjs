@@ -134,6 +134,51 @@ app.post('/admin/properties', upload.array('files'), async (req, res) => {
   }
 });
 
+// GET /api/chats
+// Returns list of chat sessions (from chat_conversations if available, else derive from messages)
+app.get('/api/chats', async (req, res) => {
+  try {
+    // Try to read conversations table first
+    const { data: convs, error: convErr } = await supabase.from('chat_conversations').select('*').order('started_at', { ascending: false }).limit(200);
+    if (!convErr && Array.isArray(convs) && convs.length > 0) {
+      return res.json({ conversations: convs });
+    }
+
+    // Fallback: derive sessions from messages
+    const { data, error } = await supabase.rpc('get_chat_sessions', {});
+    if (error) {
+      // If RPC not available, fallback to a raw query
+      const { data: msgs, error: e2 } = await supabase.from('chat_messages').select('session_id, max(created_at) as last_at').group('session_id').order('last_at', { ascending: false }).limit(200);
+      if (e2) return res.status(500).json({ error: e2.message || e2 });
+      return res.json({ sessions: msgs });
+    }
+    return res.json({ sessions: data });
+  } catch (err) {
+    console.error('GET /api/chats error', err);
+    return res.status(500).json({ error: 'Failed to list chat sessions' });
+  }
+});
+
+// GET /api/chats/:session_id
+// Returns all messages for a given session_id
+app.get('/api/chats/:session_id', async (req, res) => {
+  try {
+    const { session_id } = req.params;
+    if (!session_id) return res.status(400).json({ error: 'Missing session_id' });
+
+    const { data, error } = await supabase.from('chat_messages').select('*').eq('session_id', session_id).order('created_at', { ascending: true });
+    if (error) {
+      console.error('Error fetching messages', error);
+      return res.status(500).json({ error: error.message || error });
+    }
+
+    return res.json({ messages: data || [] });
+  } catch (err) {
+    console.error('GET /api/chats/:session_id error', err);
+    return res.status(500).json({ error: 'Failed to fetch chat messages' });
+  }
+});
+
 const port = process.env.PORT || 8787;
 app.listen(port, () => {
   console.log(`Admin upload server listening on http://localhost:${port}`);

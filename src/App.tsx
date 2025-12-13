@@ -14,11 +14,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProperties from "./pages/admin/AdminProperties";
 import AdminSubmissions from "./pages/admin/AdminSubmissions";
 import AdminInquiries from "./pages/admin/AdminInquiries";
+import AdminChats from "./pages/admin/AdminChats";
 
 import PropertiesPage from "./pages/PropertiesPage";
 import PropertyDetailPage from "./pages/PropertyDetailPage";
 import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
+import Chat from "./components/Chat";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +37,7 @@ const App = () => (
             <Route path="/property/:id" element={<PropertyDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/chat" element={<Chat />} />
 
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
@@ -43,6 +46,7 @@ const App = () => (
               <Route path="properties" element={<AdminProperties />} />
               <Route path="submissions" element={<AdminSubmissions />} />
               <Route path="inquiries" element={<AdminInquiries />} />
+              <Route path="chats" element={<AdminChats />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
