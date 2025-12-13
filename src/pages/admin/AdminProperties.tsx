@@ -11,24 +11,40 @@ import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon } from "luci
 
 const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
 
+type PropertyForm = {
+  title: string;
+  location: string;
+  price: string;
+  property_type: "land" | "plot" | "house" | "apartment" | "commercial";
+  description: string;
+  seller_name: string;
+  seller_phone: string;
+  size: string;
+  images: string;
+};
+
+const emptyForm: PropertyForm = {
+  title: "",
+  location: "",
+  price: "",
+  property_type: "land",
+  description: "",
+  seller_name: "",
+  seller_phone: "",
+  size: "",
+  images: "",
+};
+
 const AdminProperties = () => {
   const [properties, setProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [adding, setAdding] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ 
-    title: "", 
-    location: "", 
-    price: "", 
-    property_type: "land" as "land" | "plot" | "house" | "apartment" | "commercial",
-    description: "", 
-    seller_name: "", 
-    seller_phone: "", 
-    size: "",
-    images: "" 
-  });
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<PropertyForm>(emptyForm);
   const [useUpload, setUseUpload] = useState(true);
   const [files, setFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -39,15 +55,19 @@ const AdminProperties = () => {
   );
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data, error } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
-      if (error) console.error(error);
-      setProperties(data || []);
-      setLoading(false);
-    };
-    load();
+    loadProperties();
   }, []);
+
+  const loadProperties = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) console.error(error);
+    setProperties(data || []);
+    setLoading(false);
+  };
 
   const updateStatus = async (id: string, status: "available" | "pending" | "sold") => {
     try {
@@ -61,7 +81,7 @@ const AdminProperties = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    const validFiles = selectedFiles.filter(f => {
+    const validFiles = selectedFiles.filter((f) => {
       if (f.size > 5 * 1024 * 1024) {
         toast({ title: "File too large", description: `${f.name} exceeds 5MB limit`, variant: "destructive" });
         return false;
@@ -72,125 +92,180 @@ const AdminProperties = () => {
       }
       return true;
     });
-    setFiles(prev => [...prev, ...validFiles].slice(0, 10)); // Max 10 images
+    const totalImages = existingImages.length + files.length + validFiles.length;
+    if (totalImages > 10) {
+      toast({ title: "Too many images", description: "Maximum 10 images allowed", variant: "destructive" });
+      return;
+    }
+    setFiles((prev) => [...prev, ...validFiles]);
   };
 
   const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const uploadImages = async (propertyId: string): Promise<string[]> => {
     const uploadedUrls: string[] = [];
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setUploadProgress(`Uploading ${i + 1}/${files.length}...`);
-      
-      const fileExt = file.name.split('.').pop();
+
+      const fileExt = file.name.split(".").pop();
       const fileName = `${propertyId}/${Date.now()}-${i}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
-        .from('property-images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: false });
-      
+        .from("property-images")
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
+
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        console.error("Upload error:", uploadError);
         throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
       }
-      
+
       const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/property-images/${fileName}`;
       uploadedUrls.push(publicUrl);
     }
-    
+
     setUploadProgress("");
     return uploadedUrls;
   };
 
-  const handleCreateProperty = async () => {
-    setAdding(true);
+  const openAddDialog = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setFiles([]);
+    setExistingImages([]);
+    setUseUpload(true);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (property: any) => {
+    setEditingId(property.id);
+    setForm({
+      title: property.title || "",
+      location: property.location || "",
+      price: property.price?.toString() || "",
+      property_type: property.property_type || "land",
+      description: property.description || "",
+      seller_name: property.seller_name || "",
+      seller_phone: property.seller_phone || "",
+      size: property.size || "",
+      images: "",
+    });
+    setExistingImages(property.images || []);
+    setFiles([]);
+    setUseUpload(true);
+    setDialogOpen(true);
+  };
+
+  const handleSaveProperty = async () => {
+    setSaving(true);
     try {
       // Validation
       if (!form.title.trim()) throw new Error("Title is required");
       if (!form.location.trim()) throw new Error("Location is required");
       if (!form.price || Number(form.price) <= 0) throw new Error("Price must be a positive number");
 
-      let imageUrls: string[] = [];
+      let imageUrls: string[] = [...existingImages];
 
-      // If using URL input
+      // If using URL input, parse those
       if (!useUpload && form.images) {
-        imageUrls = form.images.split(",").map(s => s.trim()).filter(Boolean);
+        const urlImages = form.images.split(",").map((s) => s.trim()).filter(Boolean);
+        imageUrls = [...imageUrls, ...urlImages];
       }
 
-      // Create property first (to get the ID for image folder)
-      const { data: newProperty, error: insertError } = await supabase
-        .from("properties")
-        .insert({
-          title: form.title.trim(),
-          description: form.description.trim() || null,
-          property_type: form.property_type,
-          price: Number(form.price),
-          location: form.location.trim(),
-          size: form.size.trim() || null,
-          seller_name: form.seller_name.trim() || null,
-          seller_phone: form.seller_phone.trim() || null,
-          images: imageUrls.length > 0 ? imageUrls : null,
-          is_admin_property: true,
-          status: "available" as const,
-        })
-        .select()
-        .single();
+      const propertyData = {
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        property_type: form.property_type,
+        price: Number(form.price),
+        location: form.location.trim(),
+        size: form.size.trim() || null,
+        seller_name: form.seller_name.trim() || null,
+        seller_phone: form.seller_phone.trim() || null,
+        is_admin_property: true,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (insertError) throw insertError;
+      if (editingId) {
+        // UPDATE existing property
+        if (useUpload && files.length > 0) {
+          const uploadedUrls = await uploadImages(editingId);
+          imageUrls = [...imageUrls, ...uploadedUrls];
+        }
 
-      // Upload images if using file upload
-      if (useUpload && files.length > 0) {
-        const uploadedUrls = await uploadImages(newProperty.id);
-        
-        // Update property with image URLs
-        const { error: updateError } = await supabase
+        const { error } = await supabase
           .from("properties")
-          .update({ images: uploadedUrls })
-          .eq("id", newProperty.id);
-        
-        if (updateError) throw updateError;
-        
-        newProperty.images = uploadedUrls;
+          .update({ ...propertyData, images: imageUrls.length > 0 ? imageUrls : null })
+          .eq("id", editingId);
+
+        if (error) throw error;
+
+        setProperties((p) =>
+          p.map((x) => (x.id === editingId ? { ...x, ...propertyData, images: imageUrls } : x))
+        );
+        toast({ title: "Success", description: "Property updated successfully." });
+      } else {
+        // CREATE new property
+        const { data: newProperty, error: insertError } = await supabase
+          .from("properties")
+          .insert({
+            ...propertyData,
+            images: imageUrls.length > 0 ? imageUrls : null,
+            status: "available" as const,
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        // Upload images if using file upload
+        if (useUpload && files.length > 0) {
+          const uploadedUrls = await uploadImages(newProperty.id);
+          imageUrls = [...imageUrls, ...uploadedUrls];
+
+          const { error: updateError } = await supabase
+            .from("properties")
+            .update({ images: imageUrls })
+            .eq("id", newProperty.id);
+
+          if (updateError) throw updateError;
+
+          newProperty.images = imageUrls;
+        }
+
+        setProperties((p) => [newProperty, ...p]);
+        toast({ title: "Success", description: "Property created successfully." });
       }
 
-      setProperties((p) => [newProperty, ...p]);
-      setAddOpen(false);
-      setForm({
-        title: "",
-        location: "",
-        price: "",
-        property_type: "land",
-        description: "",
-        seller_name: "",
-        seller_phone: "",
-        size: "",
-        images: "",
-      });
+      setDialogOpen(false);
+      setForm(emptyForm);
       setFiles([]);
-      toast({ title: "Success", description: "Property created successfully." });
+      setExistingImages([]);
+      setEditingId(null);
     } catch (err: any) {
       console.error(err);
       toast({
         title: "Error",
-        description: err?.message || "Failed to create property.",
+        description: err?.message || "Failed to save property.",
         variant: "destructive",
       });
     } finally {
-      setAdding(false);
+      setSaving(false);
       setUploadProgress("");
     }
   };
 
   const deleteProperty = async (id: string) => {
     if (!confirm("Are you sure you want to delete this property?")) return;
-    
+
     try {
-      // Delete images from storage first
-      const property = properties.find(p => p.id === id);
+      const property = properties.find((p) => p.id === id);
       if (property?.images?.length) {
         const filePaths = property.images
           .map((url: string) => {
@@ -198,15 +273,15 @@ const AdminProperties = () => {
             return match ? match[1] : null;
           })
           .filter(Boolean);
-        
+
         if (filePaths.length > 0) {
-          await supabase.storage.from('property-images').remove(filePaths);
+          await supabase.storage.from("property-images").remove(filePaths);
         }
       }
 
       const { error } = await supabase.from("properties").delete().eq("id", id);
       if (error) throw error;
-      
+
       setProperties((p) => p.filter((x) => x.id !== id));
       toast({ title: "Deleted", description: "Property removed successfully." });
     } catch (err: any) {
@@ -223,7 +298,7 @@ const AdminProperties = () => {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Properties</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">Manage all properties in your portfolio</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-2">
+        <Button onClick={openAddDialog} className="bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-2">
           <Plus size={18} />
           Add Property
         </Button>
@@ -252,7 +327,7 @@ const AdminProperties = () => {
             <p className="text-slate-600 dark:text-slate-400 text-lg">
               {searchQuery ? "No properties found matching your search" : "No properties yet"}
             </p>
-            <Button onClick={() => setAddOpen(true)} variant="outline" className="mt-4">
+            <Button onClick={openAddDialog} variant="outline" className="mt-4">
               Add your first property
             </Button>
           </div>
@@ -316,6 +391,7 @@ const AdminProperties = () => {
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => openEditDialog(p)}
                           className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                         >
                           <Edit2 size={16} />
@@ -338,11 +414,11 @@ const AdminProperties = () => {
         )}
       </div>
 
-      {/* Add Property Dialog */}
-      <Dialog open={addOpen} onOpenChange={(v) => { setAddOpen(v); if (!v) { setFiles([]); setUploadProgress(""); } }}>
+      {/* Add/Edit Property Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setFiles([]); setUploadProgress(""); setEditingId(null); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Add New Property</DialogTitle>
+            <DialogTitle className="text-2xl">{editingId ? "Edit Property" : "Add New Property"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
@@ -428,6 +504,31 @@ const AdminProperties = () => {
                 </label>
               </div>
 
+              {/* Existing Images (for editing) */}
+              {existingImages.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Current Images</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {existingImages.map((url, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={url}
+                          alt={`Image ${index + 1}`}
+                          className="w-full h-20 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {useUpload ? (
                 <div className="space-y-4">
                   <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
@@ -483,15 +584,15 @@ const AdminProperties = () => {
           </div>
 
           <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={adding}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>
             <Button
-              onClick={handleCreateProperty}
-              disabled={adding}
+              onClick={handleSaveProperty}
+              disabled={saving}
               className="bg-blue-600 hover:bg-blue-700"
             >
-              {adding ? (uploadProgress || "Creating...") : "Create Property"}
+              {saving ? (uploadProgress || "Saving...") : (editingId ? "Update Property" : "Create Property")}
             </Button>
           </DialogFooter>
         </DialogContent>
