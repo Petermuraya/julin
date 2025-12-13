@@ -1,103 +1,407 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Home, DollarSign } from "lucide-react";
+import { Search, MapPin, Home, DollarSign, Filter, ArrowRight, TrendingUp, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-property.jpg";
+import { motion, AnimatePresence } from "framer-motion";
+import { useMediaQuery } from '@/hooks/use-media-query';
 
-const InputBlock = ({ icon: Icon, label, children }: any) => (
-  <div className="flex items-center gap-3 p-3 bg-secondary rounded-lg">
-    <Icon className="h-5 w-5 text-primary" />
-    <div className="flex-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      {children}
+// Types
+interface InputBlockProps {
+  icon: React.ElementType;
+  label: string;
+  children: React.ReactNode;
+  isActive?: boolean;
+}
+
+// Reusable input block for search form
+const InputBlock = ({ icon: Icon, label, children, isActive = false }: InputBlockProps) => (
+  <motion.div 
+    className={`
+      flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 
+      bg-white/10 backdrop-blur-sm rounded-xl w-full border-2 transition-all duration-300
+      hover:bg-white/15 hover:border-accent/50 hover:shadow-lg
+      ${isActive ? 'border-accent bg-white/15 shadow-lg' : 'border-transparent'}
+      dark:bg-gray-900/20 dark:hover:bg-gray-900/30
+    `}
+    whileHover={{ scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+  >
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-accent/10 rounded-lg">
+        <Icon className="h-5 w-5 text-accent flex-shrink-0" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <label className="text-xs font-medium text-primary-foreground/70 uppercase tracking-wider block mb-1">
+          {label}
+        </label>
+        <div className="text-foreground font-medium">
+          {children}
+        </div>
+      </div>
     </div>
-  </div>
+  </motion.div>
 );
 
 const Hero = () => {
+  const [activeFilter, setActiveFilter] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Handle search logic
+  };
+
+  const scrollToSearch = () => {
+    document.getElementById("search-section")?.scrollIntoView({ 
+      behavior: "smooth",
+      block: "center"
+    });
+  };
+
   return (
     <section
       id="home"
-      className="relative min-h-screen flex items-center pt-32 overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center pt-20 md:pt-32 overflow-hidden"
     >
-      {/* Background */}
-      <div className="absolute inset-0 z-0">
-        <img
+      {/* Animated Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <motion.img
           src={heroImage}
-          alt="Luxury real estate property"
-          className="w-full h-full object-cover"
+          alt="Luxury real estate property in Kenya"
+          className="w-full h-full object-cover object-center scale-110"
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          loading="eager"
+          fetchPriority="high"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-navy/90 via-navy/70 to-navy/40" />
+        {/* Enhanced Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-navy/95 via-navy/80 to-navy/60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy via-transparent to-transparent opacity-50" />
+        
+        {/* Animated Background Elements */}
+        <motion.div 
+          className="absolute top-20 right-20 w-72 h-72 bg-accent/10 rounded-full blur-3xl"
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3]
+          }}
+          transition={{ 
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div 
+          className="absolute bottom-20 left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl"
+          animate={{ 
+            scale: [1.2, 1, 1.2],
+            opacity: [0.2, 0.4, 0.2]
+          }}
+          transition={{ 
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+        />
+      </div>
+
+      {/* Floating Trust Badges */}
+      <div className="absolute top-6 right-6 z-20 hidden md:flex flex-col gap-2">
+        <motion.div 
+          className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <ShieldCheck className="h-4 w-4 text-green-400" />
+          <span className="text-xs font-medium text-primary-foreground/90">
+            500+ Verified Properties
+          </span>
+        </motion.div>
+        <motion.div 
+          className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <TrendingUp className="h-4 w-4 text-yellow-400" />
+          <span className="text-xs font-medium text-primary-foreground/90">
+            98% Client Satisfaction
+          </span>
+        </motion.div>
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 py-20">
-        <div className="max-w-3xl animate-fade-in">
-          <span className="inline-block text-accent font-semibold text-sm tracking-widest uppercase mb-4">
-            Welcome to Julin Real Estate
-          </span>
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 xl:px-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left Column - Text Content */}
+          <motion.div 
+            className="text-center lg:text-left"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.span 
+              className="inline-flex items-center gap-2 text-accent font-semibold text-sm tracking-widest uppercase mb-4 px-4 py-2 bg-accent/10 rounded-full"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+              Welcome to Julin Real Estate
+            </motion.span>
 
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6 animate-slide-up">
-            Find Your Perfect
-            <span className="block text-accent">Dream Property</span>
-          </h1>
+            <motion.h1 
+              className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-primary-foreground mb-6 leading-tight"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              Discover Your
+              <span className="block text-accent bg-gradient-to-r from-accent to-blue-400 bg-clip-text text-transparent mt-2">
+                Perfect Property
+              </span>
+            </motion.h1>
 
-          <p className="text-lg md:text-xl text-primary-foreground/80 mb-8 max-w-xl animate-slide-up">
-            Connecting buyers and sellers with a well-organized system that makes
-            your property journey seamless.
-          </p>
+            <motion.p 
+              className="text-lg sm:text-xl md:text-2xl text-primary-foreground/90 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              Kenya's premier property marketplace with{" "}
+              <span className="font-semibold text-accent">admin-verified listings</span> 
+              {" "}for secure and transparent real estate transactions.
+            </motion.p>
 
-          <div className="flex flex-col sm:flex-row gap-4 animate-slide-up">
-            <Link to="/properties">
-              <Button variant="hero" size="xl">
-                <Search className="h-5 w-5" />
-                Browse Properties
+            {/* Quick Stats */}
+            <motion.div 
+              className="flex flex-wrap justify-center lg:justify-start gap-6 mb-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <div className="text-center lg:text-left">
+                <div className="text-3xl font-bold text-accent">1,250+</div>
+                <div className="text-sm text-primary-foreground/70">Properties Listed</div>
+              </div>
+              <div className="text-center lg:text-left">
+                <div className="text-3xl font-bold text-accent">98%</div>
+                <div className="text-sm text-primary-foreground/70">Client Satisfaction</div>
+              </div>
+              <div className="text-center lg:text-left">
+                <div className="text-3xl font-bold text-accent">24/7</div>
+                <div className="text-sm text-primary-foreground/70">Support Available</div>
+              </div>
+            </motion.div>
+
+            {/* Call to Action Buttons */}
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <Link to="/properties" className="flex-1 sm:flex-initial">
+                <Button 
+                  variant="hero" 
+                  size={isMobile ? "lg" : "xl"} 
+                  className="w-full sm:w-auto group"
+                >
+                  <Search className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
+                  Browse Properties
+                  <ArrowRight className="h-5 w-5 ml-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                </Button>
+              </Link>
+
+              <Button 
+                variant="heroOutline" 
+                size={isMobile ? "lg" : "xl"} 
+                className="group"
+                onClick={scrollToSearch}
+              >
+                <Filter className="h-5 w-5 mr-2" />
+                Advanced Search
               </Button>
-            </Link>
+            </motion.div>
+          </motion.div>
 
-            <Button variant="heroOutline" size="xl" asChild>
-              <Link to="/contact">List Your Property</Link>
-            </Button>
-          </div>
+          {/* Right Column - Search Form */}
+          <motion.div 
+            id="search-section"
+            className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 lg:p-8 shadow-2xl border border-white/20"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.7 }}
+            whileHover={{ y: -5 }}
+          >
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-primary-foreground mb-2">
+                Find Your Dream Property
+              </h2>
+              <p className="text-primary-foreground/70">
+                Search through our verified listings with advanced filters
+              </p>
+            </div>
+
+            <form onSubmit={handleSearch} className="space-y-6">
+              <div className="space-y-4">
+                <InputBlock icon={MapPin} label="Location" isActive={activeFilter === "location"}>
+                  <input
+                    type="text"
+                    placeholder="Nairobi, Mombasa, Kisumu..."
+                    className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1 placeholder:text-foreground/50"
+                    onFocus={() => setActiveFilter("location")}
+                    onBlur={() => setActiveFilter("")}
+                  />
+                </InputBlock>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InputBlock icon={Home} label="Property Type" isActive={activeFilter === "type"}>
+                    <select 
+                      className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1"
+                      onFocus={() => setActiveFilter("type")}
+                      onBlur={() => setActiveFilter("")}
+                    >
+                      <option value="">Any Type</option>
+                      <option value="house">House</option>
+                      <option value="apartment">Apartment</option>
+                      <option value="land">Land</option>
+                      <option value="commercial">Commercial</option>
+                      <option value="villa">Villa</option>
+                    </select>
+                  </InputBlock>
+
+                  <InputBlock icon={DollarSign} label="Price Range" isActive={activeFilter === "price"}>
+                    <select 
+                      className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1"
+                      onFocus={() => setActiveFilter("price")}
+                      onBlur={() => setActiveFilter("")}
+                    >
+                      <option value="">Any Price</option>
+                      <option value="0-5">Under KES 5M</option>
+                      <option value="5-10">KES 5M - 10M</option>
+                      <option value="10-20">KES 10M - 20M</option>
+                      <option value="20-50">KES 20M - 50M</option>
+                      <option value="50+">Above KES 50M</option>
+                    </select>
+                  </InputBlock>
+                </div>
+              </div>
+
+              {/* Advanced Filters Toggle */}
+              <button
+                type="button"
+                className="flex items-center gap-2 text-sm text-primary-foreground/70 hover:text-accent transition-colors"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <Filter className="h-4 w-4" />
+                {showFilters ? 'Hide' : 'Show'} Advanced Filters
+              </button>
+
+              {/* Advanced Filters (Collapsible) */}
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-4 overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputBlock icon={Home} label="Bedrooms">
+                        <select className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1">
+                          <option>Any</option>
+                          <option>1+</option>
+                          <option>2+</option>
+                          <option>3+</option>
+                          <option>4+</option>
+                          <option>5+</option>
+                        </select>
+                      </InputBlock>
+                      <InputBlock icon={Home} label="Bathrooms">
+                        <select className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1">
+                          <option>Any</option>
+                          <option>1+</option>
+                          <option>2+</option>
+                          <option>3+</option>
+                          <option>4+</option>
+                        </select>
+                      </InputBlock>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <InputBlock icon={Home} label="Square Feet">
+                        <input 
+                          type="text" 
+                          placeholder="Min sq ft" 
+                          className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1 placeholder:text-foreground/50"
+                        />
+                      </InputBlock>
+                      <InputBlock icon={Home} label="Year Built">
+                        <input 
+                          type="text" 
+                          placeholder="After year" 
+                          className="bg-transparent text-foreground font-medium focus:outline-none w-full py-1 placeholder:text-foreground/50"
+                        />
+                      </InputBlock>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Search Button */}
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Button 
+                  type="submit" 
+                  variant="default" 
+                  size="lg" 
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-accent to-blue-600 hover:from-accent/90 hover:to-blue-600/90"
+                >
+                  <Search className="h-5 w-5 mr-2" />
+                  Search Properties
+                  <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                </Button>
+              </motion.div>
+
+              {/* Quick Search Tags */}
+              <div className="pt-4 border-t border-white/10">
+                <p className="text-sm text-primary-foreground/70 mb-3">Popular Searches:</p>
+                <div className="flex flex-wrap gap-2">
+                  {['Nairobi Apartments', 'Mombasa Beach House', 'Kisumu Land', 'Nakuru Commercial'].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      className="px-3 py-1.5 text-sm bg-white/5 hover:bg-accent/20 rounded-full border border-white/10 hover:border-accent/30 transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </form>
+          </motion.div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mt-16 bg-card/95 backdrop-blur-md rounded-2xl p-6 shadow-xl max-w-4xl animate-slide-up">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-
-            <InputBlock icon={MapPin} label="Location">
-              <input
-                type="text"
-                placeholder="Enter location"
-                className="bg-transparent text-foreground font-medium focus:outline-none w-full"
-              />
-            </InputBlock>
-
-            <InputBlock icon={Home} label="Property Type">
-              <select className="bg-transparent text-foreground font-medium focus:outline-none w-full">
-                <option>Any</option>
-                <option>House</option>
-                <option>Apartment</option>
-                <option>Land</option>
-                <option>Commercial</option>
-              </select>
-            </InputBlock>
-
-            <InputBlock icon={DollarSign} label="Price Range">
-              <select className="bg-transparent text-foreground font-medium focus:outline-none w-full">
-                <option>Any</option>
-                <option>Under KES 5M</option>
-                <option>KES 5M - 10M</option>
-                <option>KES 10M - 20M</option>
-                <option>Above KES 20M</option>
-              </select>
-            </InputBlock>
-
-            <Button variant="default" size="lg" className="h-full">
-              <Search className="h-5 w-5" />
-              Search
-            </Button>
+        {/* Scroll Indicator */}
+        <motion.div 
+          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 hidden md:block"
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="text-center">
+            <div className="text-xs text-primary-foreground/60 mb-2">Scroll to explore</div>
+            <div className="w-6 h-10 border-2 border-primary-foreground/30 rounded-full flex justify-center">
+              <div className="w-1 h-3 bg-primary-foreground/50 rounded-full mt-2" />
+            </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
