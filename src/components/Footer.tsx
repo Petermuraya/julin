@@ -17,49 +17,61 @@ const Footer = () => {
       {/* Overlay for luxury feel */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-md"></div>
 
-      <div className="relative container mx-auto px-6 text-primary-foreground">
+      <div className="relative container mx-auto px-6 sm:px-6 lg:px-20 text-primary-foreground">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-5">
-              <span className="font-display text-3xl font-bold text-accent tracking-wide">JULIN</span>
-              <span className="font-display text-2xl font-light">REAL ESTATE</span>
+              <span className="font-serif text-3xl font-bold text-accent tracking-wide">
+                JULIN
+              </span>
+              <span className="font-sans text-2xl font-light">
+                REAL ESTATE
+              </span>
             </div>
-            <p className="text-primary-foreground/80 leading-relaxed text-lg">
-              Premium real estate services connecting buyers and sellers across Kenya with transparency, trust, and excellence.
+            <p className="text-primary-foreground/80 leading-relaxed text-lg md:text-base">
+              Premium real estate services connecting buyers and sellers across
+              Kenya with transparency, trust, and excellence.
             </p>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-display text-xl font-semibold mb-5">Quick Links</h4>
-            <ul className="space-y-3 text-lg">
-              <li>
-                <Link to="/" className="text-primary-foreground/70 hover:text-accent transition-colors">Home</Link>
-              </li>
-              <li>
-                <Link to="/properties" className="text-primary-foreground/70 hover:text-accent transition-colors">Properties</Link>
-              </li>
-              <li>
-                <Link to="/about" className="text-primary-foreground/70 hover:text-accent transition-colors">About Us</Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-primary-foreground/70 hover:text-accent transition-colors">Contact</Link>
-              </li>
+            <h4 className="font-display text-xl font-semibold mb-5">
+              Quick Links
+            </h4>
+            <ul className="space-y-3 text-lg md:text-base">
+              {[
+                { name: "Home", href: "/" },
+                { name: "Properties", href: "/properties" },
+                { name: "About Us", href: "/about" },
+                { name: "Contact", href: "/contact" },
+              ].map((link, idx) => (
+                <li key={idx}>
+                  <Link
+                    to={link.href}
+                    className="text-primary-foreground/70 hover:text-accent transition-colors"
+                  >
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Contact */}
           <div>
-            <h4 className="font-display text-xl font-semibold mb-5">Contact Us</h4>
-            <ul className="space-y-4 text-lg">
+            <h4 className="font-display text-xl font-semibold mb-5">
+              Contact Us
+            </h4>
+            <ul className="space-y-4 text-lg md:text-base">
               <li className="flex items-center gap-4">
                 <Phone className="h-6 w-6 text-accent" />
                 <a
                   href="tel:+254725671504"
                   className="text-primary-foreground/70 hover:text-accent transition-colors"
                 >
-                  Call: +254 725 671 504
+                  +254 725 671 504
                 </a>
               </li>
               <li className="flex items-center gap-4">
@@ -70,7 +82,7 @@ const Footer = () => {
                   rel="noopener noreferrer"
                   className="text-primary-foreground/70 hover:text-accent transition-colors"
                 >
-                  WhatsApp: +254 725 671 504
+                  WhatsApp
                 </a>
               </li>
               <li className="flex items-center gap-4">
@@ -79,7 +91,7 @@ const Footer = () => {
                   href="mailto:juliusmurigi90@gmail.com"
                   className="text-primary-foreground/70 hover:text-accent transition-colors"
                 >
-                  Email: juliusmurigi90@gmail.com
+                  Email
                 </a>
               </li>
               <li className="flex items-center gap-4">
