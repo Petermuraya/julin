@@ -7,7 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation } from "lucide-react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
 
@@ -21,6 +23,8 @@ type PropertyForm = {
   seller_phone: string;
   size: string;
   images: string;
+  latitude: string;
+  longitude: string;
 };
 
 const emptyForm: PropertyForm = {
@@ -33,6 +37,8 @@ const emptyForm: PropertyForm = {
   seller_phone: "",
   size: "",
   images: "",
+  latitude: "",
+  longitude: "",
 };
 
 const AdminProperties = () => {
@@ -47,6 +53,11 @@ const AdminProperties = () => {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [mapToken, setMapToken] = useState<string>("");
+  const [map, setMap] = useState<mapboxgl.Map | null>(null);
+  const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [isLocating, setIsLocating] = useState(false);
 
   const filteredProperties = properties.filter(
     (p) =>
@@ -57,6 +68,94 @@ const AdminProperties = () => {
   useEffect(() => {
     loadProperties();
   }, []);
+
+  useEffect(() => {
+    const fetchMapToken = async () => {
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-mapbox-token`);
+        const data = await response.json();
+        if (data.token) {
+          setMapToken(data.token);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Mapbox token:", error);
+      }
+    };
+    fetchMapToken();
+  }, []);
+
+  // Initialize map when dialog opens and we have coordinates
+  useEffect(() => {
+    if (!dialogOpen || !mapToken) return;
+
+    const timeoutId = setTimeout(() => {
+      const mapContainer = document.getElementById('property-map');
+      if (!mapContainer) return;
+
+      const lat = form.latitude ? parseFloat(form.latitude) : -1.2921; // Nairobi default
+      const lng = form.longitude ? parseFloat(form.longitude) : 36.8219;
+
+      mapboxgl.accessToken = mapToken;
+
+      const newMap = new mapboxgl.Map({
+        container: mapContainer,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [lng, lat],
+        zoom: form.latitude && form.longitude ? 15 : 10,
+      });
+
+      newMap.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      const newMarker = new mapboxgl.Marker({ color: '#2563eb', draggable: true })
+        .setLngLat([lng, lat])
+        .addTo(newMap);
+
+      // Update form when marker is dragged
+      newMarker.on('dragend', () => {
+        const lngLat = newMarker.getLngLat();
+        setForm((f) => ({
+          ...f,
+          latitude: lngLat.lat.toString(),
+          longitude: lngLat.lng.toString(),
+        }));
+      });
+
+      // Update marker when coordinates change
+      const updateMarker = () => {
+        if (form.latitude && form.longitude) {
+          const newLat = parseFloat(form.latitude);
+          const newLng = parseFloat(form.longitude);
+          newMarker.setLngLat([newLng, newLat]);
+          newMap.setCenter([newLng, newLat]);
+        }
+      };
+
+      setMap(newMap);
+      setMarker(newMarker);
+
+      // Listen for coordinate changes
+      const handleCoordsChange = () => updateMarker();
+      // We can't directly listen to form changes, so we'll update on dialog close
+
+      return () => {
+        newMap.remove();
+        setMap(null);
+        setMarker(null);
+      };
+    }, 100); // Small delay to ensure DOM is ready
+
+    return () => clearTimeout(timeoutId);
+  }, [dialogOpen, mapToken]);
+
+  // Update marker position when coordinates change
+  useEffect(() => {
+    if (marker && form.latitude && form.longitude) {
+      const lat = parseFloat(form.latitude);
+      const lng = parseFloat(form.longitude);
+      marker.setLngLat([lng, lat]);
+      map?.setCenter([lng, lat]);
+    }
+  }, [form.latitude, form.longitude, marker, map]);
 
   const loadProperties = async () => {
     setLoading(true);
@@ -108,6 +207,52 @@ const AdminProperties = () => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const getCurrentLocation = () => {
+    setIsLocating(true);
+    if (!navigator.geolocation) {
+      toast({ title: "Error", description: "Geolocation is not supported by this browser.", variant: "destructive" });
+      setIsLocating(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setForm((f) => ({ ...f, latitude: latitude.toString(), longitude: longitude.toString() }));
+        toast({ title: "Location captured", description: "Your current location has been set." });
+        setIsLocating(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        toast({ title: "Location error", description: "Failed to get your location. Please check permissions.", variant: "destructive" });
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const searchLocation = async () => {
+    if (!locationSearch.trim() || !mapToken) return;
+
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(locationSearch)}.json?access_token=${mapToken}&limit=1`
+      );
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].center;
+        setForm((f) => ({ ...f, latitude: lat.toString(), longitude: lng.toString() }));
+        toast({ title: "Location found", description: `Coordinates set for: ${data.features[0].place_name}` });
+      } else {
+        toast({ title: "Location not found", description: "Please try a different search term.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      toast({ title: "Search error", description: "Failed to search location.", variant: "destructive" });
+    }
+  };
+
   const uploadImages = async (propertyId: string): Promise<string[]> => {
     const uploadedUrls: string[] = [];
 
@@ -156,6 +301,8 @@ const AdminProperties = () => {
       seller_phone: property.seller_phone || "",
       size: property.size || "",
       images: "",
+      latitude: property.latitude?.toString() || "",
+      longitude: property.longitude?.toString() || "",
     });
     setExistingImages(property.images || []);
     setFiles([]);
@@ -188,6 +335,8 @@ const AdminProperties = () => {
         size: form.size.trim() || null,
         seller_name: form.seller_name.trim() || null,
         seller_phone: form.seller_phone.trim() || null,
+        latitude: form.latitude ? Number(form.latitude) : null,
+        longitude: form.longitude ? Number(form.longitude) : null,
         is_admin_property: true,
         updated_at: new Date().toISOString(),
       };
@@ -415,7 +564,22 @@ const AdminProperties = () => {
       </div>
 
       {/* Add/Edit Property Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setFiles([]); setUploadProgress(""); setEditingId(null); } }}>
+      <Dialog open={dialogOpen} onOpenChange={(v) => {
+        setDialogOpen(v);
+        if (!v) {
+          setFiles([]);
+          setUploadProgress("");
+          setEditingId(null);
+          setLocationSearch("");
+          setIsLocating(false);
+          // Clean up map
+          if (map) {
+            map.remove();
+            setMap(null);
+            setMarker(null);
+          }
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">{editingId ? "Edit Property" : "Add New Property"}</DialogTitle>
@@ -479,6 +643,73 @@ const AdminProperties = () => {
                 value={form.seller_phone}
                 onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))}
               />
+            </div>
+
+            {/* Location/Map Section */}
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <MapPin size={20} />
+                Property Location
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Search for a location..."
+                    value={locationSearch}
+                    onChange={(e) => setLocationSearch(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={searchLocation}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Search
+                  </Button>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={getCurrentLocation}
+                    variant="outline"
+                    size="sm"
+                    disabled={isLocating}
+                    className="flex items-center gap-2"
+                  >
+                    <Navigation size={16} />
+                    {isLocating ? "Getting Location..." : "Use My Location"}
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    placeholder="Latitude"
+                    type="number"
+                    step="any"
+                    value={form.latitude}
+                    onChange={(e) => setForm((f) => ({ ...f, latitude: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Longitude"
+                    type="number"
+                    step="any"
+                    value={form.longitude}
+                    onChange={(e) => setForm((f) => ({ ...f, longitude: e.target.value }))}
+                  />
+                </div>
+
+                {form.latitude && form.longitude && (
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                    Coordinates: {parseFloat(form.latitude).toFixed(6)}, {parseFloat(form.longitude).toFixed(6)}
+                  </div>
+                )}
+
+                <div id="property-map" className="w-full h-64 rounded-lg border border-slate-200 dark:border-slate-700"></div>
+              </div>
             </div>
 
             {/* Image Upload Section */}

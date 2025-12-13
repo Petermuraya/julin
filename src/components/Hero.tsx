@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Home, DollarSign, Filter, ArrowRight, TrendingUp, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-property.jpg";
+import kenyaHeroImage from "@/assets/images/kenya-real-estate-hero.jpg";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -46,8 +47,62 @@ const InputBlock = ({ icon: Icon, label, children, isActive = false }: InputBloc
 const Hero = () => {
   const [activeFilter, setActiveFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
+  const [totalProperties, setTotalProperties] = useState(0);
   const isMobile = useMediaQuery("(max-width: 640px)");
   
+  // Fallback images
+  const fallbackImages = [heroImage, kenyaHeroImage];
+  
+  // Get current background image with fallbacks
+  const getCurrentBackgroundImage = () => {
+    if (properties.length > 0 && !imageError) {
+      const property = properties[currentImageIndex % properties.length];
+      return property?.images?.[0] || property?.image_url || fallbackImages[0];
+    }
+    return fallbackImages[currentImageIndex % fallbackImages.length];
+  };
+
+  // Fetch properties for hero background rotation and stats
+  useEffect(() => {
+    const fetchHeroData = async () => {
+      try {
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-properties`);
+        if (response.ok) {
+          const data = await response.json();
+          const props = Array.isArray(data) ? data : data?.properties || [];
+          
+          // Set total count for stats
+          setTotalProperties(props.length);
+          
+          // Filter to only properties with images for background rotation
+          const propertiesWithImages = props.filter(p => p.images?.length > 0 || p.image_url);
+          if (propertiesWithImages.length > 0) {
+            setProperties(propertiesWithImages);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch properties for hero:', error);
+        // Continue with fallback images
+      }
+    };
+
+    fetchHeroData();
+  }, []);
+
+  // Rotate background images
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex(prev => prev + 1);
+      setImageError(false); // Reset error state for new image
+    }, 8000); // Change image every 8 seconds
+
+    return () => clearInterval(interval);
+  }, [properties.length]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle search logic
@@ -67,16 +122,21 @@ const Hero = () => {
     >
       {/* Animated Background */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <motion.img
-          src={heroImage}
-          alt="Luxury real estate property in Kenya"
-          className="w-full h-full object-cover object-center scale-110"
-          initial={{ scale: 1.1 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          loading="eager"
-          fetchPriority="high"
-        />
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={currentImageIndex}
+            src={getCurrentBackgroundImage()}
+            alt="Luxury real estate property in Kenya"
+            className="w-full h-full object-cover object-center scale-110"
+            initial={{ opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            loading="eager"
+            fetchPriority="high"
+            onError={() => setImageError(true)}
+          />
+        </AnimatePresence>
         {/* Enhanced Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-navy/95 via-navy/80 to-navy/60" />
         <div className="absolute inset-0 bg-gradient-to-t from-navy via-transparent to-transparent opacity-50" />
@@ -109,31 +169,67 @@ const Hero = () => {
         />
       </div>
 
+      {/* Property Info Overlay */}
+      {properties.length > 0 && (
+        <motion.div 
+          className="absolute bottom-6 left-6 z-20 hidden md:flex flex-col gap-2 bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/20 max-w-xs"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1 }}
+          key={currentImageIndex}
+        >
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-accent" />
+            <span className="text-sm font-medium text-primary-foreground/90">
+              {properties[currentImageIndex % properties.length]?.location || 'Featured Property'}
+            </span>
+          </div>
+          <div className="text-xs text-primary-foreground/70">
+            {properties[currentImageIndex % properties.length]?.title || 'Premium Real Estate'}
+          </div>
+          <div className="flex items-center gap-1 mt-1">
+            {properties.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImageIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === (currentImageIndex % properties.length)
+                    ? 'bg-accent scale-125'
+                    : 'bg-white/40 hover:bg-white/60'
+                }`}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Floating Trust Badges */}
-      <div className="absolute top-6 right-6 z-20 hidden md:flex flex-col gap-2">
-        <motion.div 
-          className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-        >
-          <ShieldCheck className="h-4 w-4 text-green-400" />
-          <span className="text-xs font-medium text-primary-foreground/90">
-            500+ Verified Properties
-          </span>
-        </motion.div>
-        <motion.div 
-          className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          <TrendingUp className="h-4 w-4 text-yellow-400" />
-          <span className="text-xs font-medium text-primary-foreground/90">
-            98% Client Satisfaction
-          </span>
-        </motion.div>
-      </div>
+      {totalProperties >= 300 && (
+        <div className="absolute top-6 right-6 z-20 hidden md:flex flex-col gap-2">
+          <motion.div 
+            className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <ShieldCheck className="h-4 w-4 text-green-400" />
+            <span className="text-xs font-medium text-primary-foreground/90">
+              {totalProperties >= 1000 ? `${Math.floor(totalProperties / 100) * 100}+` : totalProperties.toLocaleString()} Verified Properties
+            </span>
+          </motion.div>
+          <motion.div 
+            className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.7 }}
+          >
+            <TrendingUp className="h-4 w-4 text-yellow-400" />
+            <span className="text-xs font-medium text-primary-foreground/90">
+              98% Client Satisfaction
+            </span>
+          </motion.div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 xl:px-20">
@@ -179,25 +275,29 @@ const Hero = () => {
             </motion.p>
 
             {/* Quick Stats */}
-            <motion.div 
-              className="flex flex-wrap justify-center lg:justify-start gap-6 mb-10"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              <div className="text-center lg:text-left">
-                <div className="text-3xl font-bold text-accent">1,250+</div>
-                <div className="text-sm text-primary-foreground/70">Properties Listed</div>
-              </div>
-              <div className="text-center lg:text-left">
-                <div className="text-3xl font-bold text-accent">98%</div>
-                <div className="text-sm text-primary-foreground/70">Client Satisfaction</div>
-              </div>
-              <div className="text-center lg:text-left">
-                <div className="text-3xl font-bold text-accent">24/7</div>
-                <div className="text-sm text-primary-foreground/70">Support Available</div>
-              </div>
-            </motion.div>
+            {totalProperties >= 300 && (
+              <motion.div 
+                className="flex flex-wrap justify-center lg:justify-start gap-6 mb-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="text-center lg:text-left">
+                  <div className="text-3xl font-bold text-accent">
+                    {totalProperties >= 1000 ? `${Math.floor(totalProperties / 100) * 100}+` : totalProperties.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-primary-foreground/70">Properties Listed</div>
+                </div>
+                <div className="text-center lg:text-left">
+                  <div className="text-3xl font-bold text-accent">98%</div>
+                  <div className="text-sm text-primary-foreground/70">Client Satisfaction</div>
+                </div>
+                <div className="text-center lg:text-left">
+                  <div className="text-3xl font-bold text-accent">24/7</div>
+                  <div className="text-sm text-primary-foreground/70">Support Available</div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Call to Action Buttons */}
             <motion.div 
