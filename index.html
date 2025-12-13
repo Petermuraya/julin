@@ -79,10 +79,21 @@
     <meta name="twitter:image" content="https://julinrealestate.co.ke/twitter-image.jpg" />
 
     <!-- =====================
-         Performance
+         Performance & Fonts
     ====================== -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Free luxury-style script font -->
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+    <style>
+      /* Apply Great Vibes for logo text */
+      .logo-text {
+        font-family: 'Great Vibes', cursive;
+        font-size: 2.5rem; /* adjust as needed */
+        color: #0F172A;    /* primary brand color */
+      }
+    </style>
 
     <!-- =====================
          Structured Data
@@ -111,7 +122,10 @@
 
     <!-- React Root -->
     <main id="main-content">
-      <div id="root"></div>
+      <div id="root">
+        <!-- Example usage -->
+        <h1 class="logo-text">Julin Real Estate</h1>
+      </div>
     </main>
 
     <!-- Vite Entry -->
