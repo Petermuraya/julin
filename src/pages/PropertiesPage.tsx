@@ -7,9 +7,25 @@ import PropertyCard from "@/components/PropertyCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
+import { Search, Filter, X, SlidersHorizontal, MapPin, Home, Building, Building2, Factory } from "lucide-react";
 
-const PROPERTY_TYPES = ["plot", "house", "land", "apartment", "commercial"] as const;
+const PROPERTY_TYPES = [
+  { value: "plot", label: "Plot", icon: MapPin },
+  { value: "house", label: "House", icon: Home },
+  { value: "land", label: "Land", icon: MapPin },
+  { value: "apartment", label: "Apartment", icon: Building },
+  { value: "commercial", label: "Commercial", icon: Factory },
+] as const;
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+] as const;
 
 // Supabase project URL for Edge Function calls (handles CORS for GitHub Pages)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -21,10 +37,13 @@ const PropertiesPage = () => {
   const [type, setType] = useState<string | undefined>(undefined);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [properties, setProperties] = useState<any[]>([]);
   const [allProperties, setAllProperties] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000000]); // 0 to 100M KES
 
   const fetchProperties = async () => {
     setLoading(true);
@@ -72,6 +91,22 @@ const PropertiesPage = () => {
         if (!matchesLocation && !matchesTitle && !matchesCounty) return false;
       }
       return true;
+    });
+
+    // Apply sorting
+    rows.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "oldest":
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case "price-low":
+          return Number(a.price) - Number(b.price);
+        case "price-high":
+          return Number(b.price) - Number(a.price);
+        default:
+          return 0;
+      }
     });
 
     setProperties(rows);
@@ -126,7 +161,7 @@ const PropertiesPage = () => {
   useEffect(() => {
     applyFilters(allProperties);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, type, minPrice, maxPrice]);
+  }, [query, type, minPrice, maxPrice, sortBy]);
 
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -138,6 +173,18 @@ const PropertiesPage = () => {
     setType(undefined);
     setMinPrice("");
     setMaxPrice("");
+    setSortBy("newest");
+    setPriceRange([0, 100000000]);
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (query) count++;
+    if (type) count++;
+    if (minPrice) count++;
+    if (maxPrice) count++;
+    if (sortBy !== "newest") count++;
+    return count;
   };
 
   return (
@@ -146,82 +193,258 @@ const PropertiesPage = () => {
         <title>Properties — Julin Real Estate</title>
         <meta name="description" content="Browse verified properties for sale and rent in Kenya." />
       </Helmet>
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-slate-50">
         <Navbar />
-        <main className="pt-28 pb-20">
-          <section>
-            <div className="container mx-auto px-4">
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-foreground">Properties</h1>
-                <p className="text-muted-foreground">Search, filter and discover available properties.</p>
-              </div>
 
-              {/* Search & Filters */}
-              <form onSubmit={handleSearch} className="bg-card rounded-xl p-6 shadow-sm border border-border mb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <div className="relative lg:col-span-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by location, title..."
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <Select value={type ?? ""} onValueChange={(v) => setType(v === "all" ? undefined : v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Property Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      {PROPERTY_TYPES.map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <main className="pt-24 pb-20">
+          <div className="container mx-auto px-4">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-slate-900 mb-2">Properties</h1>
+              <p className="text-lg text-slate-600">Discover your perfect property from our curated collection</p>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mb-6">
+              <div className="relative max-w-2xl mx-auto">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Input
+                  placeholder="Search by location, property type, or keywords..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-12 pr-4 py-4 text-lg rounded-full border-2 border-slate-200 focus:border-blue-500 shadow-sm"
+                />
+              </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Property Type Filter */}
+                <Select value={type ?? ""} onValueChange={(v) => setType(v === "all" ? undefined : v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {PROPERTY_TYPES.map((t) => {
+                      const Icon = t.icon;
+                      return (
+                        <SelectItem key={t.value} value={t.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4" />
+                            {t.label}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+
+                {/* Sort Filter */}
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Price Range Inputs */}
+                <div className="flex items-center gap-2">
                   <Input
                     placeholder="Min Price"
                     type="number"
                     value={minPrice}
                     onChange={(e) => setMinPrice(e.target.value)}
+                    className="w-28"
                   />
+                  <span className="text-slate-400">-</span>
                   <Input
                     placeholder="Max Price"
                     type="number"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(e.target.value)}
+                    className="w-28"
                   />
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button type="submit">Apply Filters</Button>
-                  <Button type="button" variant="outline" onClick={clearFilters}>Clear</Button>
-                </div>
-              </form>
+              </div>
 
-              {/* Results */}
-              {errorMsg ? (
-                <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-lg p-4 mb-6">
-                  <p className="font-semibold">Unable to load properties</p>
-                  <pre className="whitespace-pre-wrap text-sm mt-2">{errorMsg}</pre>
-                  <Button onClick={fetchProperties} className="mt-3">Retry</Button>
+              {/* Mobile Filter Button */}
+              <div className="flex items-center gap-3">
+                <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="lg:hidden relative">
+                      <SlidersHorizontal className="h-4 w-4 mr-2" />
+                      Filters
+                      {getActiveFiltersCount() > 0 && (
+                        <Badge className="ml-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                          {getActiveFiltersCount()}
+                        </Badge>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-80">
+                    <SheetHeader>
+                      <SheetTitle>Filters</SheetTitle>
+                    </SheetHeader>
+                    <div className="mt-6 space-y-6">
+                      {/* Advanced Filters for Mobile */}
+                      <div>
+                        <label className="text-sm font-medium text-slate-700 mb-3 block">Property Type</label>
+                        <Select value={type ?? ""} onValueChange={(v) => setType(v === "all" ? undefined : v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            {PROPERTY_TYPES.map((t) => {
+                              const Icon = t.icon;
+                              return (
+                                <SelectItem key={t.value} value={t.value}>
+                                  <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4" />
+                                    {t.label}
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700 mb-3 block">Sort By</label>
+                        <Select value={sortBy} onValueChange={setSortBy}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SORT_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-slate-700 mb-3 block">Price Range</label>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <Input
+                              placeholder="Min Price"
+                              type="number"
+                              value={minPrice}
+                              onChange={(e) => setMinPrice(e.target.value)}
+                            />
+                            <Input
+                              placeholder="Max Price"
+                              type="number"
+                              value={maxPrice}
+                              onChange={(e) => setMaxPrice(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button onClick={clearFilters} variant="outline" className="w-full">
+                        Clear All Filters
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+
+                {/* Clear Filters Button */}
+                {getActiveFiltersCount() > 0 && (
+                  <Button variant="ghost" onClick={clearFilters} className="text-slate-600 hover:text-slate-900">
+                    <X className="h-4 w-4 mr-2" />
+                    Clear ({getActiveFiltersCount()})
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Active Filters Display */}
+            {getActiveFiltersCount() > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                <span className="text-sm text-slate-600">Active filters:</span>
+                {query && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Search: {query}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setQuery("")} />
+                  </Badge>
+                )}
+                {type && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Type: {PROPERTY_TYPES.find(t => t.value === type)?.label}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setType(undefined)} />
+                  </Badge>
+                )}
+                {(minPrice || maxPrice) && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Price: {minPrice || "0"} - {maxPrice || "∞"}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => { setMinPrice(""); setMaxPrice(""); }} />
+                  </Badge>
+                )}
+                {sortBy !== "newest" && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    Sort: {SORT_OPTIONS.find(s => s.value === sortBy)?.label}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setSortBy("newest")} />
+                  </Badge>
+                )}
+              </div>
+            )}
+
+            {/* Results */}
+            {errorMsg ? (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-6 text-center">
+                <p className="font-semibold mb-2">Unable to load properties</p>
+                <p className="text-sm mb-4">{errorMsg}</p>
+                <Button onClick={fetchProperties} variant="outline">Try Again</Button>
+              </div>
+            ) : loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="aspect-[4/3] bg-slate-200 animate-pulse" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-slate-200 rounded animate-pulse" />
+                      <div className="h-4 bg-slate-200 rounded w-3/4 animate-pulse" />
+                      <div className="h-6 bg-slate-200 rounded w-1/2 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : properties.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Building2 className="h-12 w-12 text-slate-400" />
                 </div>
-              ) : loading ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No properties found</h3>
+                <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                  We couldn't find any properties matching your criteria. Try adjusting your filters or search terms.
+                </p>
+                <Button onClick={clearFilters}>Clear All Filters</Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <p className="text-slate-600">
+                    Showing <span className="font-semibold text-slate-900">{properties.length}</span> properties
+                  </p>
                 </div>
-              ) : properties.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <p className="text-xl font-semibold text-muted-foreground mb-2">No properties found</p>
-                  <p className="text-muted-foreground mb-6">Try adjusting your filters or search criteria.</p>
-                  <Button onClick={clearFilters}>Clear Filters</Button>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground mb-4">{properties.length} properties found</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {properties.map((p) => (
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {properties.map((p) => (
+                    <div key={p.id} className="group">
                       <PropertyCard
-                        key={p.id}
                         id={p.id}
                         title={p.title}
                         location={p.location}
@@ -234,13 +457,14 @@ const PropertiesPage = () => {
                         imageCount={(p.images || []).length}
                         status={p.status === "available" ? "For Sale" : p.status}
                       />
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </section>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </main>
+
         <Footer />
       </div>
     </>
