@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard, Home, FileText, MessageSquare, LogOut, User } from "lucide-react";
+import { Menu, X, LayoutDashboard, Home, FileText, MessageSquare, LogOut, User, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -19,6 +19,7 @@ const AdminLayout = () => {
     { href: "/admin/properties", label: "Properties", icon: Home },
     { href: "/admin/submissions", label: "Submissions", icon: FileText },
     { href: "/admin/inquiries", label: "Buyer Inquiries", icon: MessageSquare },
+    { href: "/admin/profile", label: "Profile", icon: Settings },
   ];
 
   const isActive = (href: string) => location.pathname === href;
