@@ -22,6 +22,7 @@ import PropertyDetailPage from "./pages/PropertyDetailPage";
 import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
 import Chat from "./components/Chat";
+import ChatLauncher from "./components/ChatLauncher";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <ChatLauncher />
         </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>

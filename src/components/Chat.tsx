@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 
 type Message = { role: 'user' | 'assistant' | 'system'; content: string };
 
-const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://fakkzdfwpucpgndofgcu.supabase.co";
 
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,7 +61,6 @@ const Chat: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZha2t6ZGZ3cHVjcGduZG9mZ2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzODkzMjcsImV4cCI6MjA4MDk2NTMyN30.C_V3yvLOJ30JdY28luXjuX0gLJ_ML0QXxQh181Zvunk',
         },
         body: JSON.stringify({ message: text, session_id: sessionIdRef.current }),
       });
