@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -251,6 +251,74 @@ const AdminProperties = () => {
       console.error("Geocoding error:", error);
       toast({ title: "Search error", description: "Failed to search location.", variant: "destructive" });
     }
+  };
+
+  const generateShareContent = (property: any) => {
+    const title = property.title;
+    const price = `KES ${Number(property.price || 0).toLocaleString()}`;
+    const location = property.location || "Kenya";
+    const propertyUrl = `https://julina.co.ke/properties/${property.id}`;
+    const imageUrl = property.images?.[0] || "";
+
+    return {
+      title,
+      price,
+      location,
+      propertyUrl,
+      imageUrl,
+      description: `${title} - ${price} located in ${location}. View more details and contact seller.`
+    };
+  };
+
+  const shareToFacebook = (property: any) => {
+    const content = generateShareContent(property);
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(content.propertyUrl)}&quote=${encodeURIComponent(content.description)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const shareToTwitter = (property: any) => {
+    const content = generateShareContent(property);
+    const text = `${content.title} - ${content.price} in ${content.location}. ${content.propertyUrl}`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'width=600,height=400');
+  };
+
+  const shareToWhatsApp = (property: any) => {
+    const content = generateShareContent(property);
+    const text = `*${content.title}*\n\n💰 Price: ${content.price}\n📍 Location: ${content.location}\n\n${content.description}\n\nView details: ${content.propertyUrl}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const shareToTelegram = (property: any) => {
+    const content = generateShareContent(property);
+    const text = `${content.title}\n\n💰 ${content.price}\n📍 ${content.location}\n\n${content.description}\n\n${content.propertyUrl}`;
+    const url = `https://t.me/share/url?url=${encodeURIComponent(content.propertyUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const shareToInstagram = (property: any) => {
+    // Instagram doesn't have a direct share URL, so we'll copy to clipboard
+    const content = generateShareContent(property);
+    const text = `${content.title} - ${content.price} in ${content.location}\n\n${content.description}\n\nView: ${content.propertyUrl}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied to clipboard", description: "Paste this content into Instagram" });
+    }).catch(() => {
+      toast({ title: "Copy failed", description: "Please copy the content manually", variant: "destructive" });
+    });
+  };
+
+  const shareToTikTok = (property: any) => {
+    // TikTok doesn't have a direct share URL, so we'll copy to clipboard
+    const content = generateShareContent(property);
+    const text = `${content.title} - ${content.price} in ${content.location}\n\n${content.description}\n\nView: ${content.propertyUrl}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copied to clipboard", description: "Paste this content into TikTok" });
+    }).catch(() => {
+      toast({ title: "Copy failed", description: "Please copy the content manually", variant: "destructive" });
+    });
   };
 
   const uploadImages = async (propertyId: string): Promise<string[]> => {
@@ -536,7 +604,7 @@ const AdminProperties = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-1">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -545,6 +613,45 @@ const AdminProperties = () => {
                         >
                           <Edit2 size={16} />
                         </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                              <Share2 size={16} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => shareToFacebook(p)} className="flex items-center gap-2">
+                              <Facebook size={16} className="text-blue-600" />
+                              Share on Facebook
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => shareToTwitter(p)} className="flex items-center gap-2">
+                              <Twitter size={16} className="text-blue-400" />
+                              Share on X (Twitter)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => shareToWhatsApp(p)} className="flex items-center gap-2">
+                              <MessageCircle size={16} className="text-green-600" />
+                              Share on WhatsApp
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => shareToTelegram(p)} className="flex items-center gap-2">
+                              <Send size={16} className="text-blue-500" />
+                              Share on Telegram
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => shareToInstagram(p)} className="flex items-center gap-2">
+                              <Instagram size={16} className="text-pink-600" />
+                              Copy for Instagram
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => shareToTikTok(p)} className="flex items-center gap-2">
+                              <div className="w-4 h-4 bg-black rounded-sm flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">T</span>
+                              </div>
+                              Copy for TikTok
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                           size="sm"
                           variant="ghost"
