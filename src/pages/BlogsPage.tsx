@@ -29,13 +29,13 @@ const BlogsPage = () => {
         {/* Coming Soon Section */}
         <section className="py-20">
           <div className="container mx-auto px-4 text-center">
-            <div className="mx-auto h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center mb-6">
-              <BookOpen className="h-10 w-10 text-blue-600" />
+            <div className="mx-auto h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+              <BookOpen className="h-10 w-10 text-primary" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-4">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
               Blog Posts Coming Soon
             </h2>
-            <p className="text-slate-600 mb-8 max-w-md mx-auto">
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               We're working on bringing you valuable real estate insights, market updates, and property tips. Check back soon!
             </p>
             <Link to="/">
