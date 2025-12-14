@@ -28,16 +28,16 @@ const AdminChats: React.FC = () => {
       <h2 className="text-2xl font-semibold mb-4">Chat Conversations</h2>
       <div className="flex gap-4">
         <div className="w-80 border rounded p-2 overflow-auto h-[60vh]">
-          {sessions.length === 0 && <div className="text-sm text-slate-500">No conversations found.</div>}
+          {sessions.length === 0 && <div className="text-sm text-muted-foreground">No conversations found.</div>}
           {sessions.map((s: any) => (
             <div
               key={s.id || s.session_id}
-              className={`p-2 rounded mb-2 cursor-pointer ${selected === (s.id || s.session_id) ? 'bg-slate-100' : 'hover:bg-slate-50'}`}
+              className={`p-2 rounded mb-2 cursor-pointer ${selected === (s.id || s.session_id) ? 'bg-muted' : 'hover:bg-muted/50'}`}
               onClick={() => setSelected(s.id || s.session_id)}
             >
               <div className="text-sm font-medium">{s.user_display_name || s.session_id || s.id}</div>
-              <div className="text-xs text-slate-500">{s.started_at || s.last_at || ''}</div>
-              <div className="text-xs text-slate-600 truncate">{s.last_message || ''}</div>
+              <div className="text-xs text-muted-foreground">{s.started_at || s.last_at || ''}</div>
+              <div className="text-xs text-muted-foreground truncate">{s.last_message || ''}</div>
             </div>
           ))}
         </div>
