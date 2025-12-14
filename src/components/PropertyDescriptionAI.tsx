@@ -157,9 +157,9 @@ export const PropertyDescriptionAI: React.FC<PropertyDescriptionAIProps> = ({
             </div>
 
             {/* SEO Tips */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">SEO Optimization Tips:</h4>
-              <ul className="text-xs text-blue-700 space-y-1">
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <h4 className="text-sm font-medium text-primary mb-2">SEO Optimization Tips:</h4>
+              <ul className="text-xs text-primary/80 space-y-1">
                 <li>• Includes location keywords for local search</li>
                 <li>• Highlights key features and amenities</li>
                 <li>• Uses compelling, benefit-focused language</li>
