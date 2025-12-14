@@ -45,8 +45,8 @@ const ChatLauncher: React.FC = () => {
           </div>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl h-[85vh] p-0">
-        <div className="h-full">
+      <DialogContent className="max-w-6xl h-[90vh] max-h-[90vh] p-0 m-4 sm:m-6">
+        <div className="h-full overflow-hidden">
           <Chat />
         </div>
       </DialogContent>

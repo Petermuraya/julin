@@ -5,7 +5,14 @@ import { Bot } from 'lucide-react';
 import { PreChatForm } from './PreChatForm';
 import { ConversationRating } from './ConversationRating';
 
-type Message = { role: 'user' | 'assistant' | 'system'; content: string };
+interface ChatResponse {
+  reply: string;
+  properties: any[];
+  session_id: string;
+  is_admin?: boolean;
+}
+
+type Message = { role: 'user' | 'assistant' | 'system'; content: string; is_admin?: boolean };
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://fakkzdfwpucpgndofgcu.supabase.co";
 
@@ -122,12 +129,12 @@ const Chat: React.FC = () => {
         }),
       });
 
-      const data = await response.json();
+      const data: ChatResponse = await response.json();
 
       // Persist to localStorage
       try {
         const stored = [...newMessages];
-        if (data?.reply) stored.push({ role: 'assistant', content: data.reply });
+        if (data?.reply) stored.push({ role: 'assistant', content: data.reply, is_admin: data.is_admin });
         localStorage.setItem(`chat:${sessionIdRef.current}`, JSON.stringify(stored));
       } catch (_) {}
 
@@ -201,10 +208,19 @@ const Chat: React.FC = () => {
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Bot className="h-6 w-6 text-blue-600" />
-            AI Property Assistant
+            {userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin') ?
+              'AI Admin Assistant' : 'AI Property Assistant'}
+            {userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin') && (
+              <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
+                ADMIN MODE
+              </span>
+            )}
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Hi {userInfo?.name}! How can I help you find your perfect property today?
+            {userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin') ?
+              `Hi ${userInfo?.name}! How can I assist you with system administration today?` :
+              `Hi ${userInfo?.name}! How can I help you find your perfect property today?`
+            }
           </p>
         </div>
 
@@ -220,9 +236,18 @@ const Chat: React.FC = () => {
                   className={`max-w-[80%] p-3 rounded-2xl ${
                     m.role === 'user'
                       ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-md'
+                      : `bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-md ${
+                          m.is_admin ? 'border-l-4 border-red-500' : ''
+                        }`
                   }`}
                 >
+                  {m.is_admin && (
+                    <div className="flex items-center gap-1 mb-2">
+                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
+                        ADMIN ACTION
+                      </span>
+                    </div>
+                  )}
                   <div className="text-sm whitespace-pre-wrap">{m.content}</div>
                 </div>
               </div>
@@ -242,17 +267,88 @@ const Chat: React.FC = () => {
                 sendMessage();
               }
             }}
-            className="flex-1 p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ask about properties, prices, locations..."
+            className="flex-1 p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+            placeholder={
+              userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin')
+                ? "Admin commands: add properties, change password, system stats..."
+                : "Ask about properties, prices, locations..."
+            }
           />
           <button
             onClick={sendMessage}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 transition-colors"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 transition-all duration-200 hover:shadow-lg disabled:hover:shadow-none"
             disabled={loading}
           >
-            {loading ? '...' : 'Send'}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span className="hidden sm:inline">Sending...</span>
+              </div>
+            ) : (
+              'Send'
+            )}
           </button>
         </div>
+
+        {/* Quick Actions for Admin */}
+        {(userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin')) && (
+          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
+            <div className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Quick Admin Actions:</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setInput('Show system statistics')}
+                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-lg transition-colors"
+              >
+                System Stats
+              </button>
+              <button
+                onClick={() => setInput('Check for errors')}
+                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-lg transition-colors"
+              >
+                Troubleshoot
+              </button>
+              <button
+                onClick={() => setInput('Generate description for:')}
+                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-lg transition-colors"
+              >
+                AI Description
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions for Users */}
+        {!(userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin')) && messages.length === 1 && (
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+            <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Quick Questions:</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setInput('Show me houses in Nairobi')}
+                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-lg transition-colors"
+              >
+                Houses in Nairobi
+              </button>
+              <button
+                onClick={() => setInput('What properties are under 5 million?')}
+                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-lg transition-colors"
+              >
+                Under 5M
+              </button>
+              <button
+                onClick={() => setInput('Tell me about land plots')}
+                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-lg transition-colors"
+              >
+                Land Plots
+              </button>
+              <button
+                onClick={() => setInput('How do I contact you?')}
+                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-lg transition-colors"
+              >
+                Contact Info
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* End Chat Button */}
         <div className="mt-4 text-center">
@@ -266,27 +362,29 @@ const Chat: React.FC = () => {
 
         {/* Property Results */}
         {properties.length > 0 && (
-          <div className="mt-4 max-h-[30vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Matching Properties</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {properties.map((p) => (
+          <div className="mt-3 sm:mt-4 max-h-[25vh] sm:max-h-[30vh] overflow-y-auto flex-shrink-0">
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-2 sm:mb-3">Matching Properties</h3>
+            <div className="grid grid-cols-1 gap-2 sm:gap-3">
+              {properties.slice(0, 3).map((p) => (
                 <div key={p.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                  {p.images && p.images[0] && (
-                    <img src={p.images[0]} alt={p.title} className="w-full h-24 object-cover" />
-                  )}
-                  <div className="p-3">
-                    <h4 className="font-semibold text-slate-900 dark:text-white text-sm">{p.title}</h4>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">{p.location}</p>
-                    <p className="text-sm font-medium text-blue-600 mt-1">
-                      KES {Number(p.price).toLocaleString()}
-                    </p>
-                    <Link
-                      to={`/property/${p.id}`}
-                      className="text-blue-600 hover:text-blue-700 text-xs mt-1 inline-block"
-                      onClick={() => window.open(`/property/${p.id}`, '_blank')}
-                    >
-                      View Details →
-                    </Link>
+                  <div className="flex flex-col sm:flex-row">
+                    {p.images && p.images[0] && (
+                      <img src={p.images[0]} alt={p.title} className="w-full sm:w-20 h-20 sm:h-20 object-cover flex-shrink-0" />
+                    )}
+                    <div className="p-2 sm:p-3 flex-1 min-w-0">
+                      <h4 className="font-semibold text-slate-900 dark:text-white text-sm truncate">{p.title}</h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{p.location}</p>
+                      <p className="text-sm font-medium text-blue-600 mt-1">
+                        KES {Number(p.price).toLocaleString()}
+                      </p>
+                      <Link
+                        to={`/property/${p.id}`}
+                        className="text-blue-600 hover:text-blue-700 text-xs mt-1 inline-block"
+                        onClick={() => window.open(`/property/${p.id}`, '_blank')}
+                      >
+                        View Details →
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}

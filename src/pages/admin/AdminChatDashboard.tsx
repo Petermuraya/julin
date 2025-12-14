@@ -101,6 +101,38 @@ const AdminChatDashboard: React.FC = () => {
     return (sum / ratedConversations.length).toFixed(1);
   };
 
+  const getSatisfactionRate = () => {
+    const ratedConversations = conversations.filter(c => c.rating);
+    if (ratedConversations.length === 0) return 0;
+    const satisfied = ratedConversations.filter(c => c.rating >= 4).length;
+    return ((satisfied / ratedConversations.length) * 100).toFixed(1);
+  };
+
+  const getLowRatedConversations = () => {
+    return conversations.filter(c => c.rating && c.rating <= 2);
+  };
+
+  const getCommonIssues = () => {
+    const issues = conversations
+      .filter(c => c.feedback)
+      .map(c => c.feedback.toLowerCase())
+      .join(' ');
+
+    const issueKeywords = ['slow', 'error', 'problem', 'issue', 'wrong', 'not working', 'confusing', 'difficult'];
+    const foundIssues: { [key: string]: number } = {};
+
+    issueKeywords.forEach(keyword => {
+      const count = (issues.match(new RegExp(keyword, 'g')) || []).length;
+      if (count > 0) {
+        foundIssues[keyword] = count;
+      }
+    });
+
+    return Object.entries(foundIssues)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5);
+  };
+
   const getLowRatingCount = () => {
     return conversations.filter(c => c.rating && c.rating <= 2).length;
   };
@@ -117,6 +149,87 @@ const AdminChatDashboard: React.FC = () => {
           Refresh
         </Button>
       </div>
+
+      {/* Analytics Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Conversations</CardTitle>
+            <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{conversations.length}</div>
+            <p className="text-xs text-muted-foreground">
+              All time conversations
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{getAverageRating()}/5</div>
+            <p className="text-xs text-muted-foreground">
+              {getSatisfactionRate()}% satisfaction rate
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Low Ratings</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{getLowRatingCount()}</div>
+            <p className="text-xs text-muted-foreground">
+              Ratings 2 or below
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Today</CardTitle>
+            <User className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {conversations.filter(c =>
+                new Date(c.completed_at).toDateString() === new Date().toDateString()
+              ).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Conversations today
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Issues Analysis */}
+      {getCommonIssues().length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              Common Issues Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {getCommonIssues().map(([issue, count]) => (
+                <div key={issue} className="flex items-center justify-between">
+                  <span className="text-sm capitalize">{issue.replace('_', ' ')}</span>
+                  <Badge variant="secondary">{count} mentions</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
