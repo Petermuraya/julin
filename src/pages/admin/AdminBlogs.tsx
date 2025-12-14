@@ -28,7 +28,15 @@ const AdminBlogs = () => {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Check if the error is because the table doesn't exist
+        if (error.message.includes('relation "public.blogs" does not exist')) {
+          setBlogs([]);
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
       setBlogs(data || []);
     } catch (err: any) {
       console.error("Error fetching blogs:", err);

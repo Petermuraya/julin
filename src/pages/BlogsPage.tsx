@@ -28,11 +28,23 @@ const BlogsPage = () => {
         .eq("published", true)
         .order("published_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Check if the error is because the table doesn't exist
+        if (error.message.includes('relation "public.blogs" does not exist')) {
+          setError("The blogs feature is not yet set up. Please contact the administrator to create the blogs table.");
+        } else {
+          setError(error.message);
+        }
+        return;
+      }
       setBlogs(data || []);
     } catch (err: any) {
       console.error("Error fetching blogs:", err);
-      setError(err.message);
+      if (err.message.includes('blogs')) {
+        setError("The blogs feature is not yet available. Please check back later.");
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

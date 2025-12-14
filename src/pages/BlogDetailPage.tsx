@@ -31,7 +31,15 @@ const BlogDetailPage = () => {
         .eq("published", true)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Check if the error is because the table doesn't exist
+        if (error.message.includes('relation "public.blogs" does not exist')) {
+          setError("The blogs feature is not yet set up. Please contact the administrator.");
+        } else {
+          setError(error.message);
+        }
+        return;
+      }
 
       // Increment view count
       if (data) {
@@ -44,7 +52,11 @@ const BlogDetailPage = () => {
       setBlog(data);
     } catch (err: any) {
       console.error("Error fetching blog:", err);
-      setError(err.message);
+      if (err.message.includes('blogs')) {
+        setError("The blogs feature is not yet available.");
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
