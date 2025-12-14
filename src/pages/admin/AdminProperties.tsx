@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -391,6 +392,36 @@ const AdminProperties = () => {
     return uploadedUrls;
   };
 
+  const uploadImages = async (propertyId: string): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgress(`Uploading image ${i + 1}/${files.length}...`);
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${propertyId}/images/${Date.now()}-${i}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("property-images")
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
+
+      if (uploadError) {
+        console.error("Image upload error:", uploadError);
+        throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+      }
+
+      const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/property-images/${fileName}`;
+      uploadedUrls.push(publicUrl);
+    }
+
+    return uploadedUrls;
+  };
+
+  const removeExistingImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const openAddDialog = () => {
     setEditingId(null);
     setForm(emptyForm);
@@ -422,7 +453,7 @@ const AdminProperties = () => {
       features: property.features?.join(", ") || "",
     });
     setExistingImages(property.images || []);
-    setExistingVideos(property.videos || []);
+    setExistingVideos(property.video_url ? [property.video_url] : []);
     setFiles([]);
     setVideoFiles([]);
     setUseUpload(true);
@@ -485,7 +516,7 @@ const AdminProperties = () => {
           .update({
             ...propertyData,
             images: imageUrls.length > 0 ? imageUrls : null,
-            videos: videoUrls.length > 0 ? videoUrls : null
+            video_url: videoUrls.length > 0 ? videoUrls[0] : null
           })
           .eq("id", editingId);
 
@@ -496,7 +527,7 @@ const AdminProperties = () => {
             ...x,
             ...propertyData,
             images: imageUrls,
-            videos: videoUrls
+            video_url: videoUrls[0] || null
           } : x))
         );
         toast({ title: "Success", description: "Property updated successfully." });
@@ -507,7 +538,7 @@ const AdminProperties = () => {
           .insert({
             ...propertyData,
             images: imageUrls.length > 0 ? imageUrls : null,
-            videos: videoUrls.length > 0 ? videoUrls : null,
+            video_url: videoUrls.length > 0 ? videoUrls[0] : null,
             status: "available" as const,
           })
           .select()
@@ -533,14 +564,14 @@ const AdminProperties = () => {
             .from("properties")
             .update({
               images: imageUrls.length > 0 ? imageUrls : null,
-              videos: videoUrls.length > 0 ? videoUrls : null
+              video_url: videoUrls.length > 0 ? videoUrls[0] : null
             })
             .eq("id", newProperty.id);
 
           if (updateError) throw updateError;
 
           newProperty.images = imageUrls;
-          newProperty.videos = videoUrls;
+          newProperty.video_url = videoUrls[0] || null;
         }
 
         setProperties((p) => [newProperty, ...p]);
