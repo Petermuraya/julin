@@ -16,6 +16,7 @@ import AdminBlogs from "./pages/admin/AdminBlogs";
 import AdminSubmissions from "./pages/admin/AdminSubmissions";
 import AdminInquiries from "./pages/admin/AdminInquiries";
 import AdminChats from "./pages/admin/AdminChats";
+import AdminChatDashboard from "./pages/admin/AdminChatDashboard";
 import AdminProfile from "./pages/admin/AdminProfile";
 
 import PropertiesPage from "./pages/PropertiesPage";
@@ -54,7 +55,7 @@ const App = () => (
               <Route path="blogs" element={<AdminBlogs />} />
               <Route path="submissions" element={<AdminSubmissions />} />
               <Route path="inquiries" element={<AdminInquiries />} />
-              <Route path="chats" element={<AdminChats />} />
+              <Route path="chats" element={<AdminChatDashboard />} />
               <Route path="profile" element={<AdminProfile />} />
             </Route>
 

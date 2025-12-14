@@ -13,7 +13,52 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { message, session_id, conversation_history } = await req.json();
+    const {
+      message,
+      session_id,
+      conversation_id,
+      user_info,
+      conversation_history,
+      action,
+      rating,
+      feedback
+    } = await req.json();
+
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Handle rating submission
+    if (action === 'submit_rating') {
+      const { data: conversationData, error: insertError } = await supabase
+        .from('chat_conversations')
+        .insert({
+          conversation_id,
+          user_name: user_info?.name,
+          user_phone: user_info?.phone,
+          messages: conversation_history || [],
+          rating,
+          feedback,
+          session_id,
+          completed_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        console.error('Error saving conversation:', insertError);
+      }
+
+      // Send admin notification if rating is low or feedback indicates issues
+      if (rating <= 2 || (feedback && feedback.toLowerCase().includes('problem'))) {
+        console.log(`ADMIN ALERT: Low rating (${rating}/5) from ${user_info?.name} (${user_info?.phone}). Feedback: ${feedback}`);
+        // In a real implementation, you might send an email or notification here
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!message || typeof message !== "string") {
       return new Response(
@@ -21,11 +66,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Initialize OpenAI client
     const openai = new OpenAI({
@@ -106,6 +146,26 @@ Guidelines:
           relevantProperties.push(property);
           if (relevantProperties.length >= 5) break; // Limit to 5 properties
         }
+      }
+    }
+
+    // Store conversation message for admin tracking
+    if (conversation_id && user_info) {
+      try {
+        await supabase
+          .from('chat_messages')
+          .insert({
+            conversation_id,
+            session_id,
+            user_name: user_info.name,
+            user_phone: user_info.phone,
+            message,
+            response: aiReply,
+            properties_found: relevantProperties.length,
+            created_at: new Date().toISOString()
+          });
+      } catch (error) {
+        console.error('Error storing chat message:', error);
       }
     }
 
