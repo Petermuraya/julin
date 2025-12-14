@@ -68,7 +68,7 @@ const AdminChatDashboard: React.FC = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5 text-blue-500" />
+            <MessageCircle className="h-5 w-5 text-primary" />
             Chat System Information
           </CardTitle>
         </CardHeader>
@@ -78,9 +78,9 @@ const AdminChatDashboard: React.FC = () => {
               The AI chat assistant is active and helping users find properties. 
               Chat conversations are processed in real-time without persistent storage for privacy.
             </p>
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Features:</h4>
-              <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <div className="bg-primary/5 p-4 rounded-lg">
+              <h4 className="font-medium text-primary mb-2">Features:</h4>
+              <ul className="text-sm text-primary/80 space-y-1">
                 <li>• AI-powered property search and recommendations</li>
                 <li>• Real-time property data from your listings</li>
                 <li>• User contact collection before chat</li>
