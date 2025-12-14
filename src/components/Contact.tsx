@@ -77,11 +77,11 @@ const Contact = () => {
             Get in Touch
           </span>
 
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-slate-900">
+          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
             Contact Us Today
           </h2>
 
-          <p className="text-slate-600 text-base md:text-lg leading-relaxed">
+          <p className="text-muted-foreground text-base md:text-lg leading-relaxed">
             Have questions about properties or need real estate support? Reach out to our expert team.
             We're here to help with any inquiry.
           </p>
