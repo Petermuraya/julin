@@ -17,10 +17,10 @@ const BlogsPage = () => {
 
       <main className="min-h-screen bg-slate-50">
         {/* Hero Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
+        <section className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-20">
           <div className="container mx-auto px-4 text-center">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">Real Estate Blog</h1>
-            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+            <p className="text-xl text-primary-foreground/80 max-w-2xl mx-auto">
               Stay informed with the latest insights, tips, and trends in the Kenyan real estate market
             </p>
           </div>
