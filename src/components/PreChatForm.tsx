@@ -43,8 +43,8 @@ export const PreChatForm: React.FC<PreChatFormProps> = ({ onSubmit, onCancel }) 
     <div className="h-full flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-            <Bot className="h-6 w-6 text-blue-600" />
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <Bot className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-xl">Welcome to Our AI Assistant</CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
