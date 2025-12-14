@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Bot } from 'lucide-react';
 import { PreChatForm } from './PreChatForm';
@@ -9,14 +8,14 @@ interface ChatResponse {
   reply: string;
   properties: any[];
   session_id: string;
-  is_admin?: boolean;
+  error?: string;
 }
 
-type Message = { role: 'user' | 'assistant' | 'system'; content: string; is_admin?: boolean };
+type Message = { role: 'user' | 'assistant' | 'system'; content: string };
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://fakkzdfwpucpgndofgcu.supabase.co";
 
-type ChatPhase = 'form' | 'chat' | 'rating';
+type ChatPhase = 'form' | 'chat' | 'rating' | 'completed';
 
 interface UserInfo {
   name: string;
@@ -34,6 +33,7 @@ const Chat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const sessionIdRef = useRef<string>('');
+  
   useEffect(() => {
     let sid = localStorage.getItem('chat_session_id');
     if (!sid) {
@@ -42,11 +42,9 @@ const Chat: React.FC = () => {
     }
     sessionIdRef.current = sid;
 
-    // Generate conversation ID
     const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setConversationId(convId);
 
-    // Set initial welcome message if no messages
     if (!localStorage.getItem(`chat:${sid}`)) {
       setMessages([{
         role: 'assistant',
@@ -65,32 +63,11 @@ const Chat: React.FC = () => {
   };
 
   const handleFormCancel = () => {
-    // Close the chat modal or go back
     window.history.back();
   };
 
   const handleRatingSubmit = async (rating: number, feedback?: string) => {
-    try {
-      // Send rating and conversation summary to admin
-      await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'submit_rating',
-          conversation_id: conversationId,
-          user_info: userInfo,
-          rating,
-          feedback,
-          messages,
-          session_id: sessionIdRef.current
-        }),
-      });
-    } catch (error) {
-      console.error('Error submitting rating:', error);
-    }
-
+    console.log('Rating submitted:', { rating, feedback, conversationId, userInfo });
     setPhase('completed');
   };
 
@@ -108,13 +85,11 @@ const Chat: React.FC = () => {
     setLoading(true);
 
     try {
-      // Prepare conversation history for context (last 10 messages)
       const conversationHistory = messages.slice(-10).map(msg => ({
         role: msg.role,
         content: msg.content
       }));
 
-      // Call Supabase Edge Function
       const response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
         method: 'POST',
         headers: {
@@ -131,16 +106,14 @@ const Chat: React.FC = () => {
 
       const data: ChatResponse = await response.json();
 
-      // Persist to localStorage
       try {
         const stored = [...newMessages];
-        if (data?.reply) stored.push({ role: 'assistant', content: data.reply, is_admin: data.is_admin });
+        if (data?.reply) stored.push({ role: 'assistant', content: data.reply });
         localStorage.setItem(`chat:${sessionIdRef.current}`, JSON.stringify(stored));
       } catch (_) {}
 
-      // Show assistant reply with typewriter effect
       if (data?.reply) {
-        const full = data.reply as string;
+        const full = data.reply;
         let cur = '';
         setMessages((m) => [...m, { role: 'assistant', content: '' }]);
         const interval = setInterval(() => {
@@ -170,7 +143,6 @@ const Chat: React.FC = () => {
     }
   };
 
-  // Show different phases based on current state
   if (phase === 'form') {
     return <PreChatForm onSubmit={handleFormSubmit} onCancel={handleFormCancel} />;
   }
@@ -208,23 +180,13 @@ const Chat: React.FC = () => {
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Bot className="h-6 w-6 text-blue-600" />
-            {userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin') ?
-              'AI Admin Assistant' : 'AI Property Assistant'}
-            {userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin') && (
-              <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
-                ADMIN MODE
-              </span>
-            )}
+            AI Property Assistant
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin') ?
-              `Hi ${userInfo?.name}! How can I assist you with system administration today?` :
-              `Hi ${userInfo?.name}! How can I help you find your perfect property today?`
-            }
+            Hi {userInfo?.name}! How can I help you find your perfect property today?
           </p>
         </div>
 
-        {/* Chat Messages */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4 flex-1 overflow-y-auto max-h-[50vh]">
           <div className="p-4 space-y-4">
             {messages.map((m, idx) => (
@@ -236,18 +198,9 @@ const Chat: React.FC = () => {
                   className={`max-w-[80%] p-3 rounded-2xl ${
                     m.role === 'user'
                       ? 'bg-blue-600 text-white rounded-br-md'
-                      : `bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-md ${
-                          m.is_admin ? 'border-l-4 border-red-500' : ''
-                        }`
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-md'
                   }`}
                 >
-                  {m.is_admin && (
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
-                        ADMIN ACTION
-                      </span>
-                    </div>
-                  )}
                   <div className="text-sm whitespace-pre-wrap">{m.content}</div>
                 </div>
               </div>
@@ -256,7 +209,6 @@ const Chat: React.FC = () => {
           </div>
         </div>
 
-        {/* Input */}
         <div className="flex gap-2">
           <input
             value={input}
@@ -268,11 +220,7 @@ const Chat: React.FC = () => {
               }
             }}
             className="flex-1 p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-            placeholder={
-              userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin')
-                ? "Admin commands: add properties, change password, system stats..."
-                : "Ask about properties, prices, locations..."
-            }
+            placeholder="Ask about properties, prices, locations..."
           />
           <button
             onClick={sendMessage}
@@ -290,35 +238,7 @@ const Chat: React.FC = () => {
           </button>
         </div>
 
-        {/* Quick Actions for Admin */}
-        {(userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin')) && (
-          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800">
-            <div className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Quick Admin Actions:</div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setInput('Show system statistics')}
-                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-lg transition-colors"
-              >
-                System Stats
-              </button>
-              <button
-                onClick={() => setInput('Check for errors')}
-                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-lg transition-colors"
-              >
-                Troubleshoot
-              </button>
-              <button
-                onClick={() => setInput('Generate description for:')}
-                className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-lg transition-colors"
-              >
-                AI Description
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Quick Actions for Users */}
-        {!(userInfo?.phone === 'admin' || userInfo?.name?.toLowerCase().includes('admin')) && messages.length === 1 && (
+        {messages.length === 1 && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
             <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Quick Questions:</div>
             <div className="flex flex-wrap gap-2">
@@ -350,7 +270,6 @@ const Chat: React.FC = () => {
           </div>
         )}
 
-        {/* End Chat Button */}
         <div className="mt-4 text-center">
           <button
             onClick={() => setPhase('rating')}
@@ -360,7 +279,6 @@ const Chat: React.FC = () => {
           </button>
         </div>
 
-        {/* Property Results */}
         {properties.length > 0 && (
           <div className="mt-3 sm:mt-4 max-h-[25vh] sm:max-h-[30vh] overflow-y-auto flex-shrink-0">
             <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-2 sm:mb-3">Matching Properties</h3>
@@ -380,7 +298,6 @@ const Chat: React.FC = () => {
                       <Link
                         to={`/property/${p.id}`}
                         className="text-blue-600 hover:text-blue-700 text-xs mt-1 inline-block"
-                        onClick={() => window.open(`/property/${p.id}`, '_blank')}
                       >
                         View Details →
                       </Link>

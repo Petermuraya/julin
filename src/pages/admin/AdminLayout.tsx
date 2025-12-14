@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send, BookOpen } from "lucide-react";
+import { LayoutDashboard, Home, BookOpen, FileText, MessageSquare, Settings, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";

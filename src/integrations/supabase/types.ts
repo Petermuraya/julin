@@ -329,66 +329,6 @@ export type Database = {
         }
         Relationships: []
       }
-      blogs: {
-        Row: {
-          author_id: string | null
-          author_name: string | null
-          content: string
-          created_at: string
-          excerpt: string | null
-          featured_image: string | null
-          id: string
-          published: boolean | null
-          published_at: string | null
-          seo_description: string | null
-          seo_keywords: string[] | null
-          seo_title: string | null
-          slug: string
-          tags: string[] | null
-          title: string
-          updated_at: string
-          view_count: number | null
-        }
-        Insert: {
-          author_id?: string | null
-          author_name?: string | null
-          content: string
-          created_at?: string
-          excerpt?: string | null
-          featured_image?: string | null
-          id?: string
-          published?: boolean | null
-          published_at?: string | null
-          seo_description?: string | null
-          seo_keywords?: string[] | null
-          seo_title?: string | null
-          slug?: string
-          tags?: string[] | null
-          title: string
-          updated_at?: string
-          view_count?: number | null
-        }
-        Update: {
-          author_id?: string | null
-          author_name?: string | null
-          content?: string
-          created_at?: string
-          excerpt?: string | null
-          featured_image?: string | null
-          id?: string
-          published?: boolean | null
-          published_at?: string | null
-          seo_description?: string | null
-          seo_keywords?: string[] | null
-          seo_title?: string | null
-          slug?: string
-          tags?: string[] | null
-          title?: string
-          updated_at?: string
-          view_count?: number | null
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
