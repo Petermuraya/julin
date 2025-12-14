@@ -200,14 +200,14 @@ const PropertiesPage = () => {
           <div className="container mx-auto px-4">
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-4xl font-bold text-slate-900 mb-2">Properties</h1>
-              <p className="text-lg text-slate-600">Discover your perfect property from our curated collection</p>
+              <h1 className="text-4xl font-bold text-foreground mb-2">Properties</h1>
+              <p className="text-lg text-muted-foreground">Discover your perfect property from our curated collection</p>
             </div>
 
             {/* Search Bar */}
             <div className="mb-6">
               <div className="relative max-w-2xl mx-auto">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   placeholder="Search by location, property type, or keywords..."
                   value={query}
@@ -264,7 +264,7 @@ const PropertiesPage = () => {
                     onChange={(e) => setMinPrice(e.target.value)}
                     className="w-28"
                   />
-                  <span className="text-slate-400">-</span>
+                  <span className="text-muted-foreground">-</span>
                   <Input
                     placeholder="Max Price"
                     type="number"
@@ -296,7 +296,7 @@ const PropertiesPage = () => {
                     <div className="mt-6 space-y-6">
                       {/* Advanced Filters for Mobile */}
                       <div>
-                        <label className="text-sm font-medium text-slate-700 mb-3 block">Property Type</label>
+                        <label className="text-sm font-medium text-foreground mb-3 block">Property Type</label>
                         <Select value={type ?? ""} onValueChange={(v) => setType(v === "all" ? undefined : v)}>
                           <SelectTrigger>
                             <SelectValue placeholder="All Types" />
@@ -319,7 +319,7 @@ const PropertiesPage = () => {
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-slate-700 mb-3 block">Sort By</label>
+                        <label className="text-sm font-medium text-foreground mb-3 block">Sort By</label>
                         <Select value={sortBy} onValueChange={setSortBy}>
                           <SelectTrigger>
                             <SelectValue />
@@ -335,7 +335,7 @@ const PropertiesPage = () => {
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-slate-700 mb-3 block">Price Range</label>
+                        <label className="text-sm font-medium text-foreground mb-3 block">Price Range</label>
                         <div className="space-y-3">
                           <div className="grid grid-cols-2 gap-3">
                             <Input
@@ -363,7 +363,7 @@ const PropertiesPage = () => {
 
                 {/* Clear Filters Button */}
                 {getActiveFiltersCount() > 0 && (
-                  <Button variant="ghost" onClick={clearFilters} className="text-slate-600 hover:text-slate-900">
+                  <Button variant="ghost" onClick={clearFilters} className="text-muted-foreground hover:text-foreground">
                     <X className="h-4 w-4 mr-2" />
                     Clear ({getActiveFiltersCount()})
                   </Button>
@@ -374,7 +374,7 @@ const PropertiesPage = () => {
             {/* Active Filters Display */}
             {getActiveFiltersCount() > 0 && (
               <div className="flex flex-wrap items-center gap-2 mb-6">
-                <span className="text-sm text-slate-600">Active filters:</span>
+                <span className="text-sm text-muted-foreground">Active filters:</span>
                 {query && (
                   <Badge variant="secondary" className="flex items-center gap-1">
                     Search: {query}
@@ -424,11 +424,11 @@ const PropertiesPage = () => {
               </div>
             ) : properties.length === 0 ? (
               <div className="text-center py-16">
-                <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Building2 className="h-12 w-12 text-slate-400" />
+                <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Building2 className="h-12 w-12 text-muted-foreground" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">No properties found</h3>
-                <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                <h3 className="text-xl font-semibold text-foreground mb-2">No properties found</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                   We couldn't find any properties matching your criteria. Try adjusting your filters or search terms.
                 </p>
                 <Button onClick={clearFilters}>Clear All Filters</Button>
@@ -436,8 +436,8 @@ const PropertiesPage = () => {
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6">
-                  <p className="text-slate-600">
-                    Showing <span className="font-semibold text-slate-900">{properties.length}</span> properties
+                  <p className="text-muted-foreground">
+                    Showing <span className="font-semibold text-foreground">{properties.length}</span> properties
                   </p>
                 </div>
 
