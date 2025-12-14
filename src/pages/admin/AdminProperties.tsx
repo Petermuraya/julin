@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Search, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send, Video, Play, Eye, BarChart3, Filter, Download, Copy } from "lucide-react";
+import { Facebook, Instagram, MessageCircle, Twitter, Send } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { PropertyForm } from "@/components/admin/PropertyForm";
+import { AdminPropertiesHeader } from "@/components/admin/AdminPropertiesHeader";
+import { AdminPropertiesFilters } from "@/components/admin/AdminPropertiesFilters";
+import { AdminPropertiesTable } from "@/components/admin/AdminPropertiesTable";
 import { PropertyForm as PropertyFormType, Property } from "@/types/property";
 
 const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
@@ -675,261 +675,40 @@ const AdminProperties = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Properties</h1>
-          <p className="text-muted-foreground mt-1">Manage all properties in your portfolio</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2">
-            <Plus size={18} />
-            Add Property
-          </Button>
-          {selectedProperties.length > 0 && (
-            <div className="flex gap-2">
-              <Button
-                onClick={() => bulkUpdateStatus("available")}
-                variant="outline"
-                size="sm"
-                className="text-green-600 border-green-600 hover:bg-green-50"
-              >
-                Mark Available
-              </Button>
-              <Button
-                onClick={() => bulkUpdateStatus("sold")}
-                variant="outline"
-                size="sm"
-                className="text-red-600 border-red-600 hover:bg-red-50"
-              >
-                Mark Sold
-              </Button>
-              <Button
-                onClick={bulkDeleteProperties}
-                variant="outline"
-                size="sm"
-                className="text-red-600 border-red-600 hover:bg-red-50"
-              >
-                Delete Selected
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+      <AdminPropertiesHeader
+        selectedProperties={selectedProperties}
+        openAddDialog={openAddDialog}
+        bulkUpdateStatus={bulkUpdateStatus}
+        bulkDeleteProperties={bulkDeleteProperties}
+      />
 
       {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
-          <Input
-            placeholder="Search properties by title or location..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 py-2 h-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-32 h-10">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="available">Available</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="sold">Sold</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-36 h-10">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="house">House</SelectItem>
-              <SelectItem value="apartment">Apartment</SelectItem>
-              <SelectItem value="land">Land</SelectItem>
-              <SelectItem value="plot">Plot</SelectItem>
-              <SelectItem value="commercial">Commercial</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <AdminPropertiesFilters
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+      />
 
       {/* Properties Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin inline-block w-8 h-8 border-4 border-muted border-t-primary rounded-full"></div>
-            <p className="mt-2 text-muted-foreground">Loading properties...</p>
-          </div>
-        ) : filteredProperties.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted-foreground text-lg">
-              {searchQuery || statusFilter !== "all" || typeFilter !== "all" ? "No properties found matching your filters" : "No properties yet"}
-            </p>
-            <Button onClick={openAddDialog} variant="outline" className="mt-4">
-              Add your first property
-            </Button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
-                <tr>
-                  <th className="px-4 py-4 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedProperties.length === filteredProperties.length && filteredProperties.length > 0}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedProperties(filteredProperties.map(p => p.id));
-                        } else {
-                          setSelectedProperties([]);
-                        }
-                      }}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Property</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden md:table-cell">Location</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Price</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Type</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {filteredProperties.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                    <td className="px-4 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedProperties.includes(p.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedProperties(prev => [...prev, p.id]);
-                          } else {
-                            setSelectedProperties(prev => prev.filter(id => id !== p.id));
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          {p.images?.[0] ? (
-                            <img src={p.images[0]} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                              <ImageIcon size={20} className="text-muted-foreground" />
-                            </div>
-                          )}
-                          {p.videos?.length > 0 && (
-                            <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full p-1">
-                              <Video size={8} />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-foreground truncate">{p.title}</div>
-                          <div className="text-xs text-muted-foreground md:hidden">{p.location}</div>
-                          <p className="text-xs text-muted-foreground">
-                            {p.images?.length || 0} img{p.videos?.length ? `, ${p.videos.length} vid` : ''}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground hidden md:table-cell">{p.location || "—"}</td>
-                    <td className="px-6 py-4 font-medium text-foreground hidden lg:table-cell">
-                      KES {Number(p.price || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Select
-                        value={p.status || "available"}
-                        onValueChange={(v) => updateStatus(p.id, v as "available" | "pending" | "sold")}
-                      >
-                        <SelectTrigger className="w-24 h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="available">Available</SelectItem>
-                          <SelectItem value="sold">Sold</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-6 py-4 hidden sm:table-cell">
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {p.property_type || "land"}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => openEditDialog(p)}
-                          className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                        >
-                          <Edit2 size={16} />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/5"
-                            >
-                              <Share2 size={16} />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => shareToFacebook(p)} className="flex items-center gap-2">
-                              <Facebook size={16} className="text-blue-600" />
-                              Share on Facebook
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToTwitter(p)} className="flex items-center gap-2">
-                              <Twitter size={16} className="text-blue-400" />
-                              Share on X (Twitter)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToWhatsApp(p)} className="flex items-center gap-2">
-                              <MessageCircle size={16} className="text-green-600" />
-                              Share on WhatsApp
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToTelegram(p)} className="flex items-center gap-2">
-                              <Send size={16} className="text-blue-500" />
-                              Share on Telegram
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToInstagram(p)} className="flex items-center gap-2">
-                              <Instagram size={16} className="text-pink-600" />
-                              Copy for Instagram
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => shareToTikTok(p)} className="flex items-center gap-2">
-                              <div className="w-4 h-4 bg-black rounded-sm flex items-center justify-center">
-                                <span className="text-white text-xs font-bold">T</span>
-                              </div>
-                              Copy for TikTok
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteProperty(p.id)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <AdminPropertiesTable
+        properties={properties}
+        loading={loading}
+        filteredProperties={filteredProperties}
+        selectedProperties={selectedProperties}
+        setSelectedProperties={setSelectedProperties}
+        updateStatus={updateStatus}
+        openEditDialog={openEditDialog}
+        deleteProperty={deleteProperty}
+        shareToFacebook={shareToFacebook}
+        shareToTwitter={shareToTwitter}
+        shareToWhatsApp={shareToWhatsApp}
+        shareToTelegram={shareToTelegram}
+        shareToInstagram={shareToInstagram}
+        shareToTikTok={shareToTikTok}
+      />
 
       {/* Add/Edit Property Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(v) => {

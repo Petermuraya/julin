@@ -27,7 +27,7 @@ export type Property = {
   seller_phone: string;
   size: string;
   images: string[];
-  videos: string[];
+  video_url: string | null;
   latitude: number;
   longitude: number;
   bedrooms: number;
@@ -36,4 +36,5 @@ export type Property = {
   status: "available" | "pending" | "sold";
   created_at: string;
   updated_at: string;
+  is_admin_property?: boolean;
 };
