@@ -12,6 +12,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProperties from "./pages/admin/AdminProperties";
+import AdminBlogs from "./pages/admin/AdminBlogs";
 import AdminSubmissions from "./pages/admin/AdminSubmissions";
 import AdminInquiries from "./pages/admin/AdminInquiries";
 import AdminChats from "./pages/admin/AdminChats";
@@ -19,6 +20,8 @@ import AdminProfile from "./pages/admin/AdminProfile";
 
 import PropertiesPage from "./pages/PropertiesPage";
 import PropertyDetailPage from "./pages/PropertyDetailPage";
+import BlogsPage from "./pages/BlogsPage";
+import BlogDetailPage from "./pages/BlogDetailPage";
 import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
 import Chat from "./components/Chat";
@@ -37,6 +40,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/properties" element={<PropertiesPage />} />
             <Route path="/property/:id" element={<PropertyDetailPage />} />
+            <Route path="/blogs" element={<BlogsPage />} />
+            <Route path="/blog/:slug" element={<BlogDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/chat" element={<Chat />} />
@@ -46,6 +51,7 @@ const App = () => (
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="properties" element={<AdminProperties />} />
+              <Route path="blogs" element={<AdminBlogs />} />
               <Route path="submissions" element={<AdminSubmissions />} />
               <Route path="inquiries" element={<AdminInquiries />} />
               <Route path="chats" element={<AdminChats />} />

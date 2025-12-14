@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Menu, X, LayoutDashboard, Home, FileText, MessageSquare, LogOut, User, Settings } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ const AdminLayout = () => {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/properties", label: "Properties", icon: Home },
+    { href: "/admin/blogs", label: "Blog Posts", icon: BookOpen },
     { href: "/admin/submissions", label: "Submissions", icon: FileText },
     { href: "/admin/inquiries", label: "Buyer Inquiries", icon: MessageSquare },
     { href: "/admin/profile", label: "Profile", icon: Settings },
