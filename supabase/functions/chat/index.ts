@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import OpenAI from "https://esm.sh/openai@4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { message, session_id } = await req.json();
+    const { message, session_id, conversation_history } = await req.json();
 
     if (!message || typeof message !== "string") {
       return new Response(
@@ -26,64 +27,96 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Search for properties based on message keywords
-    const searchTerms = message.toLowerCase();
-    let query = supabase
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: Deno.env.get("OPENAI_API_KEY"),
+    });
+
+    // Get all available properties for context
+    const { data: allProperties, error: propertiesError } = await supabase
       .from("properties")
-      .select("id, title, location, price, property_type, size, images, description")
-      .eq("status", "available");
+      .select("id, title, location, price, property_type, size, bedrooms, bathrooms, description, features, images")
+      .eq("status", "available")
+      .limit(50);
 
-    // Simple keyword matching for property search
-    if (searchTerms.includes("house")) {
-      query = query.eq("property_type", "house");
-    } else if (searchTerms.includes("land")) {
-      query = query.eq("property_type", "land");
-    } else if (searchTerms.includes("plot")) {
-      query = query.eq("property_type", "plot");
-    } else if (searchTerms.includes("apartment")) {
-      query = query.eq("property_type", "apartment");
-    } else if (searchTerms.includes("commercial")) {
-      query = query.eq("property_type", "commercial");
-    }
-
-    // Price range detection
-    const priceMatch = searchTerms.match(/under\s*(\d+)/i);
-    if (priceMatch) {
-      query = query.lte("price", parseInt(priceMatch[1]));
-    }
-
-    const { data: properties, error } = await query.limit(6);
-
-    if (error) {
-      console.error("Database error:", error);
+    if (propertiesError) {
+      console.error("Database error:", propertiesError);
       return new Response(
-        JSON.stringify({ error: "Failed to search properties" }),
+        JSON.stringify({ error: "Failed to fetch properties" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Generate a helpful response
-    let reply = "";
-    if (properties && properties.length > 0) {
-      reply = `I found ${properties.length} properties that might interest you:\n\n`;
-      properties.forEach((p, i) => {
-        reply += `${i + 1}. **${p.title}** - ${p.location}\n`;
-        reply += `   Price: KES ${Number(p.price).toLocaleString()}\n`;
-        reply += `   Type: ${p.property_type}${p.size ? `, Size: ${p.size}` : ""}\n\n`;
-      });
-      reply += "\nWould you like more details about any of these properties? You can also filter by price, location, or property type.";
-    } else {
-      reply = "I couldn't find properties matching your criteria. Try asking about:\n";
-      reply += "- Houses, plots, land, apartments, or commercial properties\n";
-      reply += "- Properties in specific locations\n";
-      reply += "- Properties under a certain price\n\n";
-      reply += "For example: 'Show me houses in Nairobi' or 'Land under 5000000'";
+    // Prepare conversation context
+    const systemPrompt = `You are a helpful real estate assistant for Julin Real Estate Hub in Kenya. You help customers find properties and answer questions about real estate.
+
+Available properties (show maximum 5 most relevant):
+${allProperties?.map(p => 
+  `- ${p.title} (${p.property_type}) in ${p.location}: KES ${Number(p.price).toLocaleString()}${p.size ? `, ${p.size}` : ''}${p.bedrooms ? `, ${p.bedrooms} beds` : ''}${p.bathrooms ? `, ${p.bathrooms} baths` : ''}. ${p.description || ''}`
+).join('\n') || 'No properties available'}
+
+Guidelines:
+- Be friendly, professional, and conversational
+- Focus on helping users find suitable properties
+- Provide specific property details when relevant
+- Ask clarifying questions when needed
+- Suggest alternatives if exact matches aren't found
+- Mention price ranges, locations, and property types
+- Keep responses concise but informative
+- If showing properties, limit to 3-5 most relevant ones
+- Always offer to provide more details or help with next steps`;
+
+    // Build conversation history for context
+    const messages = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    // Add recent conversation history (last 5 messages for context)
+    if (conversation_history && Array.isArray(conversation_history)) {
+      const recentHistory = conversation_history.slice(-5);
+      messages.push(...recentHistory);
     }
 
-    console.log(`Chat response for session ${session_id}: Found ${properties?.length || 0} properties`);
+    // Add current user message
+    messages.push({ role: "user", content: message });
+
+    // Get AI response
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: messages,
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    const aiReply = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
+
+    // Extract property recommendations from AI response
+    const relevantProperties = [];
+    if (allProperties) {
+      // Simple heuristic: look for property titles or locations mentioned in the response
+      const responseLower = aiReply.toLowerCase();
+      for (const property of allProperties) {
+        const titleMatch = property.title.toLowerCase().includes(responseLower) ||
+                          responseLower.includes(property.title.toLowerCase());
+        const locationMatch = property.location.toLowerCase().includes(responseLower) ||
+                             responseLower.includes(property.location.toLowerCase());
+        const typeMatch = property.property_type.toLowerCase().includes(responseLower);
+
+        if (titleMatch || locationMatch || typeMatch) {
+          relevantProperties.push(property);
+          if (relevantProperties.length >= 5) break; // Limit to 5 properties
+        }
+      }
+    }
+
+    console.log(`Chat response for session ${session_id}: AI generated response with ${relevantProperties.length} property suggestions`);
 
     return new Response(
-      JSON.stringify({ reply, properties: properties || [] }),
+      JSON.stringify({
+        reply: aiReply,
+        properties: relevantProperties,
+        session_id: session_id
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

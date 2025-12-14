@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
+import { Bot } from 'lucide-react';
 
 type Message = { role: 'user' | 'assistant' | 'system'; content: string };
 
@@ -56,13 +57,23 @@ const Chat: React.FC = () => {
     setLoading(true);
 
     try {
+      // Prepare conversation history for context (last 10 messages)
+      const conversationHistory = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+
       // Call Supabase Edge Function
       const response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: text, session_id: sessionIdRef.current }),
+        body: JSON.stringify({ 
+          message: text, 
+          session_id: sessionIdRef.current,
+          conversation_history: conversationHistory
+        }),
       });
 
       const data = await response.json();
@@ -107,19 +118,19 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="max-w-4xl mx-auto p-4 md:p-6">
-        <div className="mb-6">
-          <Link to="/" className="text-blue-600 hover:text-blue-700 text-sm mb-2 inline-block">
-            ← Back to Home
-          </Link>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">AI Property Assistant</h1>
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <div className="flex-1 p-4 md:p-6 overflow-hidden">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Bot className="h-6 w-6 text-blue-600" />
+            AI Property Assistant
+          </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">Ask me anything about our properties</p>
         </div>
 
         {/* Chat Messages */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4 h-[50vh] overflow-y-auto p-4">
-          <div className="space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4 flex-1 overflow-y-auto max-h-[50vh]">
+          <div className="p-4 space-y-4">
             {messages.map((m, idx) => (
               <div
                 key={idx}
@@ -165,23 +176,24 @@ const Chat: React.FC = () => {
 
         {/* Property Results */}
         {properties.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-4 max-h-[30vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Matching Properties</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {properties.map((p) => (
                 <div key={p.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                   {p.images && p.images[0] && (
-                    <img src={p.images[0]} alt={p.title} className="w-full h-36 object-cover" />
+                    <img src={p.images[0]} alt={p.title} className="w-full h-24 object-cover" />
                   )}
                   <div className="p-3">
-                    <h4 className="font-semibold text-slate-900 dark:text-white">{p.title}</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{p.location}</p>
+                    <h4 className="font-semibold text-slate-900 dark:text-white text-sm">{p.title}</h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">{p.location}</p>
                     <p className="text-sm font-medium text-blue-600 mt-1">
                       KES {Number(p.price).toLocaleString()}
                     </p>
-                    <Link 
-                      to={`/property/${p.id}`} 
-                      className="text-blue-600 hover:text-blue-700 text-sm mt-2 inline-block"
+                    <Link
+                      to={`/property/${p.id}`}
+                      className="text-blue-600 hover:text-blue-700 text-xs mt-1 inline-block"
+                      onClick={() => window.open(`/property/${p.id}`, '_blank')}
                     >
                       View Details →
                     </Link>
