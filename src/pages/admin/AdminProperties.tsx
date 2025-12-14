@@ -897,7 +897,7 @@ const AdminProperties = () => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
+                              className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/5"
                             >
                               <Share2 size={16} />
                             </Button>
@@ -1335,7 +1335,7 @@ const AdminProperties = () => {
             <Button
               onClick={handleSaveProperty}
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
             >
               {saving ? (uploadProgress || "Saving...") : (editingId ? "Update Property" : "Create Property")}
             </Button>
