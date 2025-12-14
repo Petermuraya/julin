@@ -971,6 +971,7 @@ const AdminProperties = () => {
             removeVideo={removeVideo}
           />
 
+          <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>
