@@ -152,12 +152,12 @@ const AdminDashboard = () => {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Quick overview — manage properties, submissions and leads
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
-          <Button asChild className="bg-blue-600 hover:bg-blue-700">
+          <Button asChild className="bg-primary hover:bg-primary/90">
             <Link to="/admin/properties" className="inline-flex items-center gap-2">
               <Home size={18} />
               Properties
@@ -186,8 +186,8 @@ const AdminDashboard = () => {
                 </span>
               </p>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
-              <Home size={24} className="text-blue-600 dark:text-blue-400" />
+            <div className="bg-primary/5 p-3 rounded-lg">
+              <Home size={24} className="text-primary" />
             </div>
           </div>
         </div>
@@ -196,9 +196,9 @@ const AdminDashboard = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Submissions</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{counts.submissions}</p>
-              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-blue-600 dark:text-blue-400">
+              <p className="text-sm font-medium text-muted-foreground">Pending Submissions</p>
+              <p className="text-3xl font-bold text-foreground mt-2">{counts.submissions}</p>
+              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-primary">
                 <Link to="/admin/submissions" className="inline-flex items-center gap-1">
                   Review submissions <ArrowRight size={14} />
                 </Link>
@@ -214,9 +214,9 @@ const AdminDashboard = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Buyer Inquiries</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{counts.inquiries}</p>
-              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-blue-600 dark:text-blue-400">
+              <p className="text-sm font-medium text-muted-foreground">Buyer Inquiries</p>
+              <p className="text-3xl font-bold text-foreground mt-2">{counts.inquiries}</p>
+              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-primary">
                 <Link to="/admin/inquiries" className="inline-flex items-center gap-1">
                   View leads <ArrowRight size={14} />
                 </Link>
@@ -232,9 +232,9 @@ const AdminDashboard = () => {
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Status</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">Active</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">All systems operational</p>
+              <p className="text-sm font-medium text-muted-foreground">Status</p>
+              <p className="text-3xl font-bold text-foreground mt-2">Active</p>
+              <p className="text-xs text-muted-foreground mt-3">All systems operational</p>
             </div>
             <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
               <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
@@ -356,7 +356,7 @@ const AdminDashboard = () => {
                           ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-700"
                           : q.lead_status === "warm"
                           ? "bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-700"
-                          : "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700"
+                          : "bg-primary/5 text-primary border-primary/20"
                       }`}
                     >
                       {q.lead_status || "Warm"}
