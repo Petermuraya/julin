@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send, Video, Play, Eye, BarChart3, Filter, Download, Copy } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -23,8 +23,12 @@ type PropertyForm = {
   seller_phone: string;
   size: string;
   images: string;
+  videos: string;
   latitude: string;
   longitude: string;
+  bedrooms: string;
+  bathrooms: string;
+  features: string;
 };
 
 const emptyForm: PropertyForm = {
@@ -37,8 +41,12 @@ const emptyForm: PropertyForm = {
   seller_phone: "",
   size: "",
   images: "",
+  videos: "",
   latitude: "",
   longitude: "",
+  bedrooms: "",
+  bathrooms: "",
+  features: "",
 };
 
 const AdminProperties = () => {
@@ -49,10 +57,17 @@ const AdminProperties = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PropertyForm>(emptyForm);
   const [useUpload, setUseUpload] = useState(true);
+  const [useVideoUpload, setUseVideoUpload] = useState(true);
   const [files, setFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const [existingVideos, setExistingVideos] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
   const [mapToken, setMapToken] = useState<string>("");
   const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [marker, setMarker] = useState<mapboxgl.Marker | null>(null);
@@ -63,7 +78,11 @@ const AdminProperties = () => {
     (p) =>
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).filter((p) => {
+    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    if (typeFilter !== "all" && p.property_type !== typeFilter) return false;
+    return true;
+  });
 
   useEffect(() => {
     loadProperties();
@@ -203,8 +222,33 @@ const AdminProperties = () => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingImage = (index: number) => {
-    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  const handleVideoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    const validFiles = selectedFiles.filter((f) => {
+      if (f.size > 50 * 1024 * 1024) { // 50MB limit for videos
+        toast({ title: "File too large", description: `${f.name} exceeds 50MB limit`, variant: "destructive" });
+        return false;
+      }
+      if (!["video/mp4", "video/avi", "video/mov", "video/wmv", "video/webm"].includes(f.type)) {
+        toast({ title: "Invalid file type", description: `${f.name} is not a supported video format`, variant: "destructive" });
+        return false;
+      }
+      return true;
+    });
+    const totalVideos = existingVideos.length + videoFiles.length + validFiles.length;
+    if (totalVideos > 3) {
+      toast({ title: "Too many videos", description: "Maximum 3 videos allowed", variant: "destructive" });
+      return;
+    }
+    setVideoFiles((prev) => [...prev, ...validFiles]);
+  };
+
+  const removeVideoFile = (index: number) => {
+    setVideoFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingVideo = (index: number) => {
+    setExistingVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const getCurrentLocation = () => {
@@ -321,22 +365,22 @@ const AdminProperties = () => {
     });
   };
 
-  const uploadImages = async (propertyId: string): Promise<string[]> => {
+  const uploadVideos = async (propertyId: string): Promise<string[]> => {
     const uploadedUrls: string[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      setUploadProgress(`Uploading ${i + 1}/${files.length}...`);
+    for (let i = 0; i < videoFiles.length; i++) {
+      const file = videoFiles[i];
+      setUploadProgress(`Uploading video ${i + 1}/${videoFiles.length}...`);
 
       const fileExt = file.name.split(".").pop();
-      const fileName = `${propertyId}/${Date.now()}-${i}.${fileExt}`;
+      const fileName = `${propertyId}/videos/${Date.now()}-${i}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("property-images")
+        .from("property-images") // Using same bucket for simplicity
         .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
       if (uploadError) {
-        console.error("Upload error:", uploadError);
+        console.error("Video upload error:", uploadError);
         throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
       }
 
@@ -344,7 +388,6 @@ const AdminProperties = () => {
       uploadedUrls.push(publicUrl);
     }
 
-    setUploadProgress("");
     return uploadedUrls;
   };
 
@@ -352,7 +395,9 @@ const AdminProperties = () => {
     setEditingId(null);
     setForm(emptyForm);
     setFiles([]);
+    setVideoFiles([]);
     setExistingImages([]);
+    setExistingVideos([]);
     setUseUpload(true);
     setDialogOpen(true);
   };
@@ -369,11 +414,17 @@ const AdminProperties = () => {
       seller_phone: property.seller_phone || "",
       size: property.size || "",
       images: "",
+      videos: "",
       latitude: property.latitude?.toString() || "",
       longitude: property.longitude?.toString() || "",
+      bedrooms: property.bedrooms?.toString() || "",
+      bathrooms: property.bathrooms?.toString() || "",
+      features: property.features?.join(", ") || "",
     });
     setExistingImages(property.images || []);
+    setExistingVideos(property.videos || []);
     setFiles([]);
+    setVideoFiles([]);
     setUseUpload(true);
     setDialogOpen(true);
   };
@@ -387,11 +438,17 @@ const AdminProperties = () => {
       if (!form.price || Number(form.price) <= 0) throw new Error("Price must be a positive number");
 
       let imageUrls: string[] = [...existingImages];
+      let videoUrls: string[] = [...existingVideos];
 
       // If using URL input, parse those
       if (!useUpload && form.images) {
         const urlImages = form.images.split(",").map((s) => s.trim()).filter(Boolean);
         imageUrls = [...imageUrls, ...urlImages];
+      }
+
+      if (!useUpload && form.videos) {
+        const urlVideos = form.videos.split(",").map((s) => s.trim()).filter(Boolean);
+        videoUrls = [...videoUrls, ...urlVideos];
       }
 
       const propertyData = {
@@ -405,6 +462,9 @@ const AdminProperties = () => {
         seller_phone: form.seller_phone.trim() || null,
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
+        bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
+        bathrooms: form.bathrooms ? Number(form.bathrooms) : null,
+        features: form.features ? form.features.split(",").map((f: string) => f.trim()).filter(Boolean) : null,
         is_admin_property: true,
         updated_at: new Date().toISOString(),
       };
@@ -415,16 +475,29 @@ const AdminProperties = () => {
           const uploadedUrls = await uploadImages(editingId);
           imageUrls = [...imageUrls, ...uploadedUrls];
         }
+        if (useUpload && videoFiles.length > 0) {
+          const uploadedVideoUrls = await uploadVideos(editingId);
+          videoUrls = [...videoUrls, ...uploadedVideoUrls];
+        }
 
         const { error } = await supabase
           .from("properties")
-          .update({ ...propertyData, images: imageUrls.length > 0 ? imageUrls : null })
+          .update({
+            ...propertyData,
+            images: imageUrls.length > 0 ? imageUrls : null,
+            videos: videoUrls.length > 0 ? videoUrls : null
+          })
           .eq("id", editingId);
 
         if (error) throw error;
 
         setProperties((p) =>
-          p.map((x) => (x.id === editingId ? { ...x, ...propertyData, images: imageUrls } : x))
+          p.map((x) => (x.id === editingId ? {
+            ...x,
+            ...propertyData,
+            images: imageUrls,
+            videos: videoUrls
+          } : x))
         );
         toast({ title: "Success", description: "Property updated successfully." });
       } else {
@@ -434,6 +507,7 @@ const AdminProperties = () => {
           .insert({
             ...propertyData,
             images: imageUrls.length > 0 ? imageUrls : null,
+            videos: videoUrls.length > 0 ? videoUrls : null,
             status: "available" as const,
           })
           .select()
@@ -445,15 +519,28 @@ const AdminProperties = () => {
         if (useUpload && files.length > 0) {
           const uploadedUrls = await uploadImages(newProperty.id);
           imageUrls = [...imageUrls, ...uploadedUrls];
+        }
 
+        // Upload videos if using file upload
+        if (useUpload && videoFiles.length > 0) {
+          const uploadedVideoUrls = await uploadVideos(newProperty.id);
+          videoUrls = [...videoUrls, ...uploadedVideoUrls];
+        }
+
+        // Update with uploaded media URLs
+        if ((useUpload && files.length > 0) || (useUpload && videoFiles.length > 0)) {
           const { error: updateError } = await supabase
             .from("properties")
-            .update({ images: imageUrls })
+            .update({
+              images: imageUrls.length > 0 ? imageUrls : null,
+              videos: videoUrls.length > 0 ? videoUrls : null
+            })
             .eq("id", newProperty.id);
 
           if (updateError) throw updateError;
 
           newProperty.images = imageUrls;
+          newProperty.videos = videoUrls;
         }
 
         setProperties((p) => [newProperty, ...p]);
@@ -507,29 +594,152 @@ const AdminProperties = () => {
     }
   };
 
+  const bulkDeleteProperties = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedProperties.length} properties?`)) return;
+
+    try {
+      setLoading(true);
+
+      // Delete associated files first
+      for (const propertyId of selectedProperties) {
+        const property = properties.find((p) => p.id === propertyId);
+        if (property?.images?.length) {
+          const filePaths = property.images
+            .map((url: string) => {
+              const match = url.match(/property-images\/(.+)$/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean);
+
+          if (filePaths.length > 0) {
+            await supabase.storage.from("property-images").remove(filePaths);
+          }
+        }
+      }
+
+      const { error } = await supabase
+        .from("properties")
+        .delete()
+        .in("id", selectedProperties);
+
+      if (error) throw error;
+
+      setProperties((p) => p.filter((x) => !selectedProperties.includes(x.id)));
+      setSelectedProperties([]);
+      toast({ title: "Deleted", description: `${selectedProperties.length} properties removed successfully.` });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to delete properties.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bulkUpdateStatus = async (status: "available" | "pending" | "sold") => {
+    try {
+      setLoading(true);
+
+      const { error } = await supabase
+        .from("properties")
+        .update({ status, updated_at: new Date().toISOString() })
+        .in("id", selectedProperties);
+
+      if (error) throw error;
+
+      setProperties((p) =>
+        p.map((x) => (selectedProperties.includes(x.id) ? { ...x, status } : x))
+      );
+      setSelectedProperties([]);
+      toast({ title: "Updated", description: `${selectedProperties.length} properties updated to ${status}.` });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err?.message || "Failed to update properties.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Properties</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">Properties</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">Manage all properties in your portfolio</p>
         </div>
-        <Button onClick={openAddDialog} className="bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-2">
-          <Plus size={18} />
-          Add Property
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={openAddDialog} className="bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-2">
+            <Plus size={18} />
+            Add Property
+          </Button>
+          {selectedProperties.length > 0 && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => bulkUpdateStatus("available")}
+                variant="outline"
+                size="sm"
+                className="text-green-600 border-green-600 hover:bg-green-50"
+              >
+                Mark Available
+              </Button>
+              <Button
+                onClick={() => bulkUpdateStatus("sold")}
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-600 hover:bg-red-50"
+              >
+                Mark Sold
+              </Button>
+              <Button
+                onClick={bulkDeleteProperties}
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-600 hover:bg-red-50"
+              >
+                Delete Selected
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-3 text-slate-400" size={20} />
-        <Input
-          placeholder="Search properties by title or location..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 py-2 h-10"
-        />
+      {/* Filters and Search */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 text-slate-400" size={20} />
+          <Input
+            placeholder="Search properties by title or location..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 py-2 h-10"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-32 h-10">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="available">Available</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="sold">Sold</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-36 h-10">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="house">House</SelectItem>
+              <SelectItem value="apartment">Apartment</SelectItem>
+              <SelectItem value="land">Land</SelectItem>
+              <SelectItem value="plot">Plot</SelectItem>
+              <SelectItem value="commercial">Commercial</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Properties Table */}
@@ -542,7 +752,7 @@ const AdminProperties = () => {
         ) : filteredProperties.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-slate-600 dark:text-slate-400 text-lg">
-              {searchQuery ? "No properties found matching your search" : "No properties yet"}
+              {searchQuery || statusFilter !== "all" || typeFilter !== "all" ? "No properties found matching your filters" : "No properties yet"}
             </p>
             <Button onClick={openAddDialog} variant="outline" className="mt-4">
               Add your first property
@@ -553,34 +763,72 @@ const AdminProperties = () => {
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
                 <tr>
+                  <th className="px-4 py-4 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedProperties.length === filteredProperties.length && filteredProperties.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedProperties(filteredProperties.map(p => p.id));
+                        } else {
+                          setSelectedProperties([]);
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Property</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Location</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Price</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white hidden md:table-cell">Location</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white hidden lg:table-cell">Price</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Type</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white hidden sm:table-cell">Type</th>
                   <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900 dark:text-white">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
                 {filteredProperties.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedProperties.includes(p.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedProperties(prev => [...prev, p.id]);
+                          } else {
+                            setSelectedProperties(prev => prev.filter(id => id !== p.id));
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {p.images?.[0] ? (
-                          <img src={p.images[0]} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
-                            <ImageIcon size={20} className="text-slate-400" />
-                          </div>
-                        )}
-                        <div>
-                          <div className="font-medium text-slate-900 dark:text-white">{p.title}</div>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">{p.images?.length || 0} images</p>
+                        <div className="relative">
+                          {p.images?.[0] ? (
+                            <img src={p.images[0]} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
+                              <ImageIcon size={20} className="text-slate-400" />
+                            </div>
+                          )}
+                          {p.videos?.length > 0 && (
+                            <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full p-1">
+                              <Video size={8} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-slate-900 dark:text-white truncate">{p.title}</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-400 md:hidden">{p.location}</div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                            {p.images?.length || 0} img{p.videos?.length ? `, ${p.videos.length} vid` : ''}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{p.location || "—"}</td>
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 hidden md:table-cell">{p.location || "—"}</td>
+                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white hidden lg:table-cell">
                       KES {Number(p.price || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
@@ -588,7 +836,7 @@ const AdminProperties = () => {
                         value={p.status || "available"}
                         onValueChange={(v) => updateStatus(p.id, v as "available" | "pending" | "sold")}
                       >
-                        <SelectTrigger className="w-32 h-8 text-xs">
+                        <SelectTrigger className="w-24 h-8 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -598,7 +846,7 @@ const AdminProperties = () => {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 hidden sm:table-cell">
                       <Badge variant="outline" className="capitalize text-xs">
                         {p.property_type || "land"}
                       </Badge>
@@ -675,6 +923,7 @@ const AdminProperties = () => {
         setDialogOpen(v);
         if (!v) {
           setFiles([]);
+          setVideoFiles([]);
           setUploadProgress("");
           setEditingId(null);
           setLocationSearch("");
@@ -749,6 +998,26 @@ const AdminProperties = () => {
                 placeholder="Seller phone"
                 value={form.seller_phone}
                 onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                placeholder="Bedrooms"
+                type="number"
+                value={form.bedrooms}
+                onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
+              />
+              <Input
+                placeholder="Bathrooms"
+                type="number"
+                value={form.bathrooms}
+                onChange={(e) => setForm((f) => ({ ...f, bathrooms: e.target.value }))}
+              />
+              <Input
+                placeholder="Features (comma separated)"
+                value={form.features}
+                onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
               />
             </div>
 
@@ -915,6 +1184,113 @@ const AdminProperties = () => {
                   placeholder="Image URLs (comma separated)"
                   value={form.images}
                   onChange={(e) => setForm((f) => ({ ...f, images: e.target.value }))}
+                  className="text-sm"
+                />
+              )}
+            </div>
+
+            {/* Video Upload Section */}
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+              <div className="flex items-center gap-6 mb-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={useVideoUpload}
+                    onChange={() => setUseVideoUpload(true)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Videos</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={!useVideoUpload}
+                    onChange={() => setUseVideoUpload(false)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Video URLs</span>
+                </label>
+              </div>
+
+              {/* Existing Videos (for editing) */}
+              {existingVideos.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Current Videos</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {existingVideos.map((url, index) => (
+                      <div key={index} className="relative group">
+                        <video
+                          src={url}
+                          className="w-full h-20 object-cover rounded-lg"
+                          controls={false}
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                          <Play size={24} className="text-white" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeExistingVideo(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {useVideoUpload ? (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      accept="video/mp4,video/webm,video/ogg,video/avi,video/mov"
+                      onChange={handleVideoFileSelect}
+                      className="hidden"
+                      id="video-file-input"
+                    />
+                    <label htmlFor="video-file-input" className="cursor-pointer block">
+                      <Video className="mx-auto h-10 w-10 text-slate-400 mb-2" />
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Click to select videos
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        MP4, WEBM, OGG, AVI, MOV up to 50MB each (max 5 videos)
+                      </p>
+                    </label>
+                  </div>
+
+                  {videoFiles.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {videoFiles.map((file, index) => (
+                        <div key={index} className="relative group">
+                          <video
+                            src={URL.createObjectURL(file)}
+                            className="w-full h-20 object-cover rounded-lg"
+                            controls={false}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                            <Play size={24} className="text-white" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeVideoFile(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Input
+                  placeholder="Video URLs (comma separated)"
+                  value={form.videos}
+                  onChange={(e) => setForm((f) => ({ ...f, videos: e.target.value }))}
                   className="text-sm"
                 />
               )}
