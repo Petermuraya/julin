@@ -695,11 +695,11 @@ const AdminProperties = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-white">Properties</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">Manage all properties in your portfolio</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Properties</h1>
+          <p className="text-muted-foreground mt-1">Manage all properties in your portfolio</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={openAddDialog} className="bg-blue-600 hover:bg-blue-700 inline-flex items-center gap-2">
+          <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2">
             <Plus size={18} />
             Add Property
           </Button>
@@ -737,7 +737,7 @@ const AdminProperties = () => {
       {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 text-slate-400" size={20} />
+          <Search className="absolute left-3 top-3 text-muted-foreground" size={20} />
           <Input
             placeholder="Search properties by title or location..."
             value={searchQuery}
@@ -777,12 +777,12 @@ const AdminProperties = () => {
       <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin inline-block w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full"></div>
-            <p className="mt-2 text-slate-600 dark:text-slate-400">Loading properties...</p>
+            <div className="animate-spin inline-block w-8 h-8 border-4 border-muted border-t-primary rounded-full"></div>
+            <p className="mt-2 text-muted-foreground">Loading properties...</p>
           </div>
         ) : filteredProperties.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-slate-600 dark:text-slate-400 text-lg">
+            <p className="text-muted-foreground text-lg">
               {searchQuery || statusFilter !== "all" || typeFilter !== "all" ? "No properties found matching your filters" : "No properties yet"}
             </p>
             <Button onClick={openAddDialog} variant="outline" className="mt-4">
@@ -808,12 +808,12 @@ const AdminProperties = () => {
                       className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                     />
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Property</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white hidden md:table-cell">Location</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white hidden lg:table-cell">Price</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900 dark:text-white hidden sm:table-cell">Type</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900 dark:text-white">Actions</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Property</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden md:table-cell">Location</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden lg:table-cell">Price</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-foreground hidden sm:table-cell">Type</th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -839,27 +839,27 @@ const AdminProperties = () => {
                           {p.images?.[0] ? (
                             <img src={p.images[0]} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
                           ) : (
-                            <div className="w-12 h-12 rounded-lg bg-slate-200 dark:bg-slate-600 flex items-center justify-center">
-                              <ImageIcon size={20} className="text-slate-400" />
+                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                              <ImageIcon size={20} className="text-muted-foreground" />
                             </div>
                           )}
                           {p.videos?.length > 0 && (
-                            <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full p-1">
+                            <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full p-1">
                               <Video size={8} />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-slate-900 dark:text-white truncate">{p.title}</div>
-                          <div className="text-xs text-slate-600 dark:text-slate-400 md:hidden">{p.location}</div>
-                          <p className="text-xs text-slate-600 dark:text-slate-400">
+                          <div className="font-medium text-foreground truncate">{p.title}</div>
+                          <div className="text-xs text-muted-foreground md:hidden">{p.location}</div>
+                          <p className="text-xs text-muted-foreground">
                             {p.images?.length || 0} img{p.videos?.length ? `, ${p.videos.length} vid` : ''}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 hidden md:table-cell">{p.location || "—"}</td>
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-white hidden lg:table-cell">
+                    <td className="px-6 py-4 text-muted-foreground hidden md:table-cell">{p.location || "—"}</td>
+                    <td className="px-6 py-4 font-medium text-foreground hidden lg:table-cell">
                       KES {Number(p.price || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
