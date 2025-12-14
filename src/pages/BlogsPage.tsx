@@ -198,9 +198,4 @@ const BlogsPage = () => {
   );
 };
 
-      <Footer />
-    </>
-  );
-};
-
 export default BlogsPage;

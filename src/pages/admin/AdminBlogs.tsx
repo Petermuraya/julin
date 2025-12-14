@@ -281,5 +281,3 @@ const AdminBlogs = () => {
 };
 
 export default AdminBlogs;
-
-export default AdminBlogs;
