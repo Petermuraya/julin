@@ -30,9 +30,9 @@ export type Property = {
   video_url: string | null;
   latitude: number;
   longitude: number;
-  bedrooms: number;
-  bathrooms: number;
-  features: string[];
+  bedrooms?: number;
+  bathrooms?: number;
+  features?: string[];
   status: "available" | "pending" | "sold";
   created_at: string;
   updated_at: string;

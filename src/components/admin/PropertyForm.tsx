@@ -16,7 +16,7 @@ interface PropertyFormProps {
   useUpload: boolean;
   setUseUpload: (value: boolean) => void;
   existingImages: string[];
-  uploadProgress: number | null;
+  uploadProgress: string | null;
   handleImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleVideoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   removeImage: (index: number) => void;
@@ -259,16 +259,10 @@ export const PropertyForm = ({
                   </Button>
                 </label>
               </div>
-              {uploadProgress !== null && (
+              {uploadProgress && (
                 <div className="mt-4">
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div
-                      className="bg-primary h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Uploading... {uploadProgress}%
+                  <p className="text-xs text-muted-foreground">
+                    {uploadProgress}
                   </p>
                 </div>
               )}

@@ -20,6 +20,8 @@ interface PropertySearchBarProps {
   setPriceRange: (value: [number, number]) => void;
   clearFilters: () => void;
   getActiveFiltersCount: () => number;
+  filtersOpen: boolean;
+  setFiltersOpen: (open: boolean) => void;
 }
 
 export const PropertySearchBar = ({
@@ -37,6 +39,8 @@ export const PropertySearchBar = ({
   setPriceRange,
   clearFilters,
   getActiveFiltersCount,
+  filtersOpen,
+  setFiltersOpen,
 }: PropertySearchBarProps) => {
   return (
     <div className="space-y-4">

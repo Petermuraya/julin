@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Facebook, Instagram, MessageCircle, Twitter, Send } from "lucide-react";
 import mapboxgl from "mapbox-gl";
@@ -45,7 +45,7 @@ const AdminProperties = () => {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const [existingVideos, setExistingVideos] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<string>("");
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -231,6 +231,15 @@ const AdminProperties = () => {
   };
 
   const removeExistingVideo = (index: number) => {
+    setExistingVideos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleImageUpload = handleFileSelect;
+  const handleVideoUpload = handleVideoFileSelect;
+  const removeImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+  const removeVideo = (index: number) => {
     setExistingVideos((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -731,6 +740,9 @@ const AdminProperties = () => {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl">{editingId ? "Edit Property" : "Add New Property"}</DialogTitle>
+            <DialogDescription>
+              {editingId ? "Update the property details below." : "Fill in the details to add a new property."}
+            </DialogDescription>
           </DialogHeader>
           <PropertyForm
             form={form}

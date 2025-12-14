@@ -258,7 +258,7 @@ const Hero = () => {
               transition={{ delay: 0.3 }}
             >
               Discover Your
-              <span className="block text-accent bg-gradient-to-r from-accent to-blue-400 bg-clip-text text-transparent mt-2">
+              <span className="block bg-gradient-to-r from-accent to-blue-400 bg-clip-text text-transparent mt-2">
                 Perfect Property
               </span>
             </motion.h1>
