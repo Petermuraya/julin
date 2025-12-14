@@ -1,0 +1,39 @@
+export type PropertyForm = {
+  title: string;
+  location: string;
+  price: string;
+  property_type: "land" | "plot" | "house" | "apartment" | "commercial";
+  description: string;
+  seller_name: string;
+  seller_phone: string;
+  size: string;
+  images: string;
+  videos: string;
+  latitude: string;
+  longitude: string;
+  bedrooms: string;
+  bathrooms: string;
+  features: string;
+};
+
+export type Property = {
+  id: string;
+  title: string;
+  location: string;
+  price: number;
+  property_type: string;
+  description: string;
+  seller_name: string;
+  seller_phone: string;
+  size: string;
+  images: string[];
+  videos: string[];
+  latitude: number;
+  longitude: number;
+  bedrooms: number;
+  bathrooms: number;
+  features: string[];
+  status: "available" | "pending" | "sold";
+  created_at: string;
+  updated_at: string;
+};

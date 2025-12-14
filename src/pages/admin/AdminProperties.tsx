@@ -4,35 +4,17 @@ import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Search, Upload, X, Image as ImageIcon, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send, Video, Play, Eye, BarChart3, Filter, Download, Copy } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, MapPin, Navigation, Share2, Facebook, Instagram, MessageCircle, Twitter, Send, Video, Play, Eye, BarChart3, Filter, Download, Copy } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { PropertyForm } from "@/components/admin/PropertyForm";
+import { PropertyForm as PropertyFormType, Property } from "@/types/property";
 
 const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
 
-type PropertyForm = {
-  title: string;
-  location: string;
-  price: string;
-  property_type: "land" | "plot" | "house" | "apartment" | "commercial";
-  description: string;
-  seller_name: string;
-  seller_phone: string;
-  size: string;
-  images: string;
-  videos: string;
-  latitude: string;
-  longitude: string;
-  bedrooms: string;
-  bathrooms: string;
-  features: string;
-};
-
-const emptyForm: PropertyForm = {
+const emptyForm: PropertyFormType = {
   title: "",
   location: "",
   price: "",
@@ -51,12 +33,12 @@ const emptyForm: PropertyForm = {
 };
 
 const AdminProperties = () => {
-  const [properties, setProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<PropertyForm>(emptyForm);
+  const [form, setForm] = useState<PropertyFormType>(emptyForm);
   const [useUpload, setUseUpload] = useState(true);
   const [useVideoUpload, setUseVideoUpload] = useState(true);
   const [files, setFiles] = useState<File[]>([]);
@@ -971,364 +953,24 @@ const AdminProperties = () => {
           <DialogHeader>
             <DialogTitle className="text-2xl">{editingId ? "Edit Property" : "Add New Property"}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Property Title *"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                className="col-span-2"
-              />
-              <Input
-                placeholder="Location *"
-                value={form.location}
-                onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-              />
-              <Input
-                placeholder="Price (KES) *"
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
-              />
-            </div>
+          <PropertyForm
+            form={form}
+            setForm={setForm}
+            locationSearch={locationSearch}
+            setLocationSearch={setLocationSearch}
+            searchLocation={searchLocation}
+            getCurrentLocation={getCurrentLocation}
+            isLocating={isLocating}
+            useUpload={useUpload}
+            setUseUpload={setUseUpload}
+            existingImages={existingImages}
+            uploadProgress={uploadProgress}
+            handleImageUpload={handleImageUpload}
+            handleVideoUpload={handleVideoUpload}
+            removeImage={removeImage}
+            removeVideo={removeVideo}
+          />
 
-            <div className="grid grid-cols-2 gap-4">
-              <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v as any }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Property Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="land">Land</SelectItem>
-                  <SelectItem value="plot">Plot</SelectItem>
-                  <SelectItem value="house">House</SelectItem>
-                  <SelectItem value="apartment">Apartment</SelectItem>
-                  <SelectItem value="commercial">Commercial</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="Size (e.g., 1/8 Acre, 50x100)"
-                value={form.size}
-                onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
-              />
-            </div>
-
-            <Textarea
-              placeholder="Description"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              className="min-h-24"
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                placeholder="Seller name"
-                value={form.seller_name}
-                onChange={(e) => setForm((f) => ({ ...f, seller_name: e.target.value }))}
-              />
-              <Input
-                placeholder="Seller phone"
-                value={form.seller_phone}
-                onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <Input
-                placeholder="Bedrooms"
-                type="number"
-                value={form.bedrooms}
-                onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
-              />
-              <Input
-                placeholder="Bathrooms"
-                type="number"
-                value={form.bathrooms}
-                onChange={(e) => setForm((f) => ({ ...f, bathrooms: e.target.value }))}
-              />
-              <Input
-                placeholder="Features (comma separated)"
-                value={form.features}
-                onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
-              />
-            </div>
-
-            {/* Location/Map Section */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <MapPin size={20} />
-                Property Location
-              </h3>
-
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Search for a location..."
-                    value={locationSearch}
-                    onChange={(e) => setLocationSearch(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    onClick={searchLocation}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Search
-                  </Button>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={getCurrentLocation}
-                    variant="outline"
-                    size="sm"
-                    disabled={isLocating}
-                    className="flex items-center gap-2"
-                  >
-                    <Navigation size={16} />
-                    {isLocating ? "Getting Location..." : "Use My Location"}
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    placeholder="Latitude"
-                    type="number"
-                    step="any"
-                    value={form.latitude}
-                    onChange={(e) => setForm((f) => ({ ...f, latitude: e.target.value }))}
-                  />
-                  <Input
-                    placeholder="Longitude"
-                    type="number"
-                    step="any"
-                    value={form.longitude}
-                    onChange={(e) => setForm((f) => ({ ...f, longitude: e.target.value }))}
-                  />
-                </div>
-
-                {form.latitude && form.longitude && (
-                  <div className="text-sm text-slate-600 dark:text-slate-400">
-                    Coordinates: {parseFloat(form.latitude).toFixed(6)}, {parseFloat(form.longitude).toFixed(6)}
-                  </div>
-                )}
-
-                <div id="property-map" className="w-full h-64 rounded-lg border border-slate-200 dark:border-slate-700"></div>
-              </div>
-            </div>
-
-            {/* Image Upload Section */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center gap-6 mb-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={useUpload}
-                    onChange={() => setUseUpload(true)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Images</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={!useUpload}
-                    onChange={() => setUseUpload(false)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Image URLs</span>
-                </label>
-              </div>
-
-              {/* Existing Images (for editing) */}
-              {existingImages.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Current Images</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {existingImages.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt={`Image ${index + 1}`}
-                          className="w-full h-20 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {useUpload ? (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="file-input"
-                    />
-                    <label htmlFor="file-input" className="cursor-pointer block">
-                      <Upload className="mx-auto h-10 w-10 text-slate-400 mb-2" />
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Click to select images
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        PNG, JPG, WEBP, GIF up to 5MB each (max 10 images)
-                      </p>
-                    </label>
-                  </div>
-
-                  {files.length > 0 && (
-                    <div className="grid grid-cols-4 gap-2">
-                      {files.map((file, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-20 object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Input
-                  placeholder="Image URLs (comma separated)"
-                  value={form.images}
-                  onChange={(e) => setForm((f) => ({ ...f, images: e.target.value }))}
-                  className="text-sm"
-                />
-              )}
-            </div>
-
-            {/* Video Upload Section */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-              <div className="flex items-center gap-6 mb-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={useVideoUpload}
-                    onChange={() => setUseVideoUpload(true)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Upload Videos</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    checked={!useVideoUpload}
-                    onChange={() => setUseVideoUpload(false)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Video URLs</span>
-                </label>
-              </div>
-
-              {/* Existing Videos (for editing) */}
-              {existingVideos.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Current Videos</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {existingVideos.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <video
-                          src={url}
-                          className="w-full h-20 object-cover rounded-lg"
-                          controls={false}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                          <Play size={24} className="text-white" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeExistingVideo(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {useVideoUpload ? (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                    <input
-                      type="file"
-                      multiple
-                      accept="video/mp4,video/webm,video/ogg,video/avi,video/mov"
-                      onChange={handleVideoFileSelect}
-                      className="hidden"
-                      id="video-file-input"
-                    />
-                    <label htmlFor="video-file-input" className="cursor-pointer block">
-                      <Video className="mx-auto h-10 w-10 text-slate-400 mb-2" />
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Click to select videos
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        MP4, WEBM, OGG, AVI, MOV up to 50MB each (max 5 videos)
-                      </p>
-                    </label>
-                  </div>
-
-                  {videoFiles.length > 0 && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {videoFiles.map((file, index) => (
-                        <div key={index} className="relative group">
-                          <video
-                            src={URL.createObjectURL(file)}
-                            className="w-full h-20 object-cover rounded-lg"
-                            controls={false}
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                            <Play size={24} className="text-white" />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeVideoFile(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <Input
-                  placeholder="Video URLs (comma separated)"
-                  value={form.videos}
-                  onChange={(e) => setForm((f) => ({ ...f, videos: e.target.value }))}
-                  className="text-sm"
-                />
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2 sm:justify-end">
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
               Cancel
             </Button>
