@@ -2,8 +2,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Upload, X, Image as ImageIcon, Video, Play } from "lucide-react";
+import { MapPin, Navigation, Upload, X, Video, Sparkles } from "lucide-react";
 import { PropertyForm as PropertyFormType } from "@/types/property";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 interface PropertyFormProps {
   form: PropertyFormType;
@@ -23,6 +26,9 @@ interface PropertyFormProps {
   removeVideo: (index: number) => void;
 }
 
+// Property types that should show bedrooms/bathrooms/features
+const RESIDENTIAL_TYPES = ['house', 'apartment'];
+
 export const PropertyForm = ({
   form,
   setForm,
@@ -40,6 +46,63 @@ export const PropertyForm = ({
   removeImage,
   removeVideo,
 }: PropertyFormProps) => {
+  const [generatingDescription, setGeneratingDescription] = useState(false);
+  
+  const showResidentialFields = RESIDENTIAL_TYPES.includes(form.property_type);
+
+  const generateDescription = async () => {
+    if (!form.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a property title first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneratingDescription(true);
+    try {
+      const details = [
+        form.title,
+        form.location && `located in ${form.location}`,
+        form.size && `size: ${form.size}`,
+        form.property_type && `property type: ${form.property_type}`,
+        form.price && `price: KES ${Number(form.price).toLocaleString()}`,
+        showResidentialFields && form.bedrooms && `${form.bedrooms} bedrooms`,
+        showResidentialFields && form.bathrooms && `${form.bathrooms} bathrooms`,
+        showResidentialFields && form.features && `features: ${form.features}`,
+      ].filter(Boolean).join(', ');
+
+      const prompt = `Write a compelling property description for a real estate listing in Kenya with these details: ${details}. Make it professional, highlight key selling points, and keep it under 200 words.`;
+
+      const response = await supabase.functions.invoke('chat', {
+        body: { 
+          messages: [{ role: 'user', content: prompt }],
+          isAdmin: true
+        }
+      });
+
+      if (response.error) throw response.error;
+      
+      const aiResponse = response.data?.response || response.data;
+      setForm(prev => ({ ...prev, description: aiResponse }));
+
+      toast({
+        title: "Success",
+        description: "Description generated successfully",
+      });
+    } catch (err: any) {
+      console.error("Error generating description:", err);
+      toast({
+        title: "Error",
+        description: "Failed to generate description. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingDescription(false);
+    }
+  };
+
   return (
     <div className="grid gap-4">
       <div className="grid grid-cols-2 gap-4">
@@ -82,12 +145,50 @@ export const PropertyForm = ({
         />
       </div>
 
-      <Textarea
-        placeholder="Description"
-        value={form.description}
-        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-        className="min-h-24"
-      />
+      {/* Residential-only fields: bedrooms, bathrooms, features */}
+      {showResidentialFields && (
+        <div className="grid grid-cols-3 gap-4">
+          <Input
+            placeholder="Bedrooms"
+            type="number"
+            value={form.bedrooms}
+            onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
+          />
+          <Input
+            placeholder="Bathrooms"
+            type="number"
+            value={form.bathrooms}
+            onChange={(e) => setForm((f) => ({ ...f, bathrooms: e.target.value }))}
+          />
+          <Input
+            placeholder="Features (comma separated)"
+            value={form.features}
+            onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
+          />
+        </div>
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-foreground">Description</span>
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm"
+            onClick={generateDescription}
+            disabled={generatingDescription}
+          >
+            <Sparkles className="h-4 w-4 mr-1" />
+            {generatingDescription ? "Generating..." : "AI Generate"}
+          </Button>
+        </div>
+        <Textarea
+          placeholder="Property description..."
+          value={form.description}
+          onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          className="min-h-24"
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Input
@@ -99,26 +200,6 @@ export const PropertyForm = ({
           placeholder="Seller phone"
           value={form.seller_phone}
           onChange={(e) => setForm((f) => ({ ...f, seller_phone: e.target.value }))}
-        />
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Input
-          placeholder="Bedrooms"
-          type="number"
-          value={form.bedrooms}
-          onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
-        />
-        <Input
-          placeholder="Bathrooms"
-          type="number"
-          value={form.bathrooms}
-          onChange={(e) => setForm((f) => ({ ...f, bathrooms: e.target.value }))}
-        />
-        <Input
-          placeholder="Features (comma separated)"
-          value={form.features}
-          onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
         />
       </div>
 

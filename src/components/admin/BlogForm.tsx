@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { X, Upload } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Blog } from "@/types/blog";
 import { toast } from "@/components/ui/use-toast";
@@ -34,6 +34,7 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (blog) {
@@ -105,6 +106,68 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
     }));
   };
 
+  const generateWithAI = async (type: 'content' | 'excerpt' | 'seo') => {
+    if (!form.title.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a title first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      const prompt = type === 'content' 
+        ? `Write a detailed blog post about "${form.title}" for a real estate website in Kenya. Include helpful tips and information for property buyers and sellers. Keep it informative and professional.`
+        : type === 'excerpt'
+        ? `Write a brief 2-3 sentence excerpt/summary for a blog post titled "${form.title}" for a real estate website.`
+        : `Generate SEO-optimized title (max 60 chars) and description (max 160 chars) for a blog post titled "${form.title}" about real estate in Kenya. Format as JSON: {"title": "...", "description": "..."}`;
+
+      const response = await supabase.functions.invoke('chat', {
+        body: { 
+          messages: [{ role: 'user', content: prompt }],
+          isAdmin: true
+        }
+      });
+
+      if (response.error) throw response.error;
+      
+      const aiResponse = response.data?.response || response.data;
+      
+      if (type === 'content') {
+        setForm(prev => ({ ...prev, content: aiResponse }));
+      } else if (type === 'excerpt') {
+        setForm(prev => ({ ...prev, excerpt: aiResponse }));
+      } else {
+        try {
+          const seoData = JSON.parse(aiResponse);
+          setForm(prev => ({ 
+            ...prev, 
+            seo_title: seoData.title || prev.seo_title,
+            seo_description: seoData.description || prev.seo_description
+          }));
+        } catch {
+          setForm(prev => ({ ...prev, seo_description: aiResponse }));
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: "AI content generated successfully",
+      });
+    } catch (err: any) {
+      console.error("Error generating with AI:", err);
+      toast({
+        title: "Error",
+        description: "Failed to generate content. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!form.title.trim() || !form.content.trim()) {
       toast({
@@ -134,7 +197,7 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
           .single();
 
         if (error) throw error;
-        savedBlog = data;
+        savedBlog = data as unknown as Blog;
       } else {
         // Create new blog
         const { data, error } = await supabase
@@ -144,7 +207,7 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
           .single();
 
         if (error) throw error;
-        savedBlog = data;
+        savedBlog = data as unknown as Blog;
       }
 
       onSave(savedBlog);
@@ -200,7 +263,19 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
           </div>
 
           <div>
-            <Label htmlFor="excerpt">Excerpt</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="excerpt">Excerpt</Label>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm"
+                onClick={() => generateWithAI('excerpt')}
+                disabled={generating}
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                AI Generate
+              </Button>
+            </div>
             <Textarea
               id="excerpt"
               value={form.excerpt}
@@ -225,7 +300,19 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
         {/* Content */}
         <div className="space-y-4">
           <div>
-            <Label htmlFor="content">Content *</Label>
+            <div className="flex items-center justify-between mb-2">
+              <Label htmlFor="content">Content *</Label>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm"
+                onClick={() => generateWithAI('content')}
+                disabled={generating}
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                AI Generate
+              </Button>
+            </div>
             <Textarea
               id="content"
               value={form.content}
@@ -277,7 +364,19 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
       {/* SEO Settings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="seo_title">SEO Title</Label>
+          <div className="flex items-center justify-between mb-2">
+            <Label htmlFor="seo_title">SEO Title</Label>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
+              onClick={() => generateWithAI('seo')}
+              disabled={generating}
+            >
+              <Sparkles className="h-4 w-4 mr-1" />
+              AI Generate
+            </Button>
+          </div>
           <Input
             id="seo_title"
             value={form.seo_title}
@@ -330,7 +429,7 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
         <Button variant="outline" onClick={onCancel} disabled={saving}>
           Cancel
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || generating}>
           {saving ? "Saving..." : (blog ? "Update" : "Create")} Blog
         </Button>
       </div>

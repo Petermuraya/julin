@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BookOpen, Plus, Edit, Trash2, Eye, EyeOff, Calendar } from "lucide-react";
+import { BookOpen, Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Blog } from "@/types/blog";
 import { toast } from "@/components/ui/use-toast";
@@ -29,7 +29,6 @@ const AdminBlogs = () => {
         .order("created_at", { ascending: false });
 
       if (error) {
-        // Check if the error is because the table doesn't exist
         if (error.message.includes('relation "public.blogs" does not exist')) {
           setBlogs([]);
           setLoading(false);
@@ -37,7 +36,7 @@ const AdminBlogs = () => {
         }
         throw error;
       }
-      setBlogs(data || []);
+      setBlogs((data || []) as unknown as Blog[]);
     } catch (err: any) {
       console.error("Error fetching blogs:", err);
       toast({
@@ -81,7 +80,7 @@ const AdminBlogs = () => {
 
       const { error } = await supabase
         .from("blogs")
-        .update(updates)
+        .update(updates as any)
         .eq("id", blog.id);
 
       if (error) throw error;
