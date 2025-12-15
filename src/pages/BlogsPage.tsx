@@ -29,7 +29,6 @@ const BlogsPage = () => {
         .order("published_at", { ascending: false });
 
       if (error) {
-        // Check if the error is because the table doesn't exist
         if (error.message.includes('relation "public.blogs" does not exist')) {
           setError("The blogs feature is not yet set up. Please contact the administrator to create the blogs table.");
         } else {
@@ -37,7 +36,7 @@ const BlogsPage = () => {
         }
         return;
       }
-      setBlogs(data || []);
+      setBlogs((data || []) as unknown as Blog[]);
     } catch (err: any) {
       console.error("Error fetching blogs:", err);
       if (err.message.includes('blogs')) {

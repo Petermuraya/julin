@@ -32,7 +32,6 @@ const BlogDetailPage = () => {
         .single();
 
       if (error) {
-        // Check if the error is because the table doesn't exist
         if (error.message.includes('relation "public.blogs" does not exist')) {
           setError("The blogs feature is not yet set up. Please contact the administrator.");
         } else {
@@ -43,13 +42,14 @@ const BlogDetailPage = () => {
 
       // Increment view count
       if (data) {
+        const currentViewCount = (data as any).view_count || 0;
         await supabase
           .from("blogs")
-          .update({ view_count: (data.view_count || 0) + 1 })
+          .update({ view_count: currentViewCount + 1 } as any)
           .eq("id", data.id);
       }
 
-      setBlog(data);
+      setBlog(data as unknown as Blog);
     } catch (err: any) {
       console.error("Error fetching blog:", err);
       if (err.message.includes('blogs')) {
@@ -83,9 +83,7 @@ const BlogDetailPage = () => {
         console.log("Error sharing:", err);
       }
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href);
-      // You could show a toast here
     }
   };
 
