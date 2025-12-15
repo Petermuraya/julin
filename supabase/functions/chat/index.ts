@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { message, session_id, conversation_id, user_info, conversation_history } = await req.json();
+    const { message, session_id, conversation_id, user_info, user_role, conversation_history } = await req.json();
 
     if (!message || typeof message !== "string") {
       return new Response(
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     
     if (!LOVABLE_API_KEY) {
       // Fallback to simple property-based response without AI
-      const reply = generateSimpleResponse(message, allProperties || []);
+      const reply = generateSimpleResponse(message, allProperties || [], user_role);
       const relevantProperties = findRelevantProperties(message, allProperties || []);
       
       return new Response(
@@ -60,7 +60,36 @@ Deno.serve(async (req) => {
     }
 
     // Use Lovable AI Gateway
-    const systemPrompt = `You are an intelligent AI assistant for Julin Real Estate Hub in Kenya.
+    const isAdmin = user_role === 'admin';
+    
+    const systemPrompt = isAdmin ? `You are an advanced AI assistant for Julin Real Estate Hub administrators in Kenya.
+
+Available properties:
+${allProperties?.map(p =>
+  `- ${p.title} (${p.property_type}) in ${p.location}: KES ${Number(p.price).toLocaleString()}${p.size ? `, ${p.size}` : ''}. ${p.description || ''}`
+).join('\n') || 'No properties available'}
+
+ADMIN FUNCTIONS:
+- Provide detailed property analytics and insights
+- Help manage listings, pricing, and inventory
+- Assist with customer inquiries and lead management
+- Generate reports and market analysis
+- Access admin commands (respond to 'admin help', 'stats', 'analytics', etc.)
+
+CORE FUNCTIONS:
+- Advanced property search and filtering
+- Market trend analysis and recommendations
+- Customer relationship management
+- Administrative task automation
+
+RESPONSE GUIDELINES:
+- Be professional and detailed for admin users
+- Provide comprehensive information and options
+- Include relevant statistics and data when available
+- Offer administrative insights and recommendations
+- Support admin commands and system queries
+
+Current admin user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'})` : `You are an intelligent AI assistant for Julin Real Estate Hub in Kenya.
 
 Available properties:
 ${allProperties?.map(p =>
@@ -127,7 +156,7 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
       console.error("AI gateway error:", response.status, errorText);
       
       // Fallback to simple response
-      const reply = generateSimpleResponse(message, allProperties || []);
+      const reply = generateSimpleResponse(message, allProperties || [], user_role);
       const relevantProperties = findRelevantProperties(message, allProperties || []);
       
       return new Response(
@@ -162,8 +191,35 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
 });
 
 // Simple response generator when AI is not available
-function generateSimpleResponse(message: string, properties: any[]): string {
+function generateSimpleResponse(message: string, properties: any[], userRole?: string): string {
   const msg = message.toLowerCase();
+  const isAdmin = userRole === 'admin';
+  
+  // Admin commands
+  if (isAdmin) {
+    if (msg.includes('admin help')) {
+      return "Admin Commands Available:\n• 'stats' - Show property statistics\n• 'analytics' - Market analytics\n• 'pending' - Show pending properties\n• 'inquiries' - Recent customer inquiries\n• 'admin help' - Show this help";
+    }
+    
+    if (msg.includes('stats')) {
+      const totalProperties = properties.length;
+      const availableProperties = properties.filter(p => p.status === 'available').length;
+      const avgPrice = properties.length > 0 ? properties.reduce((sum, p) => sum + (p.price || 0), 0) / properties.length : 0;
+      
+      return `Property Statistics:\n• Total Properties: ${totalProperties}\n• Available: ${availableProperties}\n• Average Price: KES ${Math.round(avgPrice).toLocaleString()}`;
+    }
+    
+    if (msg.includes('analytics')) {
+      const locations = [...new Set(properties.map(p => p.location))];
+      const types = [...new Set(properties.map(p => p.property_type))];
+      
+      return `Market Analytics:\n• Active Locations: ${locations.join(', ')}\n• Property Types: ${types.join(', ')}\n• Total Market Value: KES ${properties.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}`;
+    }
+    
+    if (msg.includes('hello') || msg.includes('hi')) {
+      return "Hello Admin! Welcome to the Julin Real Estate admin assistant. Type 'admin help' for available commands or ask about properties and analytics.";
+    }
+  }
   
   if (msg.includes('hello') || msg.includes('hi')) {
     return "Hello! Welcome to Julin Real Estate. I can help you find properties in Kenya. What are you looking for? You can ask about houses, land, apartments, or plots in any location.";

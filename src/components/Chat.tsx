@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Bot } from 'lucide-react';
 import { PreChatForm } from './PreChatForm';
 import { ConversationRating } from './ConversationRating';
+import { supabase } from '@/integrations/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface ChatResponse {
   reply: string;
@@ -30,6 +32,8 @@ const Chat: React.FC = () => {
   const [phase, setPhase] = useState<ChatPhase>('form');
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [conversationId, setConversationId] = useState<string>('');
+  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'user' | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const sessionIdRef = useRef<string>('');
@@ -46,9 +50,13 @@ const Chat: React.FC = () => {
     setConversationId(convId);
 
     if (!localStorage.getItem(`chat:${sid}`)) {
+      const welcomeMessage = userRole === 'admin' 
+        ? "Hello Admin! I'm your AI property assistant with enhanced capabilities. You can:\n\n• Search and manage properties\n• Access admin commands (type 'admin help' for options)\n• Get detailed analytics and reports\n• Manage listings and inquiries"
+        : "Hello! I'm your AI property assistant. Ask me about properties, prices, or locations. For example:\n\n• 'Show me houses in Nairobi'\n• 'Land under 5 million'\n• 'Available plots'";
+      
       setMessages([{
         role: 'assistant',
-        content: "Hello! I'm your AI property assistant. Ask me about properties, prices, or locations. For example:\n\n• 'Show me houses in Nairobi'\n• 'Land under 5 million'\n• 'Available plots'"
+        content: welcomeMessage
       }]);
     }
   }, []);
@@ -56,6 +64,51 @@ const Chat: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Check authentication and user role
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setAuthUser(session?.user ?? null);
+      
+      if (session?.user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        setUserRole(roleData ? 'admin' : 'user');
+      } else {
+        setUserRole(null);
+      }
+    };
+    
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setAuthUser(session?.user ?? null);
+        
+        if (session?.user) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .eq('role', 'admin')
+            .maybeSingle();
+          
+          setUserRole(roleData ? 'admin' : 'user');
+        } else {
+          setUserRole(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleFormSubmit = (data: UserInfo) => {
     setUserInfo(data);
@@ -100,6 +153,7 @@ const Chat: React.FC = () => {
           session_id: sessionIdRef.current,
           conversation_id: conversationId,
           user_info: userInfo,
+          user_role: userRole,
           conversation_history: conversationHistory
         }),
       });

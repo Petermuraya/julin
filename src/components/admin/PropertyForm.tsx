@@ -102,25 +102,28 @@ export const PropertyForm = ({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Input
-          placeholder="Bedrooms"
-          type="number"
-          value={form.bedrooms}
-          onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
-        />
-        <Input
-          placeholder="Bathrooms"
-          type="number"
-          value={form.bathrooms}
-          onChange={(e) => setForm((f) => ({ ...f, bathrooms: e.target.value }))}
-        />
-        <Input
-          placeholder="Features (comma separated)"
-          value={form.features}
-          onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
-        />
-      </div>
+      {/* Only show bedrooms, bathrooms, and features for non-land properties */}
+      {form.property_type !== 'land' && form.property_type !== 'plot' && (
+        <div className="grid grid-cols-3 gap-4">
+          <Input
+            placeholder="Bedrooms"
+            type="number"
+            value={form.bedrooms}
+            onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
+          />
+          <Input
+            placeholder="Bathrooms"
+            type="number"
+            value={form.bathrooms}
+            onChange={(e) => setForm((f) => ({ ...f, bathrooms: e.target.value }))}
+          />
+          <Input
+            placeholder="Features (comma separated)"
+            value={form.features}
+            onChange={(e) => setForm((f) => ({ ...f, features: e.target.value }))}
+          />
+        </div>
+      )}
 
       {/* Location/Map Section */}
       <div className="border border-border rounded-lg p-4">
