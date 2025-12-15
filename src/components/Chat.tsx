@@ -51,7 +51,7 @@ const Chat: React.FC = () => {
 
     if (!localStorage.getItem(`chat:${sid}`)) {
       const welcomeMessage = userRole === 'admin' 
-        ? "Hello Admin! I'm your AI property assistant with enhanced capabilities. You can:\n\n• Search and manage properties\n• Access admin commands (type 'admin help' for options)\n• Get detailed analytics and reports\n• Manage listings and inquiries"
+        ? "Hello Admin! I'm your AI property assistant with enhanced capabilities. You can:\n\n• Search and manage properties\n• Access admin commands (type 'analytics' or 'summary')\n• Get detailed analytics and reports\n• Manage listings and inquiries\n• Use the full analytics dashboard"
         : "Hello! I'm your AI property assistant. Ask me about properties, prices, or locations. For example:\n\n• 'Show me houses in Nairobi'\n• 'Land under 5 million'\n• 'Available plots'";
       
       setMessages([{
@@ -79,7 +79,17 @@ const Chat: React.FC = () => {
           .eq('role', 'admin')
           .maybeSingle();
         
-        setUserRole(roleData ? 'admin' : 'user');
+        const isAdmin = !!roleData;
+        setUserRole(isAdmin ? 'admin' : 'user');
+
+        // For admins, skip the form and set user info automatically
+        if (isAdmin) {
+          setUserInfo({
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Admin',
+            phone: session.user.user_metadata?.phone || 'Admin'
+          });
+          setPhase('chat');
+        }
       } else {
         setUserRole(null);
       }
@@ -100,9 +110,24 @@ const Chat: React.FC = () => {
             .eq('role', 'admin')
             .maybeSingle();
           
-          setUserRole(roleData ? 'admin' : 'user');
+          const isAdmin = !!roleData;
+          setUserRole(isAdmin ? 'admin' : 'user');
+
+          // For admins, skip the form and set user info automatically
+          if (isAdmin) {
+            setUserInfo({
+              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Admin',
+              phone: session.user.user_metadata?.phone || 'Admin'
+            });
+            setPhase('chat');
+          }
         } else {
           setUserRole(null);
+          // Reset to form phase when user logs out
+          if (phase !== 'form') {
+            setPhase('form');
+            setUserInfo(null);
+          }
         }
       }
     );
@@ -237,7 +262,10 @@ const Chat: React.FC = () => {
             AI Property Assistant
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Hi {userInfo?.name}! How can I help you find your perfect property today?
+            {userRole === 'admin' 
+              ? `Welcome back, ${userInfo?.name}! You have admin access to enhanced features.`
+              : `Hi ${userInfo?.name}! How can I help you find your perfect property today?`
+            }
           </p>
         </div>
 
@@ -274,7 +302,7 @@ const Chat: React.FC = () => {
               }
             }}
             className="flex-1 p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-            placeholder="Ask about properties, prices, locations..."
+            placeholder={userRole === 'admin' ? "Ask about properties or type 'analytics' for insights..." : "Ask about properties, prices, locations..."}
           />
           <button
             onClick={sendMessage}
@@ -292,7 +320,39 @@ const Chat: React.FC = () => {
           </button>
         </div>
 
-        {messages.length === 1 && (
+        {messages.length === 1 && userRole === 'admin' && (
+          <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+            <div className="text-sm font-medium text-purple-800 dark:text-purple-200 mb-2">Admin Commands:</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setInput('analytics')}
+                className="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs rounded-lg transition-colors"
+              >
+                📊 Analytics
+              </button>
+              <button
+                onClick={() => setInput('summary')}
+                className="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs rounded-lg transition-colors"
+              >
+                📈 Summary
+              </button>
+              <button
+                onClick={() => setInput('admin help')}
+                className="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs rounded-lg transition-colors"
+              >
+                ❓ Help
+              </button>
+              <button
+                onClick={() => setInput('Show me houses in Nairobi')}
+                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 text-xs rounded-lg transition-colors"
+              >
+                Houses in Nairobi
+              </button>
+            </div>
+          </div>
+        )}
+
+        {messages.length === 1 && userRole !== 'admin' && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
             <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Quick Questions:</div>
             <div className="flex flex-wrap gap-2">
@@ -324,7 +384,17 @@ const Chat: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-2">
+          {userRole === 'admin' && (
+            <div className="flex justify-center gap-4">
+              <Link
+                to="/admin/chats"
+                className="text-sm text-purple-600 hover:text-purple-700 underline"
+              >
+                View Full Analytics Dashboard
+              </Link>
+            </div>
+          )}
           <button
             onClick={() => setPhase('rating')}
             className="text-sm text-gray-500 hover:text-gray-700 underline"
