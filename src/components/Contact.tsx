@@ -226,12 +226,12 @@ const ContactForm = () => {
     try {
       // Save to Supabase using direct API call
       const response = await fetch(
-        `${process.env.VITE_SUPABASE_URL}/rest/v1/contact_submissions`,
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/contact_submissions`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            apikey: process.env.VITE_SUPABASE_ANON_KEY || "",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
           },
           body: JSON.stringify({
             name: formData.name.trim(),
