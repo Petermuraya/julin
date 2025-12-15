@@ -6,7 +6,7 @@ VALUES (
   true,
   5242880, -- 5MB limit
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-);
+) ON CONFLICT (id) DO NOTHING;
 
 -- Allow anyone to view property images (public bucket)
 CREATE POLICY "Anyone can view property images"
