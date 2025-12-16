@@ -14,63 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      blogs: {
-        Row: {
-          author_name: string | null
-          content: string
-          created_at: string
-          excerpt: string | null
-          featured_image: string | null
-          id: string
-          published: boolean | null
-          published_at: string | null
-          seo_description: string | null
-          seo_keywords: string[] | null
-          seo_title: string | null
-          slug: string
-          tags: string[] | null
-          title: string
-          updated_at: string
-          view_count: number | null
-        }
-        Insert: {
-          author_name?: string | null
-          content: string
-          created_at?: string
-          excerpt?: string | null
-          featured_image?: string | null
-          id?: string
-          published?: boolean | null
-          published_at?: string | null
-          seo_description?: string | null
-          seo_keywords?: string[] | null
-          seo_title?: string | null
-          slug: string
-          tags?: string[] | null
-          title: string
-          updated_at?: string
-          view_count?: number | null
-        }
-        Update: {
-          author_name?: string | null
-          content?: string
-          created_at?: string
-          excerpt?: string | null
-          featured_image?: string | null
-          id?: string
-          published?: boolean | null
-          published_at?: string | null
-          seo_description?: string | null
-          seo_keywords?: string[] | null
-          seo_title?: string | null
-          slug?: string
-          tags?: string[] | null
-          title?: string
-          updated_at?: string
-          view_count?: number | null
-        }
-        Relationships: []
-      }
       buyer_inquiries: {
         Row: {
           buyer_email: string | null
@@ -123,43 +66,25 @@ export type Database = {
       }
       chat_conversations: {
         Row: {
-          ended_at: string | null
           id: string
-          is_admin: boolean | null
           last_message: string | null
-          rating: number | null
-          rating_feedback: string | null
           started_at: string | null
           summary: string | null
           user_display_name: string | null
-          user_email: string | null
-          user_phone: string | null
         }
         Insert: {
-          ended_at?: string | null
           id: string
-          is_admin?: boolean | null
           last_message?: string | null
-          rating?: number | null
-          rating_feedback?: string | null
           started_at?: string | null
           summary?: string | null
           user_display_name?: string | null
-          user_email?: string | null
-          user_phone?: string | null
         }
         Update: {
-          ended_at?: string | null
           id?: string
-          is_admin?: boolean | null
           last_message?: string | null
-          rating?: number | null
-          rating_feedback?: string | null
           started_at?: string | null
           summary?: string | null
           user_display_name?: string | null
-          user_email?: string | null
-          user_phone?: string | null
         }
         Relationships: []
       }
@@ -187,6 +112,48 @@ export type Database = {
           metadata?: Json | null
           role?: string | null
           session_id?: string | null
+        }
+        Relationships: []
+      }
+      contact_submissions: {
+        Row: {
+          admin_notes: string | null
+          created_at: string | null
+          email: string
+          id: string
+          inquiry_type: string | null
+          message: string
+          name: string
+          phone: string
+          status: string | null
+          subject: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          inquiry_type?: string | null
+          message: string
+          name: string
+          phone: string
+          status?: string | null
+          subject?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          inquiry_type?: string | null
+          message?: string
+          name?: string
+          phone?: string
+          status?: string | null
+          subject?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
