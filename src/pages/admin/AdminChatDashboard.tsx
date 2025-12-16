@@ -10,29 +10,19 @@ import { toast } from '@/components/ui/use-toast';
 
 interface Conversation {
   id: string;
-  conversation_id: string;
-  session_id: string;
-  user_name: string | null;
-  user_email: string | null;
-  user_phone: string | null;
-  created_at: string | null;
-  completed_at: string | null;
-  rating: number | null;
-  feedback: string | null;
-  rating_feedback: string | null;
-  is_admin: boolean;
-  messages: any[];
+  user_display_name: string | null;
+  started_at: string | null;
+  last_message: string | null;
+  summary: string | null;
 }
 
 interface ChatMessage {
   id: string;
-  conversation_id: string;
-  session_id: string;
-  user_name: string | null;
-  user_phone: string | null;
-  message: string | null;
-  response: string | null;
+  session_id: string | null;
+  role: string | null;
+  content: string | null;
   created_at: string | null;
+  metadata: any;
 }
 
 const AdminChatDashboard: React.FC = () => {
@@ -52,12 +42,11 @@ const AdminChatDashboard: React.FC = () => {
       const { data, error } = await supabase
         .from('chat_conversations')
         .select('*')
-        .eq('is_admin', false)
-        .order('created_at', { ascending: false })
+        .order('started_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
-      setConversations((data || []) as unknown as Conversation[]);
+      setConversations(data || []);
     } catch (err: any) {
       console.error('Error fetching conversations:', err);
       toast({
@@ -76,11 +65,11 @@ const AdminChatDashboard: React.FC = () => {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('conversation_id', conversationId)
+        .eq('session_id', conversationId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages((data || []) as unknown as ChatMessage[]);
+      setMessages(data || []);
     } catch (err: any) {
       console.error('Error fetching messages:', err);
       toast({
@@ -95,7 +84,7 @@ const AdminChatDashboard: React.FC = () => {
 
   const viewConversation = (conversation: Conversation) => {
     setSelectedConversation(conversation);
-    fetchMessages(conversation.conversation_id);
+    fetchMessages(conversation.id);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -109,16 +98,45 @@ const AdminChatDashboard: React.FC = () => {
     });
   };
 
+  // Extract rating from metadata if available
+  const getRating = (conversation: Conversation): number | null => {
+    // Check if summary contains rating info (stored as JSON)
+    if (conversation.summary) {
+      try {
+        const data = JSON.parse(conversation.summary);
+        return data.rating || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const getFeedback = (conversation: Conversation): string | null => {
+    if (conversation.summary) {
+      try {
+        const data = JSON.parse(conversation.summary);
+        return data.feedback || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
   const totalConversations = conversations.length;
-  const ratedConversations = conversations.filter(c => c.rating !== null);
+  const ratedConversations = conversations.filter(c => getRating(c) !== null);
   const averageRating = ratedConversations.length > 0
-    ? (ratedConversations.reduce((sum, c) => sum + (c.rating || 0), 0) / ratedConversations.length).toFixed(1)
+    ? (ratedConversations.reduce((sum, c) => sum + (getRating(c) || 0), 0) / ratedConversations.length).toFixed(1)
     : '-';
-  const lowRatings = conversations.filter(c => c.rating !== null && c.rating <= 2).length;
+  const lowRatings = conversations.filter(c => {
+    const rating = getRating(c);
+    return rating !== null && rating <= 2;
+  }).length;
   const todayConversations = conversations.filter(c => {
-    if (!c.created_at) return false;
+    if (!c.started_at) return false;
     const today = new Date();
-    const convDate = new Date(c.created_at);
+    const convDate = new Date(c.started_at);
     return convDate.toDateString() === today.toDateString();
   }).length;
 
@@ -213,7 +231,6 @@ const AdminChatDashboard: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead>Contact</TableHead>
                   <TableHead>Started</TableHead>
                   <TableHead>Last Message</TableHead>
                   <TableHead>Rating</TableHead>
@@ -221,56 +238,49 @@ const AdminChatDashboard: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {conversations.map((conv) => (
-                  <TableRow key={conv.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        {conv.user_name || 'Anonymous'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {conv.user_email && <div>{conv.user_email}</div>}
-                        {conv.user_phone && <div className="text-muted-foreground">{conv.user_phone}</div>}
-                        {!conv.user_email && !conv.user_phone && <span className="text-muted-foreground">-</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(conv.created_at)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate text-sm text-muted-foreground">
-                        {conv.messages && conv.messages.length > 0 
-                          ? conv.messages[conv.messages.length - 1]?.content || 'No messages'
-                          : 'No messages'
-                        }
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {conv.rating ? (
-                        <Badge variant={conv.rating >= 4 ? 'default' : conv.rating >= 3 ? 'secondary' : 'destructive'}>
-                          <Star className="h-3 w-3 mr-1 fill-current" />
-                          {conv.rating}/5
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Not rated</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => viewConversation(conv)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {conversations.map((conv) => {
+                  const rating = getRating(conv);
+                  return (
+                    <TableRow key={conv.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          {conv.user_display_name || 'Anonymous'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(conv.started_at)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-xs">
+                        <div className="truncate text-sm text-muted-foreground">
+                          {conv.last_message || 'No messages'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {rating ? (
+                          <Badge variant={rating >= 4 ? 'default' : rating >= 3 ? 'secondary' : 'destructive'}>
+                            <Star className="h-3 w-3 mr-1 fill-current" />
+                            {rating}/5
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Not rated</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => viewConversation(conv)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -294,29 +304,21 @@ const AdminChatDashboard: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Name:</span>{' '}
-                    {selectedConversation.user_name || 'Anonymous'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Email:</span>{' '}
-                    {selectedConversation.user_email || '-'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Phone:</span>{' '}
-                    {selectedConversation.user_phone || '-'}
+                    {selectedConversation.user_display_name || 'Anonymous'}
                   </div>
                   <div>
                     <span className="font-medium">Started:</span>{' '}
-                    {formatDate(selectedConversation.created_at)}
+                    {formatDate(selectedConversation.started_at)}
                   </div>
                   <div>
                     <span className="font-medium">Rating:</span>{' '}
-                    {selectedConversation.rating ? `${selectedConversation.rating}/5` : 'Not rated'}
+                    {getRating(selectedConversation) ? `${getRating(selectedConversation)}/5` : 'Not rated'}
                   </div>
                 </div>
-                {selectedConversation.feedback && (
+                {getFeedback(selectedConversation) && (
                   <div className="mt-2">
                     <span className="font-medium">Feedback:</span>{' '}
-                    {selectedConversation.feedback}
+                    {getFeedback(selectedConversation)}
                   </div>
                 )}
               </div>
@@ -333,32 +335,17 @@ const AdminChatDashboard: React.FC = () => {
               ) : (
                 messages.map((msg) => (
                   <div key={msg.id} className="space-y-2">
-                    {msg.message && (
-                      <div className="p-3 rounded-lg bg-primary/10 ml-8">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="default" className="text-xs">
-                            User
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(msg.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                    <div className={`p-3 rounded-lg ${msg.role === 'user' ? 'bg-primary/10 ml-8' : 'bg-muted mr-8'}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={msg.role === 'user' ? 'default' : 'secondary'} className="text-xs">
+                          {msg.role === 'user' ? 'User' : 'AI Assistant'}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(msg.created_at)}
+                        </span>
                       </div>
-                    )}
-                    {msg.response && (
-                      <div className="p-3 rounded-lg bg-muted mr-8">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="secondary" className="text-xs">
-                            AI Assistant
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(msg.created_at)}
-                          </span>
-                        </div>
-                        <p className="text-sm whitespace-pre-wrap">{msg.response}</p>
-                      </div>
-                    )}
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
                   </div>
                 ))
               )}

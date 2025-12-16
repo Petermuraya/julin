@@ -12,19 +12,38 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { message, session_id, conversation_id, user_info, user_role, conversation_history } = await req.json();
+    const body = await req.json();
+    const { message, session_id, conversation_id, user_info, user_role, conversation_history, type } = body;
 
+    // Create Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Handle different request types
+    if (type === 'blog_suggestion') {
+      return handleBlogSuggestion(body, supabase);
+    }
+
+    if (type === 'generate_blog') {
+      return handleGenerateBlog(body, supabase);
+    }
+
+    if (type === 'enhance_description') {
+      return handleEnhanceDescription(body);
+    }
+
+    if (type === 'conversation_summary') {
+      return handleConversationSummary(body, supabase);
+    }
+
+    // Default: chat message handling
     if (!message || typeof message !== "string") {
       return new Response(
         JSON.stringify({ error: "Message is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get all available properties for context
     const { data: allProperties, error: propertiesError } = await supabase
@@ -190,6 +209,301 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
   }
 });
 
+// Handle blog suggestion requests
+async function handleBlogSuggestion(body: any, supabase: any) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY) {
+    return new Response(
+      JSON.stringify({ 
+        suggestions: [
+          { title: "Top 10 Areas to Invest in Kenya Real Estate", topic: "Investment" },
+          { title: "First-Time Home Buyer Guide in Kenya", topic: "Buying Tips" },
+          { title: "Understanding Land Ownership in Kenya", topic: "Legal" }
+        ]
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Get properties for context
+  const { data: properties } = await supabase
+    .from("properties")
+    .select("location, property_type, price, county")
+    .eq("status", "available")
+    .limit(20);
+
+  const locations = [...new Set(properties?.map((p: any) => p.location) || [])];
+  const types = [...new Set(properties?.map((p: any) => p.property_type) || [])];
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `You are a real estate blog content strategist for Julin Real Estate in Kenya. Generate blog topic suggestions based on current market trends and available properties.
+          
+Current property locations: ${locations.join(', ')}
+Property types available: ${types.join(', ')}
+
+Return a JSON array of 5 blog suggestions with this format:
+[{"title": "Blog Title", "topic": "Category", "excerpt": "Brief description"}]`
+        },
+        {
+          role: "user",
+          content: body.context || "Suggest 5 blog topics for a Kenyan real estate website"
+        }
+      ],
+      max_tokens: 500,
+    }),
+  });
+
+  if (!response.ok) {
+    return new Response(
+      JSON.stringify({ 
+        suggestions: [
+          { title: "Top 10 Areas to Invest in Kenya Real Estate", topic: "Investment", excerpt: "Discover the best locations for property investment in Kenya." },
+          { title: "First-Time Home Buyer Guide in Kenya", topic: "Buying Tips", excerpt: "Everything you need to know about buying your first home." },
+          { title: "Understanding Land Ownership in Kenya", topic: "Legal", excerpt: "Navigate the legal aspects of land ownership." }
+        ]
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "[]";
+  
+  try {
+    // Extract JSON from response
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    const suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    return new Response(
+      JSON.stringify({ suggestions }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch {
+    return new Response(
+      JSON.stringify({ 
+        suggestions: [
+          { title: "Top 10 Areas to Invest in Kenya Real Estate", topic: "Investment", excerpt: "Discover the best locations for property investment in Kenya." }
+        ]
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Handle blog generation requests
+async function handleGenerateBlog(body: any, supabase: any) {
+  const { title, topic } = body;
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY) {
+    return new Response(
+      JSON.stringify({ 
+        content: `# ${title}\n\nThis is a placeholder blog post about ${topic}. Enable AI to generate full content.`,
+        excerpt: `Learn about ${topic} in Kenya real estate.`,
+        seo_title: title,
+        seo_description: `Comprehensive guide about ${topic} for Kenya real estate.`
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional real estate content writer for Julin Real Estate in Kenya. Write engaging, SEO-optimized blog posts.
+
+Return a JSON object with:
+{
+  "content": "Full markdown blog content (800-1200 words)",
+  "excerpt": "150-character summary",
+  "seo_title": "SEO optimized title (60 chars max)",
+  "seo_description": "Meta description (160 chars max)"
+}`
+        },
+        {
+          role: "user",
+          content: `Write a blog post about: ${title}\nTopic category: ${topic}`
+        }
+      ],
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    return new Response(
+      JSON.stringify({ error: "Failed to generate blog content" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "";
+  
+  try {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const blogData = jsonMatch ? JSON.parse(jsonMatch[0]) : { content: content };
+    return new Response(
+      JSON.stringify(blogData),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch {
+    return new Response(
+      JSON.stringify({ content: content, excerpt: "", seo_title: title, seo_description: "" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Handle property description enhancement
+async function handleEnhanceDescription(body: any) {
+  const { description, property_type, location, price } = body;
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  if (!LOVABLE_API_KEY) {
+    return new Response(
+      JSON.stringify({ enhanced: description || "A beautiful property in a prime location." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: "You are a real estate copywriter. Enhance property descriptions to be compelling, professional, and highlight key selling points. Keep it concise (150-250 words)."
+        },
+        {
+          role: "user",
+          content: `Enhance this property description:
+Property Type: ${property_type}
+Location: ${location}
+Price: KES ${price?.toLocaleString() || 'Not specified'}
+Current Description: ${description || 'No description provided'}
+
+Write an engaging, professional property description.`
+        }
+      ],
+      max_tokens: 400,
+    }),
+  });
+
+  if (!response.ok) {
+    return new Response(
+      JSON.stringify({ enhanced: description }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const data = await response.json();
+  const enhanced = data.choices?.[0]?.message?.content || description;
+  
+  return new Response(
+    JSON.stringify({ enhanced }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// Handle conversation summary requests
+async function handleConversationSummary(body: any, supabase: any) {
+  const { conversation_id } = body;
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
+  // Get conversation messages
+  const { data: messages } = await supabase
+    .from("chat_messages")
+    .select("role, content, created_at")
+    .eq("session_id", conversation_id)
+    .order("created_at", { ascending: true });
+
+  if (!messages || messages.length === 0) {
+    return new Response(
+      JSON.stringify({ summary: "No conversation found." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (!LOVABLE_API_KEY) {
+    const messageCount = messages.length;
+    const userMessages = messages.filter((m: any) => m.role === 'user').length;
+    return new Response(
+      JSON.stringify({ 
+        summary: `Conversation with ${messageCount} messages (${userMessages} from user). Enable AI for detailed analysis.`
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const conversationText = messages.map((m: any) => `${m.role}: ${m.content}`).join('\n');
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `Analyze this real estate chat conversation and provide a brief summary including:
+1. User's property interests (type, location, budget)
+2. Key questions asked
+3. Lead quality assessment (Hot/Warm/Cold)
+4. Recommended follow-up actions
+
+Keep the summary concise (100-150 words).`
+        },
+        {
+          role: "user",
+          content: conversationText
+        }
+      ],
+      max_tokens: 300,
+    }),
+  });
+
+  if (!response.ok) {
+    return new Response(
+      JSON.stringify({ summary: "Unable to generate summary." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const data = await response.json();
+  const summary = data.choices?.[0]?.message?.content || "Unable to generate summary.";
+  
+  return new Response(
+    JSON.stringify({ summary }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
 // Simple response generator when AI is not available
 function generateSimpleResponse(message: string, properties: any[], userRole?: string): string {
   const msg = message.toLowerCase();
@@ -203,10 +517,9 @@ function generateSimpleResponse(message: string, properties: any[], userRole?: s
     
     if (msg.includes('stats')) {
       const totalProperties = properties.length;
-      const availableProperties = properties.filter(p => p.status === 'available').length;
       const avgPrice = properties.length > 0 ? properties.reduce((sum, p) => sum + (p.price || 0), 0) / properties.length : 0;
       
-      return `Property Statistics:\n• Total Properties: ${totalProperties}\n• Available: ${availableProperties}\n• Average Price: KES ${Math.round(avgPrice).toLocaleString()}`;
+      return `Property Statistics:\n• Total Properties: ${totalProperties}\n• Average Price: KES ${Math.round(avgPrice).toLocaleString()}`;
     }
     
     if (msg.includes('analytics')) {

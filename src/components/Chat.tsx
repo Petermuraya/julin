@@ -59,7 +59,7 @@ const Chat: React.FC = () => {
         content: welcomeMessage
       }]);
     }
-  }, []);
+  }, [userRole]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,11 +133,77 @@ const Chat: React.FC = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [phase]);
 
-  const handleFormSubmit = (data: UserInfo) => {
+  // Create conversation in database when chat starts
+  const createConversation = async () => {
+    if (!conversationId || !userInfo) return;
+    
+    try {
+      const { error } = await supabase
+        .from('chat_conversations')
+        .upsert({
+          id: conversationId,
+          user_display_name: userInfo.name,
+          started_at: new Date().toISOString(),
+          last_message: null,
+          summary: JSON.stringify({ phone: userInfo.phone, is_admin: userRole === 'admin' })
+        }, { onConflict: 'id' });
+
+      if (error) console.error('Error creating conversation:', error);
+    } catch (err) {
+      console.error('Failed to create conversation:', err);
+    }
+  };
+
+  // Save message to database
+  const saveMessage = async (role: string, content: string) => {
+    if (!conversationId) return;
+    
+    try {
+      const messageData = {
+        session_id: conversationId,
+        role,
+        content,
+        metadata: { user_info: userInfo } as any
+      };
+      
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert(messageData);
+
+      if (error) console.error('Error saving message:', error);
+
+      // Update last message in conversation
+      await supabase
+        .from('chat_conversations')
+        .update({ last_message: content.substring(0, 100) })
+        .eq('id', conversationId);
+    } catch (err) {
+      console.error('Failed to save message:', err);
+    }
+  };
+
+  const handleFormSubmit = async (data: UserInfo) => {
     setUserInfo(data);
     setPhase('chat');
+    
+    // Create conversation after form submit
+    setTimeout(async () => {
+      try {
+        await supabase
+          .from('chat_conversations')
+          .upsert({
+            id: conversationId,
+            user_display_name: data.name,
+            started_at: new Date().toISOString(),
+            last_message: null,
+            summary: JSON.stringify({ phone: data.phone, is_admin: false })
+          }, { onConflict: 'id' });
+      } catch (err) {
+        console.error('Failed to create conversation:', err);
+      }
+    }, 100);
   };
 
   const handleFormCancel = () => {
@@ -146,6 +212,37 @@ const Chat: React.FC = () => {
 
   const handleRatingSubmit = async (rating: number, feedback?: string) => {
     console.log('Rating submitted:', { rating, feedback, conversationId, userInfo });
+    
+    // Save rating to conversation summary
+    try {
+      const { data: convData } = await supabase
+        .from('chat_conversations')
+        .select('summary')
+        .eq('id', conversationId)
+        .single();
+
+      let existingSummary = {};
+      if (convData?.summary) {
+        try {
+          existingSummary = JSON.parse(convData.summary);
+        } catch {}
+      }
+
+      await supabase
+        .from('chat_conversations')
+        .update({
+          summary: JSON.stringify({
+            ...existingSummary,
+            rating,
+            feedback,
+            rated_at: new Date().toISOString()
+          })
+        })
+        .eq('id', conversationId);
+    } catch (err) {
+      console.error('Failed to save rating:', err);
+    }
+    
     setPhase('completed');
   };
 
@@ -161,6 +258,9 @@ const Chat: React.FC = () => {
     setMessages(newMessages);
     setInput('');
     setLoading(true);
+
+    // Save user message to database
+    await saveMessage('user', text);
 
     try {
       const conversationHistory = messages.slice(-10).map(msg => ({
@@ -195,6 +295,10 @@ const Chat: React.FC = () => {
         const full = data.reply;
         let cur = '';
         setMessages((m) => [...m, { role: 'assistant', content: '' }]);
+        
+        // Save assistant message to database
+        await saveMessage('assistant', full);
+        
         const interval = setInterval(() => {
           cur = full.slice(0, cur.length + Math.max(1, Math.floor(full.length / 60)));
           setMessages((m) => {
