@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+import type { Property } from '@/types/property';
+
 interface Props {
-  property: any;
+  property: Property;
 }
 
 const PropertyGallery: React.FC<Props> = ({ property }) => {

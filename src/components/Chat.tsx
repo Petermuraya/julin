@@ -5,6 +5,7 @@ import { PreChatForm } from './PreChatForm';
 import { ConversationRating } from './ConversationRating';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Property } from '@/types/property';
 
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
@@ -32,7 +33,7 @@ const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [properties, setProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [phase, setPhase] = useState<ChatPhase>('form');
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [conversationId, setConversationId] = useState<string>('');
@@ -169,7 +170,7 @@ const Chat: React.FC = () => {
         session_id: conversationId,
         role,
         content,
-        metadata: { user_info: userInfo } as any
+        metadata: { user_info: userInfo } as Record<string, unknown>
       };
       
       const { error } = await supabase
@@ -229,7 +230,7 @@ const Chat: React.FC = () => {
       if (convData?.summary) {
         try {
           existingSummary = JSON.parse(convData.summary);
-        } catch {}
+        } catch (e) { console.warn('Failed to parse conversation summary', e); }
       }
 
       await supabase
@@ -293,7 +294,7 @@ const Chat: React.FC = () => {
         const stored = [...newMessages];
         if (data?.reply) stored.push({ role: 'assistant', content: data.reply });
         localStorage.setItem(`chat:${sessionIdRef.current}`, JSON.stringify(stored));
-      } catch (_) {}
+      } catch (e) { console.error('Failed to save local chat messages', e); }
 
       if (data?.reply) {
         const full = data.reply;

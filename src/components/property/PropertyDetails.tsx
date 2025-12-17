@@ -2,8 +2,10 @@ import React from 'react';
 import { MapPin, Home, Calendar, Maximize, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+import type { Property } from '@/types/property';
+
 interface Props {
-  property: any;
+  property: Property;
 }
 
 const PropertyDetails: React.FC<Props> = ({ property }) => {

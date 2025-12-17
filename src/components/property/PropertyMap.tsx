@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
+import type { Property } from '@/types/property';
+
 interface Props {
-  property: any;
+  property: Property;
 }
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';

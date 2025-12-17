@@ -6,8 +6,10 @@ import { toast } from '@/hooks/use-toast';
 import { generateWhatsAppLink } from '@/lib/whatsapp';
 import { supabase } from '@/integrations/supabase/client';
 
+import type { Property } from '@/types/property';
+
 interface Props {
-  property: any;
+  property: Property;
 }
 
 const PropertyContactSidebar: React.FC<Props> = ({ property }) => {
