@@ -6,6 +6,7 @@ import heroImage from "@/assets/hero-property.jpg";
 import kenyaHeroImage from "@/assets/images/kenya-real-estate-hero.jpg";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMediaQuery } from '@/hooks/use-media-query';
+import type { Property } from '@/types/property';
 
 // Types
 interface InputBlockProps {
@@ -47,7 +48,7 @@ const InputBlock = ({ icon: Icon, label, children, isActive = false }: InputBloc
 const Hero = () => {
   const [activeFilter, setActiveFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
-  const [properties, setProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [totalProperties, setTotalProperties] = useState(0);

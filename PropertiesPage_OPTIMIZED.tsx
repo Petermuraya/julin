@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 // @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
-import PropertyCard from "@/components/PropertyCard";
+import PropertyCard from "@/components/property/PropertyCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {

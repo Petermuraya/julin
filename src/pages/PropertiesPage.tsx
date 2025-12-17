@@ -3,8 +3,8 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { PropertySearchBar } from "@/components/PropertySearchBar";
-import { PropertyGrid } from "@/components/PropertyGrid";
+import { PropertySearchBar } from "@/components/property/PropertySearchBar";
+import { PropertyGrid } from "@/components/property/PropertyGrid";
 
 // Supabase project URL for Edge Function calls (handles CORS for GitHub Pages)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;

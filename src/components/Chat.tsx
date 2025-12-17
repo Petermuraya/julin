@@ -13,7 +13,7 @@ import ChatInput from '@/components/chat/ChatInput';
 
 interface ChatResponse {
   reply: string;
-  properties: any[];
+  properties: Property[];
   session_id: string;
   error?: string;
 }

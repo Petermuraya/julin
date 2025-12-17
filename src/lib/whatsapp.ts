@@ -2,7 +2,7 @@ export function formatPhoneForWhatsApp(rawPhone: string | null | undefined) {
   if (!rawPhone) return null;
   let phone = rawPhone.trim();
   // Remove spaces, dashes and parentheses
-  phone = phone.replace(/[^\d\+]/g, "");
+  phone = phone.replace(/[^\d+]/g, "");
   // Remove leading + if present
   if (phone.startsWith("+")) phone = phone.slice(1);
   // If local Kenyan format starts with 0, convert to 254

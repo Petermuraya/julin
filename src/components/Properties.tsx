@@ -1,26 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import PropertyCard from "./PropertyCard";
+import PropertyCard from "./property/PropertyCard";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
-type Property = {
-  id: string;
-  title: string;
-  location: string;
-  county?: string | null;
-  price: number;
-  size?: string | null;
-  description?: string | null;
-  images?: string[] | null;
-  video_url?: string | null;
-  seller_phone?: string | null;
-  status?: string;
-};
+import type { Property } from '@/types/property';
+
+type ExtendedProperty = Property & { _firstImage?: string };
 
 const Properties = () => {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<ExtendedProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,16 +30,17 @@ const Properties = () => {
       const rows = (data || []) as Property[];
 
       // Resolve first image public URLs where needed
-      const resolved = rows.map((p) => {
+      const resolved: ExtendedProperty[] = rows.map((p) => {
         const images = p.images || [];
-        let firstImage = images[0] || undefined;
-        return { ...p, _firstImage: firstImage } as any;
+        const firstImage = images[0] || undefined;
+        return { ...p, _firstImage: firstImage };
       });
 
-      setProperties(resolved as unknown as Property[]);
-    } catch (err: any) {
+      setProperties(resolved);
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to load properties");
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message || "Failed to load properties");
     } finally {
       setLoading(false);
     }

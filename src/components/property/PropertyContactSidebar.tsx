@@ -51,9 +51,10 @@ const PropertyContactSidebar: React.FC<Props> = ({ property }) => {
       setBuyerName('');
       setBuyerPhone('');
       setBuyerEmail('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: 'Error', description: err?.message || 'Failed to submit inquiry.', variant: 'destructive' });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: 'Error', description: message || 'Failed to submit inquiry.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
