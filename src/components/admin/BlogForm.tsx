@@ -1,58 +1,39 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { X, Sparkles } from "lucide-react";
+import { X, Sparkles, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Blog } from "@/types/blog";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
+import type { Blog } from "@/types/blog";
 
 interface BlogFormProps {
-  blog: Blog | null;
-  onSave: (blog: Blog) => void;
-  onCancel: () => void;
+  blog?: Blog | null;
+  onSave?: (blog: Blog) => void;
+  onCancel?: () => void;
 }
 
 const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
   const [form, setForm] = useState({
-    title: "",
-    slug: "",
-    excerpt: "",
-    content: "",
-    featured_image: "",
-    author_name: "",
-    published: false,
-    tags: [] as string[],
-    seo_title: "",
-    seo_description: "",
-    seo_keywords: [] as string[],
+    title: blog?.title || "",
+    slug: blog?.slug || "",
+    excerpt: blog?.excerpt || "",
+    content: blog?.content || "",
+    featured_image: blog?.featured_image || "",
+    author_name: blog?.author_name || "",
+    published: blog?.published || false,
+    tags: blog?.tags || [] as string[],
+    seo_title: blog?.seo_title || "",
+    seo_description: blog?.seo_description || "",
+    seo_keywords: blog?.seo_keywords || [] as string[],
   });
 
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
-  const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
-
-  useEffect(() => {
-    if (blog) {
-      setForm({
-        title: blog.title,
-        slug: blog.slug,
-        excerpt: blog.excerpt || "",
-        content: blog.content,
-        featured_image: blog.featured_image || "",
-        author_name: blog.author_name || "",
-        published: blog.published,
-        tags: blog.tags || [],
-        seo_title: blog.seo_title || "",
-        seo_description: blog.seo_description || "",
-        seo_keywords: blog.seo_keywords || [],
-      });
-    }
-  }, [blog]);
 
   const generateSlug = (title: string) => {
     return title
@@ -108,127 +89,57 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
 
   const generateWithAI = async (type: 'content' | 'excerpt' | 'seo') => {
     if (!form.title.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a title first",
-        variant: "destructive",
-      });
+      toast.error("Please enter a title first");
       return;
     }
 
     setGenerating(true);
     try {
-      const prompt = type === 'content' 
-        ? `Write a detailed blog post about "${form.title}" for a real estate website in Kenya. Include helpful tips and information for property buyers and sellers. Keep it informative and professional.`
-        : type === 'excerpt'
-        ? `Write a brief 2-3 sentence excerpt/summary for a blog post titled "${form.title}" for a real estate website.`
-        : `Generate SEO-optimized title (max 60 chars) and description (max 160 chars) for a blog post titled "${form.title}" about real estate in Kenya. Format as JSON: {"title": "...", "description": "..."}`;
-
-      const response = await supabase.functions.invoke('chat', {
+      const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
-          messages: [{ role: 'user', content: prompt }],
-          isAdmin: true
+          type: 'generate_blog',
+          topic: form.title
         }
       });
 
-      if (response.error) throw response.error;
+      if (error) throw error;
       
-      const aiResponse = response.data?.response || response.data;
-      
-      if (type === 'content') {
-        setForm(prev => ({ ...prev, content: aiResponse }));
-      } else if (type === 'excerpt') {
-        setForm(prev => ({ ...prev, excerpt: aiResponse }));
-      } else {
-        try {
-          const seoData = JSON.parse(aiResponse);
+      if (data) {
+        if (type === 'content' && data.content) {
+          setForm(prev => ({ ...prev, content: data.content }));
+        } else if (type === 'excerpt' && data.excerpt) {
+          setForm(prev => ({ ...prev, excerpt: data.excerpt }));
+        } else if (type === 'seo') {
           setForm(prev => ({ 
             ...prev, 
-            seo_title: seoData.title || prev.seo_title,
-            seo_description: seoData.description || prev.seo_description
+            seo_title: data.seo_title || prev.title,
+            seo_description: data.seo_description || prev.excerpt
           }));
-        } catch {
-          setForm(prev => ({ ...prev, seo_description: aiResponse }));
         }
+        toast.success("AI content generated!");
       }
-
-      toast({
-        title: "Success",
-        description: "AI content generated successfully",
-      });
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error generating with AI:", err);
-      toast({
-        title: "Error",
-        description: "Failed to generate content. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to generate content");
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) {
-      toast({
-        title: "Error",
-        description: "Title and content are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const blogData = {
-        ...form,
-        published_at: form.published ? new Date().toISOString() : null,
-      };
-
-      let savedBlog: Blog;
-
-      if (blog) {
-        // Update existing blog
-        const { data, error } = await supabase
-          .from("blogs")
-          .update(blogData)
-          .eq("id", blog.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedBlog = data as unknown as Blog;
-      } else {
-        // Create new blog
-        const { data, error } = await supabase
-          .from("blogs")
-          .insert(blogData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        savedBlog = data as unknown as Blog;
-      }
-
-      onSave(savedBlog);
-      toast({
-        title: "Success",
-        description: `Blog ${blog ? 'updated' : 'created'} successfully`,
-      });
-    } catch (err: any) {
-      console.error("Error saving blog:", err);
-      toast({
-        title: "Error",
-        description: `Failed to ${blog ? 'update' : 'create'} blog`,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
+  const handleSave = () => {
+    toast.info("Blog saving requires database configuration. Please create the blogs table in Supabase.");
   };
 
   return (
     <div className="space-y-6">
+      {/* Database Notice */}
+      <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/50 rounded-lg">
+        <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+        <p className="text-sm text-muted-foreground">
+          Blog database not configured. Form is available for preview but saving is disabled.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Basic Information */}
         <div className="space-y-4">
@@ -426,11 +337,13 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
 
       {/* Actions */}
       <div className="flex justify-end gap-4">
-        <Button variant="outline" onClick={onCancel} disabled={saving}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={saving || generating}>
-          {saving ? "Saving..." : (blog ? "Update" : "Create")} Blog
+        {onCancel && (
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <Button onClick={handleSave} disabled>
+          {blog ? "Update" : "Create"} Blog (Database Required)
         </Button>
       </div>
     </div>
