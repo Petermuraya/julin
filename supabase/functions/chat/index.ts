@@ -6,6 +6,18 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  type MiniProperty = {
+    id?: string;
+    title?: string;
+    location?: string;
+    price?: number;
+    property_type?: string;
+    size?: string | null;
+    description?: string | null;
+    images?: string[] | null;
+    county?: string | null;
+  };
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,19 +34,19 @@ Deno.serve(async (req) => {
 
     // Handle different request types
     if (type === 'blog_suggestion') {
-      return handleBlogSuggestion(body, supabase);
+      return handleBlogSuggestion(body as unknown, supabase);
     }
 
     if (type === 'generate_blog') {
-      return handleGenerateBlog(body, supabase);
+      return handleGenerateBlog(body as unknown, supabase);
     }
 
     if (type === 'enhance_description') {
-      return handleEnhanceDescription(body);
+      return handleEnhanceDescription(body as unknown);
     }
 
     if (type === 'conversation_summary') {
-      return handleConversationSummary(body, supabase);
+      return handleConversationSummary(body as unknown, supabase);
     }
 
     // Default: chat message handling
@@ -210,7 +222,8 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
 });
 
 // Handle blog suggestion requests
-async function handleBlogSuggestion(body: any, supabase: any) {
+async function handleBlogSuggestion(body: unknown, supabase: any) {
+  const ctx = (body as Record<string, unknown>)?.context as string | undefined;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
@@ -227,14 +240,15 @@ async function handleBlogSuggestion(body: any, supabase: any) {
   }
 
   // Get properties for context
-  const { data: properties } = await supabase
+  const { data } = await supabase
     .from("properties")
     .select("location, property_type, price, county")
     .eq("status", "available")
     .limit(20);
 
-  const locations = [...new Set(properties?.map((p: any) => p.location) || [])];
-  const types = [...new Set(properties?.map((p: any) => p.property_type) || [])];
+  const properties = (data || []) as MiniProperty[];
+  const locations = [...new Set(properties.map((p) => p.location).filter(Boolean))];
+  const types = [...new Set(properties.map((p) => p.property_type).filter(Boolean))];
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -301,8 +315,10 @@ Return a JSON array of 5 blog suggestions with this format:
 }
 
 // Handle blog generation requests
-async function handleGenerateBlog(body: any, supabase: any) {
-  const { title, topic } = body;
+async function handleGenerateBlog(body: unknown, supabase: any) {
+  const b = body as Record<string, unknown>;
+  const title = String(b.title || 'Untitled');
+  const topic = String(b.topic || 'General');
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
@@ -373,7 +389,7 @@ Return a JSON object with:
 }
 
 // Handle property description enhancement
-async function handleEnhanceDescription(body: any) {
+async function handleEnhanceDescription(body: unknown) {
   const { description, property_type, location, price } = body;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
@@ -429,8 +445,8 @@ Write an engaging, professional property description.`
 }
 
 // Handle conversation summary requests
-async function handleConversationSummary(body: any, supabase: any) {
-  const { conversation_id } = body;
+async function handleConversationSummary(body: unknown, supabase: any) {
+  const conversation_id = (body as Record<string, unknown>)?.conversation_id as string | undefined;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   // Get conversation messages
@@ -449,7 +465,7 @@ async function handleConversationSummary(body: any, supabase: any) {
 
   if (!LOVABLE_API_KEY) {
     const messageCount = messages.length;
-    const userMessages = messages.filter((m: any) => m.role === 'user').length;
+    const userMessages = messages.filter((m: { role: string }) => m.role === 'user').length;
     return new Response(
       JSON.stringify({ 
         summary: `Conversation with ${messageCount} messages (${userMessages} from user). Enable AI for detailed analysis.`
@@ -458,7 +474,7 @@ async function handleConversationSummary(body: any, supabase: any) {
     );
   }
 
-  const conversationText = messages.map((m: any) => `${m.role}: ${m.content}`).join('\n');
+  const conversationText = messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n');
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -505,7 +521,7 @@ Keep the summary concise (100-150 words).`
 }
 
 // Simple response generator when AI is not available
-function generateSimpleResponse(message: string, properties: any[], userRole?: string): string {
+function generateSimpleResponse(message: string, properties: MiniProperty[], userRole?: string): string {
   const msg = message.toLowerCase();
   const isAdmin = userRole === 'admin';
   
@@ -556,23 +572,28 @@ function generateSimpleResponse(message: string, properties: any[], userRole?: s
 }
 
 // Find properties relevant to user's message
-function findRelevantProperties(message: string, properties: any[]): any[] {
+function findRelevantProperties(message: string, properties: MiniProperty[]): MiniProperty[] {
   const msg = message.toLowerCase();
   
   return properties.filter(p => {
-    const titleMatch = p.title?.toLowerCase().includes(msg) || msg.includes(p.title?.toLowerCase());
-    const locationMatch = p.location?.toLowerCase().includes(msg) || msg.includes(p.location?.toLowerCase());
-    const typeMatch = p.property_type?.toLowerCase().includes(msg) || msg.includes(p.property_type?.toLowerCase());
-    const countyMatch = p.county?.toLowerCase().includes(msg) || msg.includes(p.county?.toLowerCase());
+    const title = (p.title || '').toLowerCase();
+    const location = (p.location || '').toLowerCase();
+    const type = (p.property_type || '').toLowerCase();
+    const county = (p.county || '').toLowerCase();
+
+    const titleMatch = title.includes(msg) || msg.includes(title);
+    const locationMatch = location.includes(msg) || msg.includes(location);
+    const typeMatch = type.includes(msg) || msg.includes(type);
+    const countyMatch = county.includes(msg) || msg.includes(county);
     
     // Price-based matching
     const priceMatch = msg.match(/(\d+)\s*(million|m|k)/i);
     let budgetMatch = false;
-    if (priceMatch) {
+    if (priceMatch && typeof p.price === 'number') {
       const amount = parseInt(priceMatch[1]);
       const unit = priceMatch[2].toLowerCase();
       const budget = unit.startsWith('m') ? amount * 1000000 : amount * 1000;
-      budgetMatch = p.price <= budget * 1.2; // 20% buffer
+      budgetMatch = (p.price || 0) <= budget * 1.2; // 20% buffer
     }
     
     return titleMatch || locationMatch || typeMatch || countyMatch || budgetMatch;

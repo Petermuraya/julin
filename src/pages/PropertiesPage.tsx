@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { PropertySearchBar } from "@/components/property/PropertySearchBar";
 import { PropertyGrid } from "@/components/property/PropertyGrid";
+import type { Property } from '@/types/property';
 
 // Supabase project URL for Edge Function calls (handles CORS for GitHub Pages)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -17,8 +18,8 @@ const PropertiesPage = () => {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sortBy, setSortBy] = useState("newest");
-  const [properties, setProperties] = useState<any[]>([]);
-  const [allProperties, setAllProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -43,9 +44,9 @@ const PropertiesPage = () => {
 
       const json = await response.json();
       // Support both { properties: [...] } and raw array responses
-      const properties = Array.isArray(json) ? json : json?.properties ?? [];
-      setAllProperties(properties || []);
-      applyFilters(properties || []);
+      const fetched = Array.isArray(json) ? (json as Property[]) : (json?.properties ?? []) as Property[];
+      setAllProperties(fetched || []);
+      applyFilters(fetched || []);
     } catch (err: any) {
       console.error("Error fetching properties:", err);
       setErrorMsg(err?.message ? String(err.message) : String(err));
@@ -54,11 +55,11 @@ const PropertiesPage = () => {
     }
   };
 
-  const applyFilters = (data: any[]) => {
+  const applyFilters = (data: Property[]) => {
     let rows = data;
 
     // Apply filters
-    rows = rows.filter((p: any) => {
+    rows = rows.filter((p) => {
       if (type && p.property_type !== type) return false;
       if (minPrice && Number(p.price) < Number(minPrice)) return false;
       if (maxPrice && Number(p.price) > Number(maxPrice)) return false;
@@ -102,7 +103,7 @@ const PropertiesPage = () => {
       return;
     }
 
-    let channel: any;
+    let channel: ReturnType<typeof supabase['channel']> | undefined;
     try {
       channel = supabase
         .channel("properties-page-realtime")
@@ -113,7 +114,7 @@ const PropertiesPage = () => {
             schema: "public",
             table: "properties",
           },
-          (payload: any) => {
+          (payload: unknown) => {
             console.log("Real-time update:", payload);
             fetchProperties();
           }
@@ -128,7 +129,7 @@ const PropertiesPage = () => {
 
     return () => {
       try {
-        if (channel) supabase.removeChannel(channel);
+        if (channel) supabase.removeChannel(channel as any);
       } catch (e) {
         // ignore cleanup errors
       }

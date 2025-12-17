@@ -109,7 +109,7 @@ const Properties = () => {
                     details={property.description || ""}
                     phone={property.seller_phone || "+254725671504"}
                     hasVideo={!!property.video_url}
-                    image={(property as any)._firstImage}
+                    image={property._firstImage}
                     imageCount={(property.images || []).length}
                     status={property.status === "available" ? "For Sale" : (property.status || "Available")}
                   />
