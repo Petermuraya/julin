@@ -6,6 +6,10 @@ import { ConversationRating } from './ConversationRating';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
+import ChatHeader from '@/components/chat/ChatHeader';
+import ChatMessages from '@/components/chat/ChatMessages';
+import ChatInput from '@/components/chat/ChatInput';
+
 interface ChatResponse {
   reply: string;
   properties: any[];
@@ -360,69 +364,11 @@ const Chat: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="flex-1 p-4 md:p-6 overflow-hidden">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Bot className="h-6 w-6 text-blue-600" />
-            AI Property Assistant
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            {userRole === 'admin' 
-              ? `Welcome back, ${userInfo?.name}! You have admin access to enhanced features.`
-              : `Hi ${userInfo?.name}! How can I help you find your perfect property today?`
-            }
-          </p>
-        </div>
+        <ChatHeader userRole={userRole} userInfo={userInfo} />
 
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm mb-4 flex-1 overflow-y-auto max-h-[50vh]">
-          <div className="p-4 space-y-4">
-            {messages.map((m, idx) => (
-              <div
-                key={idx}
-                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] p-3 rounded-2xl ${
-                    m.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-md'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white rounded-bl-md'
-                  }`}
-                >
-                  <div className="text-sm whitespace-pre-wrap">{m.content}</div>
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
+        <ChatMessages messages={messages} messagesEndRef={messagesEndRef} />
 
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
-            className="flex-1 p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-            placeholder={userRole === 'admin' ? "Ask about properties or type 'analytics' for insights..." : "Ask about properties, prices, locations..."}
-          />
-          <button
-            onClick={sendMessage}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium disabled:opacity-50 transition-all duration-200 hover:shadow-lg disabled:hover:shadow-none"
-            disabled={loading}
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span className="hidden sm:inline">Sending...</span>
-              </div>
-            ) : (
-              'Send'
-            )}
-          </button>
-        </div>
+        <ChatInput input={input} setInput={setInput} sendMessage={sendMessage} loading={loading} />
 
         {messages.length === 1 && userRole === 'admin' && (
           <div className="mt-4 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
