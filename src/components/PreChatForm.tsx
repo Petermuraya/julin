@@ -1,95 +1,141 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Phone, Bot } from 'lucide-react';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { User, Phone, Bot } from "lucide-react";
+
+type FormData = {
+  name: string;
+  phone: string;
+};
+
+type FormErrors = Partial<FormData>;
 
 interface PreChatFormProps {
-  onSubmit: (data: { name: string; phone: string }) => void;
+  onSubmit: (data: FormData) => void;
   onCancel: () => void;
 }
 
-export const PreChatForm: React.FC<PreChatFormProps> = ({ onSubmit, onCancel }) => {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+export const PreChatForm: React.FC<PreChatFormProps> = ({
+  onSubmit,
+  onCancel,
+}) => {
+  const [form, setForm] = useState<FormData>({ name: "", phone: "" });
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const validateForm = () => {
-    const newErrors: { name?: string; phone?: string } = {};
+  const updateField = (field: keyof FormData, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
 
-    if (!name.trim()) {
-      newErrors.name = 'Name is required';
+  const validate = (): boolean => {
+    const nextErrors: FormErrors = {};
+    const phone = form.phone.replace(/\s/g, "");
+
+    if (!form.name.trim()) {
+      nextErrors.name = "Full name is required";
     }
 
-    if (!phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^(\+254|0)[17]\d{8}$/.test(phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Please enter a valid Kenyan phone number';
+    if (!phone) {
+      nextErrors.phone = "Phone number is required";
+    } else if (!/^(\+254|0)[17]\d{8}$/.test(phone)) {
+      nextErrors.phone = "Enter a valid Kenyan phone number";
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSubmit({ name: name.trim(), phone: phone.trim() });
-    }
+    if (!validate()) return;
+
+    onSubmit({
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+    });
   };
 
   return (
-    <div className="h-full flex items-center justify-center p-4">
+    <div className="flex h-full items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Bot className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-xl">Welcome to Our AI Assistant</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            To provide you with the best assistance and follow up on your property inquiries,
-            please share your contact information.
+
+          <CardTitle className="text-xl">Mary — Virtual Assistant</CardTitle>
+
+          <p className="mt-2 text-sm text-muted-foreground">
+            Share your contact details so I can assist you better and follow up
+            on your property inquiries.
           </p>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Full Name
               </Label>
+
               <Input
                 id="name"
-                type="text"
+                value={form.name}
                 placeholder="Enter your full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={errors.name ? 'border-red-500' : ''}
+                onChange={(e) => updateField("name", e.target.value)}
+                aria-invalid={!!errors.name}
+                aria-describedby={errors.name ? "name-error" : undefined}
+                className={errors.name ? "border-destructive" : ""}
               />
+
               {errors.name && (
-                <p className="text-sm text-red-500">{errors.name}</p>
+                <p
+                  id="name-error"
+                  className="text-sm text-destructive"
+                >
+                  {errors.name}
+                </p>
               )}
             </div>
 
+            {/* Phone */}
             <div className="space-y-2">
               <Label htmlFor="phone" className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 Phone Number
               </Label>
+
               <Input
                 id="phone"
                 type="tel"
+                value={form.phone}
                 placeholder="+254 712 345 678 or 0712 345 678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className={errors.phone ? 'border-red-500' : ''}
+                onChange={(e) => updateField("phone", e.target.value)}
+                aria-invalid={!!errors.phone}
+                aria-describedby={errors.phone ? "phone-error" : undefined}
+                className={errors.phone ? "border-destructive" : ""}
               />
+
               {errors.phone && (
-                <p className="text-sm text-red-500">{errors.phone}</p>
+                <p
+                  id="phone-error"
+                  className="text-sm text-destructive"
+                >
+                  {errors.phone}
+                </p>
               )}
             </div>
 
+            {/* Actions */}
             <div className="flex gap-3 pt-4">
               <Button
                 type="button"
@@ -99,14 +145,16 @@ export const PreChatForm: React.FC<PreChatFormProps> = ({ onSubmit, onCancel }) 
               >
                 Cancel
               </Button>
+
               <Button type="submit" className="flex-1">
                 Start Chat
               </Button>
             </div>
           </form>
 
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            Your information is used only for follow-up purposes and will be handled confidentially.
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Your information is used strictly for follow-up and handled
+            confidentially.
           </p>
         </CardContent>
       </Card>
