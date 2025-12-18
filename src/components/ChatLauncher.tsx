@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Bot } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Chat from "./Chat";
@@ -66,6 +66,7 @@ const ChatLauncher: React.FC = () => {
       </DialogTrigger>
 
       <DialogContent className="m-4 h-[90vh] max-h-[90vh] max-w-6xl p-0 sm:m-6">
+        <DialogTitle className="sr-only">Chat Assistant</DialogTitle>
         <div className="h-full overflow-hidden">
           <Chat />
         </div>
