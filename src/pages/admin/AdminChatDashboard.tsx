@@ -22,7 +22,7 @@ interface ChatMessage {
   role: string | null;
   content: string | null;
   created_at: string | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
 }
 
 const AdminChatDashboard: React.FC = () => {
@@ -46,12 +46,13 @@ const AdminChatDashboard: React.FC = () => {
         .limit(100);
 
       if (error) throw error;
-      setConversations(data || []);
-    } catch (err: any) {
+      setConversations((data || []) as Conversation[]);
+    } catch (err: unknown) {
       console.error('Error fetching conversations:', err);
+      const message = err instanceof Error ? err.message : String(err);
       toast({
         title: 'Error',
-        description: 'Failed to load conversations',
+        description: message || 'Failed to load conversations',
         variant: 'destructive',
       });
     } finally {
@@ -69,12 +70,13 @@ const AdminChatDashboard: React.FC = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
-    } catch (err: any) {
+      setMessages((data || []) as ChatMessage[]);
+    } catch (err: unknown) {
       console.error('Error fetching messages:', err);
+      const message = err instanceof Error ? err.message : String(err);
       toast({
         title: 'Error',
-        description: 'Failed to load messages',
+        description: message || 'Failed to load messages',
         variant: 'destructive',
       });
     } finally {

@@ -1,9 +1,10 @@
 import PropertyCard from "./PropertyCard";
 import { Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Property } from "@/types/property";
 
 interface PropertyGridProps {
-  properties: any[];
+  properties: Property[];
   loading: boolean;
   errorMsg: string | null;
   fetchProperties: () => void;

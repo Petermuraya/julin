@@ -47,9 +47,10 @@ const PropertiesPage = () => {
       const fetched = Array.isArray(json) ? (json as Property[]) : (json?.properties ?? []) as Property[];
       setAllProperties(fetched || []);
       applyFilters(fetched || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching properties:", err);
-      setErrorMsg(err?.message ? String(err.message) : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      setErrorMsg(message || "Failed to load properties");
     } finally {
       setLoading(false);
     }
@@ -127,9 +128,11 @@ const PropertiesPage = () => {
       console.warn('Realtime subscription failed:', err);
     }
 
+    type ChannelType = ReturnType<typeof supabase['channel']>;
+
     return () => {
       try {
-        if (channel) supabase.removeChannel(channel as any);
+        if (channel) supabase.removeChannel(channel as ChannelType);
       } catch (e) {
         // ignore cleanup errors
       }

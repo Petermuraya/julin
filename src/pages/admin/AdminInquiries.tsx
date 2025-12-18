@@ -7,8 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Phone, Search, Mail } from "lucide-react";
 
+type Inquiry = {
+  id: string;
+  buyer_name: string;
+  buyer_phone: string;
+  property_id?: string | null;
+  message?: string | null;
+  lead_status?: "hot" | "warm" | "cold" | null;
+  created_at?: string | null;
+};
+
 const AdminInquiries = () => {
-  const [inquiries, setInquiries] = useState<any[]>([]);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -23,7 +33,7 @@ const AdminInquiries = () => {
       setLoading(true);
       const { data, error } = await supabase.from("buyer_inquiries").select("*").order("created_at", { ascending: false });
       if (error) console.error(error);
-      setInquiries(data || []);
+      setInquiries((data || []) as Inquiry[]);
       setLoading(false);
     };
     load();
@@ -33,9 +43,10 @@ const AdminInquiries = () => {
     try {
       await supabase.from("buyer_inquiries").update({ lead_status: status }).eq("id", id);
       setInquiries((q) => q.map((x) => (x.id === id ? { ...x, lead_status: status } : x)));
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: "Failed to update lead status", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to update lead status", variant: "destructive" });
     }
   };
 

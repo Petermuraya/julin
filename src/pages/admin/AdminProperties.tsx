@@ -289,7 +289,7 @@ const AdminProperties = () => {
     }
   };
 
-  const generateShareContent = (property: any) => {
+  const generateShareContent = (property: Property) => {
     const title = property.title;
     const price = `KES ${Number(property.price || 0).toLocaleString()}`;
     const location = property.location || "Kenya";
@@ -306,34 +306,34 @@ const AdminProperties = () => {
     };
   };
 
-  const shareToFacebook = (property: any) => {
+  const shareToFacebook = (property: Property) => {
     const content = generateShareContent(property);
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(content.propertyUrl)}&quote=${encodeURIComponent(content.description)}`;
     window.open(url, '_blank', 'width=600,height=400');
   };
 
-  const shareToTwitter = (property: any) => {
+  const shareToTwitter = (property: Property) => {
     const content = generateShareContent(property);
     const text = `${content.title} - ${content.price} in ${content.location}. ${content.propertyUrl}`;
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'width=600,height=400');
   };
 
-  const shareToWhatsApp = (property: any) => {
+  const shareToWhatsApp = (property: Property) => {
     const content = generateShareContent(property);
     const text = `*${content.title}*\n\n💰 Price: ${content.price}\n📍 Location: ${content.location}\n\n${content.description}\n\nView details: ${content.propertyUrl}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
-  const shareToTelegram = (property: any) => {
+  const shareToTelegram = (property: Property) => {
     const content = generateShareContent(property);
     const text = `${content.title}\n\n💰 ${content.price}\n📍 ${content.location}\n\n${content.description}\n\n${content.propertyUrl}`;
     const url = `https://t.me/share/url?url=${encodeURIComponent(content.propertyUrl)}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
 
-  const shareToInstagram = (property: any) => {
+  const shareToInstagram = (property: Property) => {
     // Instagram doesn't have a direct share URL, so we'll copy to clipboard
     const content = generateShareContent(property);
     const text = `${content.title} - ${content.price} in ${content.location}\n\n${content.description}\n\nView: ${content.propertyUrl}`;
@@ -345,7 +345,7 @@ const AdminProperties = () => {
     });
   };
 
-  const shareToTikTok = (property: any) => {
+  const shareToTikTok = (property: Property) => {
     // TikTok doesn't have a direct share URL, so we'll copy to clipboard
     const content = generateShareContent(property);
     const text = `${content.title} - ${content.price} in ${content.location}\n\n${content.description}\n\nView: ${content.propertyUrl}`;
@@ -424,7 +424,7 @@ const AdminProperties = () => {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (property: any) => {
+  const openEditDialog = (property: Property) => {
     setEditingId(property.id);
     setForm({
       title: property.title || "",
@@ -574,11 +574,12 @@ const AdminProperties = () => {
       setFiles([]);
       setExistingImages([]);
       setEditingId(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
       toast({
         title: "Error",
-        description: err?.message || "Failed to save property.",
+        description: message || "Failed to save property.",
         variant: "destructive",
       });
     } finally {
@@ -610,9 +611,10 @@ const AdminProperties = () => {
 
       setProperties((p) => p.filter((x) => x.id !== id));
       toast({ title: "Deleted", description: "Property removed successfully." });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: err?.message || "Failed to delete property.", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to delete property.", variant: "destructive" });
     }
   };
 
@@ -649,9 +651,10 @@ const AdminProperties = () => {
       setProperties((p) => p.filter((x) => !selectedProperties.includes(x.id)));
       setSelectedProperties([]);
       toast({ title: "Deleted", description: `${selectedProperties.length} properties removed successfully.` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: err?.message || "Failed to delete properties.", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to delete properties.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -673,9 +676,10 @@ const AdminProperties = () => {
       );
       setSelectedProperties([]);
       toast({ title: "Updated", description: `${selectedProperties.length} properties updated to ${status}.` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: err?.message || "Failed to update properties.", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to update properties.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

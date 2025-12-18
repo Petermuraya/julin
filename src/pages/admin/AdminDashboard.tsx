@@ -9,19 +9,55 @@ import { Home, FileText, MessageSquare, CheckCircle, Clock, ArrowRight } from "l
 
 type ConfirmAction = "approve" | "reject" | null;
 
+// Minimal local types to avoid `any`
+type Submission = {
+  id: string;
+  title: string;
+  seller_name?: string | null;
+  seller_phone?: string | null;
+  price?: number | null;
+  status?: string | null;
+  images?: string[] | null;
+  description?: string | null;
+  property_type?: string | null;
+  location?: string | null;
+  _firstImage?: string | null;
+};
+
+type Inquiry = {
+  id: string;
+  buyer_name: string;
+  buyer_phone: string;
+  property_id?: string | null;
+  message?: string | null;
+  lead_status?: "hot" | "warm" | "cold" | null;
+  created_at?: string | null;
+};
+
+type PropertySummary = {
+  id: string;
+  title: string;
+  location?: string | null;
+  price?: number | null;
+  status?: string | null;
+  is_verified?: boolean;
+  images?: string[] | null;
+  _firstImage?: string | null;
+};
+
 const AdminDashboard = () => {
   const [counts, setCounts] = useState({ properties: 0, submissions: 0, inquiries: 0, verified: 0 });
-  const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
-  const [recentInquiries, setRecentInquiries] = useState<any[]>([]);
-  const [recentProperties, setRecentProperties] = useState<any[]>([]);
+  const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
+  const [recentInquiries, setRecentInquiries] = useState<Inquiry[]>([]);
+  const [recentProperties, setRecentProperties] = useState<PropertySummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
-  const [confirmItem, setConfirmItem] = useState<any | null>(null);
+  const [confirmItem, setConfirmItem] = useState<Submission | null>(null);
 
-  const openConfirm = (action: "approve" | "reject", item: any) => {
+  const openConfirm = (action: "approve" | "reject", item: Submission) => {
     setConfirmAction(action);
     setConfirmItem(item);
     setConfirmOpen(true);
@@ -69,28 +105,29 @@ const AdminDashboard = () => {
         const v = vRes.count ?? 0;
 
         setCounts({ properties: p, submissions: s, inquiries: i, verified: v });
-        setRecentSubmissions((subsRes.data as any[]) || []);
+        const subsRaw = (subsRes.data as Submission[]) || [];
         // Resolve first image url for submissions
-        const subs = ((subsRes.data as any[]) || []).map((s) => {
-          const images = s.images || [];
+        const subs = subsRaw.map((s) => {
+          const images = (s.images as string[]) || [];
           let first = images[0];
           if (first && !first.startsWith("http")) {
             const { data: url } = supabase.storage.from("properties").getPublicUrl(first || "");
             first = url.publicUrl;
           }
-          return { ...s, _firstImage: first };
+          return { ...s, _firstImage: first } as Submission;
         });
         setRecentSubmissions(subs);
-        setRecentInquiries((inqRes.data as any[]) || []);
+        setRecentInquiries((inqRes.data as Inquiry[]) || []);
         // Resolve first image public urls for recent properties
-        const props = ((propRes.data as any[]) || []).map((p) => {
-          const images = p.images || [];
+        const propsRaw = (propRes.data as PropertySummary[]) || [];
+        const props = propsRaw.map((p) => {
+          const images = (p.images as string[]) || [];
           let first = images[0];
           if (first && !first.startsWith("http")) {
             const { data: url } = supabase.storage.from("properties").getPublicUrl(first || "");
             first = url.publicUrl;
           }
-          return { ...p, _firstImage: first };
+          return { ...p, _firstImage: first } as PropertySummary;
         });
 
         setRecentProperties(props);
@@ -103,21 +140,21 @@ const AdminDashboard = () => {
     load();
   }, []);
 
-  const handleApprove = async (submission: any) => {
+  const handleApprove = async (submission: Submission) => {
     try {
       // create a new property from submission
-      const payload: any = {
+      const payload = {
         title: submission.title,
         description: submission.description || null,
         property_type: submission.property_type || "land",
         price: submission.price || 0,
         location: submission.location || "",
         images: submission.images || null,
-        seller_name: submission.seller_name || submission.seller_name,
-        seller_phone: submission.seller_phone || submission.seller_phone,
+        seller_name: submission.seller_name || null,
+        seller_phone: submission.seller_phone || null,
         is_admin_property: false,
         approved_at: new Date().toISOString(),
-      };
+      } as const;
 
       const { data, error } = await supabase.from("properties").insert([payload]).select().single();
       if (error) throw error;
@@ -128,21 +165,23 @@ const AdminDashboard = () => {
       setRecentSubmissions((s) => s.filter((x) => x.id !== submission.id));
       setCounts((c) => ({ ...c, properties: c.properties + 1, submissions: Math.max(0, c.submissions - 1) }));
       toast({ title: "Approved", description: "Submission approved and published.", variant: "default" });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: "Failed to approve submission.", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to approve submission.", variant: "destructive" });
     }
   };
 
-  const handleReject = async (submission: any) => {
+  const handleReject = async (submission: Submission) => {
     try {
       await supabase.from("property_submissions").update({ status: "rejected", reviewed_at: new Date().toISOString() }).eq("id", submission.id);
       setRecentSubmissions((s) => s.filter((x) => x.id !== submission.id));
       setCounts((c) => ({ ...c, submissions: Math.max(0, c.submissions - 1) }));
       toast({ title: "Rejected", description: "Submission rejected.", variant: "default" });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: "Failed to reject submission.", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to reject submission.", variant: "destructive" });
     }
   };
 

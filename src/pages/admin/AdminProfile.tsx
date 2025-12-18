@@ -8,11 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { User, Lock, Mail, Phone, Save } from "lucide-react";
 
+type SimpleUser = { id: string; email?: string | null };
+
 const AdminProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<SimpleUser | null>(null);
   const [profile, setProfile] = useState({
     full_name: "",
     phone: "",
@@ -47,7 +49,7 @@ const AdminProfile = () => {
           phone: profileData.phone || "",
         });
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error loading profile:", err);
     } finally {
       setLoading(false);
@@ -71,9 +73,10 @@ const AdminProfile = () => {
       if (error) throw error;
       
       toast({ title: "Success", description: "Profile updated successfully" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: err.message || "Failed to update profile", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to update profile", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -106,9 +109,10 @@ const AdminProfile = () => {
       
       setPasswords({ current: "", new: "", confirm: "" });
       toast({ title: "Success", description: "Password changed successfully" });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: err.message || "Failed to change password", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to change password", variant: "destructive" });
     } finally {
       setChangingPassword(false);
     }

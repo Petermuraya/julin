@@ -115,7 +115,7 @@ const AdminSubmissions = () => {
         seller_phone: form.seller_phone,
         is_admin_property: false,
         approved_at: new Date().toISOString(),
-      } as any;
+      };
 
       const { data, error } = await supabase.from("properties").insert([payload]).select().single();
       if (error) throw error;
@@ -124,9 +124,10 @@ const AdminSubmissions = () => {
 
       setSubmissions((s) => s.filter((x) => x.id !== selected.id));
       closeReview();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Error", description: "Failed to approve submission.", variant: "destructive" });
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Error", description: message || "Failed to approve submission.", variant: "destructive" });
     }
   };
 

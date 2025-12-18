@@ -1,26 +1,46 @@
 import React, { useEffect, useState } from 'react';
 
+interface Session {
+  id?: string;
+  session_id?: string;
+  user_display_name?: string;
+  started_at?: string;
+  last_at?: string;
+  last_message?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role?: string;
+  content?: string;
+  created_at?: string;
+}
+
 const AdminChats: React.FC = () => {
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   useEffect(() => {
     fetch('/api/chats')
       .then((r) => r.json())
-      .then((d) => {
-        if (d.conversations) setSessions(d.conversations);
-        else if (d.sessions) setSessions(d.sessions);
+      .then((d: unknown) => {
+        const res = d as { conversations?: Session[]; sessions?: Session[] };
+        if (res.conversations) setSessions(res.conversations);
+        else if (res.sessions) setSessions(res.sessions);
       })
-      .catch(() => {});
+      .catch((err) => { console.warn('Failed to load chats', err); });
   }, []);
 
   useEffect(() => {
     if (!selected) return;
     fetch(`/api/chats/${encodeURIComponent(selected)}`)
       .then((r) => r.json())
-      .then((d) => setMessages(d.messages || []))
-      .catch(() => setMessages([]));
+      .then((d: unknown) => {
+        const res = d as { messages?: ChatMessage[] };
+        setMessages(res.messages || []);
+      })
+      .catch((err) => { console.warn('Failed to load chat messages', err); setMessages([]); });
   }, [selected]);
 
   return (
@@ -29,7 +49,7 @@ const AdminChats: React.FC = () => {
       <div className="flex gap-4">
         <div className="w-80 border rounded p-2 overflow-auto h-[60vh]">
           {sessions.length === 0 && <div className="text-sm text-muted-foreground">No conversations found.</div>}
-          {sessions.map((s: any) => (
+          {sessions.map((s) => (
             <div
               key={s.id || s.session_id}
               className={`p-2 rounded mb-2 cursor-pointer ${selected === (s.id || s.session_id) ? 'bg-muted' : 'hover:bg-muted/50'}`}

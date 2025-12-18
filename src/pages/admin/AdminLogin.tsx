@@ -77,11 +77,12 @@ const AdminLogin = () => {
         toast({ title: "Welcome back!", description: "Logged in successfully" });
         navigate("/admin");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Auth error:", err);
+      const message = err instanceof Error ? err.message : String(err);
       toast({ 
         title: isSignUp ? "Sign up failed" : "Login failed", 
-        description: err?.message || "An error occurred", 
+        description: message || "An error occurred", 
         variant: "destructive" 
       });
     } finally {

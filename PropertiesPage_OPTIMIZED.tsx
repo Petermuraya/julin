@@ -17,14 +17,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const PAGE_SIZE = 9; // 9 properties per page
 
+type RawProperty = {
+  id: string;
+  title?: string;
+  images?: string[] | null;
+  price?: number | null;
+  property_type?: string | null;
+  location?: string | null;
+  [k: string]: unknown;
+};
+
 // fetchPage will be called by react-query's useInfiniteQuery and receives
 // the `queryKey` so we can read current filters (search, type, min/max)
-async function fetchPage({ pageParam = 0, queryKey }: any) {
+async function fetchPage({ pageParam = 0, queryKey }: { pageParam?: number; queryKey?: unknown[] }) {
   // queryKey structure: ['properties', query, type, minPrice, maxPrice]
-  const [, q = "", t = "", min = "", max = ""] = queryKey || [];
+  const [, q = "", t = "", min = "", max = ""] = (queryKey as string[]) || [];
 
   // Build server-side query with pagination
-  let builder: any = supabase
+  let builder = supabase
     .from("properties")
     .select("*")
     .eq("status", "approved")
@@ -60,12 +70,14 @@ async function fetchPage({ pageParam = 0, queryKey }: any) {
   }
 
   // Resolve first image public URL per-property
+  const properties = (data || []) as RawProperty[];
+
   const resolved = await Promise.all(
-    (data || []).map(async (property: any) => {
-      const images = property.images || [];
+    properties.map(async (property) => {
+      const images = (property.images as string[]) || [];
       let first = images[0] || null;
-      if (first && !first.startsWith("http")) {
-        const { data: publicData } = supabase.storage.from("properties").getPublicUrl(first || "");
+      if (first && !first.toString().startsWith("http")) {
+        const { data: publicData } = supabase.storage.from("properties").getPublicUrl(first?.toString() || "");
         first = publicData?.publicUrl || "";
       }
       return { ...property, image: first || "" };
