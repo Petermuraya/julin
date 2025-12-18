@@ -27,29 +27,7 @@ import PropertyGallery from '@/components/property/PropertyGallery';
 import PropertyMap from '@/components/property/PropertyMap';
 import PropertyDetails from '@/components/property/PropertyDetails';
 import PropertyContactSidebar from '@/components/property/PropertyContactSidebar';
-
-const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
-
-interface Property {
-  id: string;
-  title: string;
-  description: string | null;
-  price: number;
-  location: string;
-  county: string | null;
-  size: string | null;
-  property_type: string;
-  status: string;
-  images: string[] | null;
-  amenities: string[] | null;
-  seller_name: string | null;
-  seller_phone: string | null;
-  seller_email: string | null;
-  is_verified: boolean | null;
-  latitude: number | null;
-  longitude: number | null;
-  created_at: string;
-}
+import type { Property } from "@/types/property";
 
 const PropertyDetailPage = () => {
   const { id } = useParams<{ id: string }>();
