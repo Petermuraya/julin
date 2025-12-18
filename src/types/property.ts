@@ -21,7 +21,7 @@ export type Property = {
   title: string;
   location: string;
   price: number;
-  property_type: string;
+  property_type: "land" | "plot" | "house" | "apartment" | "commercial";
   description: string;
   seller_name: string;
   seller_phone: string;
@@ -37,4 +37,8 @@ export type Property = {
   created_at: string;
   updated_at: string;
   is_admin_property?: boolean;
+  county?: string;
+  amenities?: string[];
+  is_verified?: boolean;
+  image_url?: string;
 };
