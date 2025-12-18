@@ -146,7 +146,7 @@ const AdminDashboard = () => {
       const payload = {
         title: submission.title,
         description: submission.description || null,
-        property_type: submission.property_type || "land",
+        property_type: (submission.property_type || "land") as "land" | "plot" | "house" | "apartment" | "commercial",
         price: submission.price || 0,
         location: submission.location || "",
         images: submission.images || null,
@@ -154,7 +154,7 @@ const AdminDashboard = () => {
         seller_phone: submission.seller_phone || null,
         is_admin_property: false,
         approved_at: new Date().toISOString(),
-      } as const;
+      };
 
       const { data, error } = await supabase.from("properties").insert([payload]).select().single();
       if (error) throw error;
