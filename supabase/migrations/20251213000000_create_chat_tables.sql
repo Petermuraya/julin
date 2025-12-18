@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 
 -- Create indexes for better query performance
+-- Ensure the conversation_id, completed_at, and rating columns exist (handles existing tables created without these columns)
+ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS conversation_id TEXT UNIQUE;
+ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE chat_conversations ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5);
+ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS conversation_id TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_conversation_id ON chat_conversations(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_completed_at ON chat_conversations(completed_at);
 CREATE INDEX IF NOT EXISTS idx_chat_conversations_rating ON chat_conversations(rating);

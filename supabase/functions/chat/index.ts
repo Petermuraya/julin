@@ -5,19 +5,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type MiniProperty = {
-  id?: string;
-  title?: string;
-  location?: string;
-  price?: number;
-  property_type?: string;
-  size?: string | null;
-  description?: string | null;
-  images?: string[] | null;
-  county?: string | null;
-};
-
 Deno.serve(async (req) => {
+  type MiniProperty = {
+    id?: string;
+    title?: string;
+    location?: string;
+    price?: number;
+    property_type?: string;
+    size?: string | null;
+    description?: string | null;
+    images?: string[] | null;
+    county?: string | null;
+  };
 
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -51,7 +50,10 @@ Deno.serve(async (req) => {
     }
 
     // Default: chat message handling
-    if (!message || typeof message !== "string") {
+    // Support either a single `message` string OR an array of `messages` (used by supabase.functions.invoke)
+    const incomingMessages = (body as Record<string, unknown>)?.messages as Array<{ role?: string; content?: string }> | undefined;
+
+    if ((!message || typeof message !== "string") && (!incomingMessages || !Array.isArray(incomingMessages) || incomingMessages.length === 0)) {
       return new Response(
         JSON.stringify({ error: "Message is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -78,8 +80,8 @@ Deno.serve(async (req) => {
     
     if (!LOVABLE_API_KEY) {
       // Fallback to simple property-based response without AI
-      const reply = generateSimpleResponse(message, allProperties || [], user_role);
-      const relevantProperties = findRelevantProperties(message, allProperties || []);
+      const reply = generateSimpleResponse(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), allProperties || [], (body as Record<string, unknown>)?.user_role as string | undefined || user_role);
+      const relevantProperties = findRelevantProperties(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), allProperties || []);
       
       return new Response(
         JSON.stringify({
@@ -92,7 +94,7 @@ Deno.serve(async (req) => {
     }
 
     // Use Lovable AI Gateway
-    const isAdmin = user_role === 'admin';
+    const isAdmin = Boolean((body as Record<string, unknown>)?.isAdmin) || user_role === 'admin';
     
     const systemPrompt = isAdmin ? `You are an advanced AI assistant for Julin Real Estate Hub administrators in Kenya.
 
@@ -147,15 +149,23 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
       { role: "system", content: systemPrompt },
     ];
 
-    // Add recent conversation history
-    if (conversation_history && Array.isArray(conversation_history)) {
-      const recentHistory = conversation_history.slice(-5);
-      for (const msg of recentHistory) {
-        messages.push({ role: msg.role, content: msg.content });
+    // If the caller provided a `messages` array (e.g., via supabase.functions.invoke), prefer that
+    if (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 0) {
+      const recent = incomingMessages.slice(-10);
+      for (const msg of recent) {
+        if (msg && msg.role && msg.content) messages.push({ role: String(msg.role), content: String(msg.content) });
       }
-    }
+    } else {
+      // Add recent conversation history
+      if (conversation_history && Array.isArray(conversation_history)) {
+        const recentHistory = conversation_history.slice(-5);
+        for (const msg of recentHistory) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      }
 
-    messages.push({ role: "user", content: message });
+      messages.push({ role: "user", content: String(message) });
+    }
 
     // Call Lovable AI Gateway
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -272,7 +282,7 @@ Return a JSON array of 5 blog suggestions with this format:
         },
         {
           role: "user",
-          content: ctx || "Suggest 5 blog topics for a Kenyan real estate website"
+          content: body.context || "Suggest 5 blog topics for a Kenyan real estate website"
         }
       ],
       max_tokens: 500,
@@ -292,8 +302,8 @@ Return a JSON array of 5 blog suggestions with this format:
     );
   }
 
-  const aiResponse = await response.json();
-  const content = aiResponse.choices?.[0]?.message?.content || "[]";
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || "[]";
   
   try {
     // Extract JSON from response
@@ -391,11 +401,7 @@ Return a JSON object with:
 
 // Handle property description enhancement
 async function handleEnhanceDescription(body: unknown) {
-  const b = body as Record<string, unknown>;
-  const description = String(b.description || '');
-  const property_type = String(b.property_type || '');
-  const location = String(b.location || '');
-  const price = Number(b.price || 0);
+  const { description, property_type, location, price } = body;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {

@@ -462,16 +462,29 @@ const AdminProperties = () => {
       let imageUrls: string[] = [...existingImages];
       let videoUrls: string[] = [...existingVideos];
 
-      // If using URL input, parse those
-      if (!useUpload && form.images) {
-        const urlImages = form.images.split(",").map((s) => s.trim()).filter(Boolean);
-        imageUrls = [...imageUrls, ...urlImages];
-      }
+      // Parse any URLs entered in the textareas (support newlines, commas, or whitespace)
+      const parseUrls = (input?: string) => {
+        if (!input) return [];
+        return input
+          .split(/\s|,|\n/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+      };
 
-      if (!useUpload && form.videos) {
-        const urlVideos = form.videos.split(",").map((s) => s.trim()).filter(Boolean);
-        videoUrls = [...videoUrls, ...urlVideos];
-      }
+      const isUrl = (s: string) => /^(https?:\/\/|data:|\/\/)/i.test(s);
+
+      const urlImages = parseUrls(form.images).filter(isUrl);
+      const urlVideos = parseUrls(form.videos).filter(isUrl);
+
+      imageUrls = [...imageUrls, ...urlImages];
+      videoUrls = [...videoUrls, ...urlVideos];
+
+      // Validate counts: maximum 10 images, maximum 3 videos
+      const totalImageCount = imageUrls.length + files.length;
+      if (totalImageCount > 10) throw new Error("Maximum 10 images allowed. Please remove some images or URLs.");
+
+      const totalVideoCount = videoUrls.length + videoFiles.length;
+      if (totalVideoCount > 3) throw new Error("Maximum 3 videos allowed. Please remove some videos or URLs.");
 
       const propertyData = {
         title: form.title.trim(),

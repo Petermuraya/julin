@@ -18,10 +18,30 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Guard access to `localStorage` to avoid errors in non-browser environments
 const storage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined' ? window.localStorage : undefined;
 
-export const supabase = createClient<Database>(SUPABASE_URL ?? '', SUPABASE_PUBLISHABLE_KEY ?? '', {
-  auth: {
-    storage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+// If the env vars are missing, avoid calling `createClient` with empty strings (which throws)
+// and instead export a lightweight proxy that throws a helpful error when used.
+function createDisabledClient() {
+  const err = new Error('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Initialize these variables to use Supabase client.');
+  const handler: ProxyHandler<any> = {
+    get() {
+      throw err;
+    },
+    apply() {
+      throw err;
+    },
+    construct() {
+      throw err;
+    }
+  };
+  return new Proxy({}, handler) as unknown as ReturnType<typeof createClient<Database>>;
+}
+
+export const supabase = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
+  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storage,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    })
+  : createDisabledClient();
