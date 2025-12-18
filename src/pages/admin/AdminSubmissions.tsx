@@ -16,6 +16,7 @@ type Submission = {
   price: number;
   status: string | null;
   images?: string[] | null;
+  property_type?: string;
 };
 
 const AdminSubmissions = () => {
@@ -107,7 +108,7 @@ const AdminSubmissions = () => {
       const payload = {
         title: form.title,
         description: form.description || null,
-        property_type: "land",
+        property_type: (selected.property_type || "land") as "land" | "plot" | "house" | "apartment" | "commercial",
         price: Number(form.price || 0),
         location: form.location || "",
         images: selected.images || null,
