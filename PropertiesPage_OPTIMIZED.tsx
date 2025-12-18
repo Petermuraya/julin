@@ -110,14 +110,13 @@ const PropertiesPage = () => {
     queryFn: fetchPage,
     getNextPageParam: (lastPage, pages) =>
       lastPage.length === PAGE_SIZE ? pages.length : undefined,
-    keepPreviousData: true,
   });
 
   // Flatten all pages into single array
   const allProperties = data?.pages.flat() || [];
 
   // Apply client-side filtering for search/type/price
-  const filteredProperties = allProperties.filter((prop: PropertyWithImage) => {
+  const filteredProperties = allProperties.filter((prop) => {
     const titleMatch = prop.title?.toLowerCase().includes(query.toLowerCase()) ?? true;
     const typeMatch = !type || prop.property_type === type;
     const minMatch = !minPrice || (prop.price && prop.price >= parseInt(minPrice));
@@ -194,7 +193,7 @@ const PropertiesPage = () => {
                 type="number"
                 placeholder="Min Price (KES)"
                 value={minPrice}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setMinPrice(e.target.value);
                   handleFilterChange();
                 }}
@@ -259,7 +258,7 @@ const PropertiesPage = () => {
           {/* Properties Grid */}
           {!isLoading && filteredProperties.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {filteredProperties.map((property: PropertyWithImage) => (
+              {filteredProperties.map((property) => (
                 <PropertyCard
                   key={property.id}
                   id={property.id}
