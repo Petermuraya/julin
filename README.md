@@ -1,82 +1,28 @@
-# Welcome to your Lovable project
+# Julin — Real Estate Hub
 
-## Project info
+A small, fast real-estate frontend built with Vite, React, TypeScript and Supabase.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Overview
 
-## How can I edit this code?
+This project showcases property listings, search, and an AI-powered chat assistant to help users discover properties and answer questions.
 
-There are several ways of editing your application.
+## Notable features
 
-**Use Lovable**
+- Property search and filters
+- Admin dashboard and analytics
+- AI chat assistant with:
+  - Realtime notifications (optional; enable via `VITE_ENABLE_REALTIME=true`)
+  - Pulse-style unread indicator
+  - Sound toggle for notifications
+  - Unread state persisted in localStorage
+  - Auto-open on first visit
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Development
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node + Bun + Vite for local development
+- Supabase for backend and realtime features
 
-**Use your preferred IDE**
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-### Deploy to GitHub Pages
-
-This repository can also be published via GitHub Pages. The project is configured to build with Vite and deploy the `dist/` folder.
-
-- The `vite` config includes a `base` for repository pages (`/julin-real-estate-hub/`).
-- A GitHub Actions workflow is included at `.github/workflows/pages.yml` which runs on pushes to `main`, builds the app, and uploads the `dist/` artifact to GitHub Pages.
-
-If you prefer to host the site at `https://<username>.github.io` (user/organization pages), change the `base` in `vite.config.ts` to `/` and update Pages settings in the repository.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+If you'd like a more detailed README (badges, deploy instructions, or contribution notes), tell me what to include and I'll expand it.
