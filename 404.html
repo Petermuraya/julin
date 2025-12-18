@@ -230,19 +230,5 @@
       </div>
     </div>
   </div>
-
-  <script>
-    // Handle SPA routing for GitHub Pages
-    var l = window.location;
-    var path = l.pathname;
-    if (path.startsWith('/julin/')) {
-      var route = path.replace('/julin/', '');
-      if (route) {
-        l.replace('/julin/#' + route + l.search + l.hash);
-      } else {
-        l.replace('/julin/');
-      }
-    }
-  </script>
 </body>
 </html>
