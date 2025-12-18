@@ -15,7 +15,6 @@
   }
   ,
   "exclude": [
-    "PropertyDetailPage_NEW.tsx",
-    "PropertiesPage_OPTIMIZED.tsx"
+    "PropertyDetailPage_NEW.tsx"
   ]
 }
