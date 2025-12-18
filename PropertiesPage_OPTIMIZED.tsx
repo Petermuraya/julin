@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
-// @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
 import PropertyCard from "@/components/property/PropertyCard";
 import { Input } from "@/components/ui/input";
@@ -29,9 +28,10 @@ type RawProperty = {
 
 // fetchPage will be called by react-query's useInfiniteQuery and receives
 // the `queryKey` so we can read current filters (search, type, min/max)
-async function fetchPage({ pageParam = 0, queryKey }: { pageParam?: number; queryKey?: unknown[] }) {
+async function fetchPage({ pageParam, queryKey }: { pageParam: unknown; queryKey: readonly unknown[] }): Promise<PropertyWithImage[]> {
   // queryKey structure: ['properties', query, type, minPrice, maxPrice]
-  const [, q = "", t = "", min = "", max = ""] = (queryKey as string[]) || [];
+  const [, q = "", t = "", min = "", max = ""] = queryKey as string[];
+  const page = (pageParam as number) || 0;
 
   // Build server-side query with pagination
   let builder = supabase
@@ -39,7 +39,7 @@ async function fetchPage({ pageParam = 0, queryKey }: { pageParam?: number; quer
     .select("*")
     .eq("status", "approved")
     .order("created_at", { ascending: false })
-    .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
   if (t) {
     builder = builder.eq("property_type", t);
@@ -87,6 +87,8 @@ async function fetchPage({ pageParam = 0, queryKey }: { pageParam?: number; quer
   return resolved;
 }
 
+type PropertyWithImage = RawProperty & { image: string };
+
 const PropertiesPage = () => {
   // Filter state
   const [query, setQuery] = useState("");
@@ -103,7 +105,7 @@ const PropertiesPage = () => {
     hasNextPage,
     isFetchingNextPage,
     refetch,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<PropertyWithImage[]>({
     queryKey: ["properties", query, type, minPrice, maxPrice],
     queryFn: fetchPage,
     getNextPageParam: (lastPage, pages) =>
@@ -115,11 +117,11 @@ const PropertiesPage = () => {
   const allProperties = data?.pages.flat() || [];
 
   // Apply client-side filtering for search/type/price
-  const filteredProperties = allProperties.filter((prop) => {
+  const filteredProperties = allProperties.filter((prop: PropertyWithImage) => {
     const titleMatch = prop.title?.toLowerCase().includes(query.toLowerCase()) ?? true;
     const typeMatch = !type || prop.property_type === type;
-    const minMatch = !minPrice || (prop.price >= parseInt(minPrice));
-    const maxMatch = !maxPrice || (prop.price <= parseInt(maxPrice));
+    const minMatch = !minPrice || (prop.price && prop.price >= parseInt(minPrice));
+    const maxMatch = !maxPrice || (prop.price && prop.price <= parseInt(maxPrice));
     return titleMatch && typeMatch && minMatch && maxMatch;
   });
 
@@ -163,7 +165,7 @@ const PropertiesPage = () => {
                 type="text"
                 placeholder="Search by title..."
                 value={query}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setQuery(e.target.value);
                   handleFilterChange();
                 }}
@@ -171,7 +173,7 @@ const PropertiesPage = () => {
               />
 
               {/* Type Filter */}
-              <Select value={type} onValueChange={(val) => {
+              <Select value={type} onValueChange={(val: string) => {
                 setType(val);
                 handleFilterChange();
               }}>
@@ -204,7 +206,7 @@ const PropertiesPage = () => {
                 type="number"
                 placeholder="Max Price (KES)"
                 value={maxPrice}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   setMaxPrice(e.target.value);
                   handleFilterChange();
                 }}
@@ -257,17 +259,17 @@ const PropertiesPage = () => {
           {/* Properties Grid */}
           {!isLoading && filteredProperties.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {filteredProperties.map((property) => (
+              {filteredProperties.map((property: PropertyWithImage) => (
                 <PropertyCard
                   key={property.id}
                   id={property.id}
-                  title={property.title}
-                  price={`KES ${Number(property.price).toLocaleString()}`}
-                  location={property.location}
+                  title={property.title || ""}
+                  price={`KES ${Number(property.price || 0).toLocaleString()}`}
+                  location={property.location || ""}
                   size={property.size || property.property_type || "-"}
                   image={property.image}
-                  details={property.description || property.details || ""}
-                  phone={property.seller_phone || property.phone || "+254700000000"}
+                  details={property.description || ""}
+                  phone={property.seller_phone || "+254700000000"}
                 />
               ))}
             </div>
