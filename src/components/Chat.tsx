@@ -5,6 +5,7 @@ import { PreChatForm } from './PreChatForm';
 import { ConversationRating } from './ConversationRating';
 import { supabase } from '@/integrations/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Json } from '@/integrations/supabase/types';
 import type { Property } from '@/types/property';
 
 import ChatHeader from '@/components/chat/ChatHeader';
@@ -170,7 +171,7 @@ const Chat: React.FC = () => {
         session_id: conversationId,
         role,
         content,
-        metadata: { user_info: userInfo } as Record<string, unknown>
+        metadata: { user_info: userInfo } as unknown as Json
       };
       
       const { error } = await supabase
