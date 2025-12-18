@@ -5,18 +5,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type MiniProperty = {
+  id?: string;
+  title?: string;
+  location?: string;
+  price?: number;
+  property_type?: string;
+  size?: string | null;
+  description?: string | null;
+  images?: string[] | null;
+  county?: string | null;
+};
+
 Deno.serve(async (req) => {
-  type MiniProperty = {
-    id?: string;
-    title?: string;
-    location?: string;
-    price?: number;
-    property_type?: string;
-    size?: string | null;
-    description?: string | null;
-    images?: string[] | null;
-    county?: string | null;
-  };
 
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -271,7 +272,7 @@ Return a JSON array of 5 blog suggestions with this format:
         },
         {
           role: "user",
-          content: body.context || "Suggest 5 blog topics for a Kenyan real estate website"
+          content: ctx || "Suggest 5 blog topics for a Kenyan real estate website"
         }
       ],
       max_tokens: 500,
@@ -291,8 +292,8 @@ Return a JSON array of 5 blog suggestions with this format:
     );
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "[]";
+  const aiResponse = await response.json();
+  const content = aiResponse.choices?.[0]?.message?.content || "[]";
   
   try {
     // Extract JSON from response
@@ -390,7 +391,11 @@ Return a JSON object with:
 
 // Handle property description enhancement
 async function handleEnhanceDescription(body: unknown) {
-  const { description, property_type, location, price } = body;
+  const b = body as Record<string, unknown>;
+  const description = String(b.description || '');
+  const property_type = String(b.property_type || '');
+  const location = String(b.location || '');
+  const price = Number(b.price || 0);
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
