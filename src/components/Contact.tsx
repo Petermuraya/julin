@@ -87,15 +87,18 @@ const Contact = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
           {/* Contact Info Cards */}
           <div className="lg:col-span-1 space-y-6">
             {contactInfo.map((item, index) => (
               <a
                 key={index}
                 href={item.href}
+                aria-label={`${item.label}: ${item.value}`}
+                target={item.href.startsWith('http') ? '_blank' : undefined}
+                rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
                 className={cn(
-                  "flex items-start gap-4 p-6 bg-white rounded-2xl border border-slate-200",
+                  "flex items-start gap-4 p-5 sm:p-6 bg-white rounded-2xl border border-slate-200",
                   "hover:border-primary/30 hover:shadow-lg hover:bg-slate-50 transition-all duration-300"
                 )}
               >
@@ -114,7 +117,7 @@ const Contact = () => {
             ))}
 
             {/* Why Choose Us */}
-            <div className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl border border-primary/10 mt-8">
+            <div className="p-5 sm:p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl border border-primary/10 mt-8">
               <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-primary" />
                 Why Choose Us
@@ -126,7 +129,7 @@ const Contact = () => {
                 </li>
                 <li className="flex items-start gap-2 text-sm text-slate-600">
                   <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
-                  <span>Free Property Valuation</span>
+                  <span>Property Valuation</span>
                 </li>
                 <li className="flex items-start gap-2 text-sm text-slate-600">
                   <span className="w-1.5 h-1.5 bg-primary rounded-full mt-2 flex-shrink-0"></span>
@@ -439,7 +442,7 @@ const ContactForm = () => {
         ) : (
           <>
             <MessageCircle className="h-5 w-5" />
-            <span>Send via WhatsApp</span>
+            <span>Send and WhatsApp</span>
           </>
         )}
       </Button>
