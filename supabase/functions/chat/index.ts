@@ -1,7 +1,14 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// deno-lint-ignore no-explicit-any
-type SupabaseClientAny = SupabaseClient<any, any, any>;
+type SupabaseClientAny = SupabaseClient<unknown, unknown, unknown>;
+
+// Minimal Deno typings for this file (avoid global type errors in editors without Deno)
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Promise<Response> | Response): void;
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +22,7 @@ type MiniProperty = {
   location?: string;
   price?: number;
   property_type?: string;
+  bathrooms?: number | null;
   size?: string | null;
   description?: string | null;
   images?: string[] | null;
@@ -41,7 +49,7 @@ interface ChatRequestBody {
   price?: number;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -86,7 +94,7 @@ Deno.serve(async (req) => {
     // Get all available properties for context
     const { data: allProperties, error: propertiesError } = await supabase
       .from("properties")
-      .select("id, title, location, price, property_type, size, description, images, county")
+      .select("id, title, location, price, property_type, size, bathrooms, description, images, county")
       .eq("status", "available")
       .limit(50);
 
@@ -100,10 +108,11 @@ Deno.serve(async (req) => {
 
     const properties = (allProperties || []) as MiniProperty[];
 
-    // Check if using Lovable AI
+    // Check for AI API keys (Lovable gateway or OpenAI). If none, fallback to simple responses.
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+    if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
       // Fallback to simple property-based response without AI
       const reply = generateSimpleResponse(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), properties, body.user_role || user_role);
       const relevantProperties = findRelevantProperties(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), properties);
@@ -121,7 +130,14 @@ Deno.serve(async (req) => {
     // Use Lovable AI Gateway
     const isAdmin = Boolean(body.isAdmin) || user_role === 'admin';
     
-    const systemPrompt = isAdmin ? `You are an advanced AI assistant for Julin Real Estate Hub administrators in Kenya.
+    const landKnowledge = `Kenya land & property knowledge (useful guidance, not legal advice):
+- Common land documents: Title Deed, Allotment Letter, Lease, Sale Agreement, PIN Certificate.
+- Verification steps: request title document, perform a Land Search at the Lands Registry, confirm boundaries with a licensed surveyor, check for caveats/charges.
+- Ownership types: Freehold (outright ownership), Leasehold (time-limited lease from landowner), Customary/community tenure.
+- Practical checks: confirm rates and taxes with county, inspect the property physically, ask for original documents and recent search extracts, verify land rates and rent if applicable.
+- When in doubt: recommend consulting a qualified advocate or licensed land surveyor and using official government records.`;
+
+    const baseSystem = isAdmin ? `You are an advanced AI assistant for Julin Real Estate Hub administrators in Kenya.
 
 Available properties:
 ${properties.map(p =>
@@ -169,10 +185,26 @@ RESPONSE GUIDELINES:
 
 Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'})`;
 
-    // Build messages for AI
+    const systemPrompt = `${baseSystem}\n\n${landKnowledge}`;
+
+    // Build messages for AI, include concise few-shot examples for greetings, contact, and land intents
     const messages: Array<{ role: string; content: string }> = [
       { role: "system", content: systemPrompt },
     ];
+
+    // Few-shot examples to teach the assistant common intents and safe recommendations
+    const examples = [
+      { role: 'user', content: 'Hi' },
+      { role: 'assistant', content: 'Hello! Welcome to Julin Real Estate. I can help you find properties in Kenya, explain land terms, or connect you to our team. How can I assist you today?' },
+      { role: 'user', content: 'How do I verify a title deed for a plot in Nairobi?' },
+      { role: 'assistant', content: 'Generally, ask the seller for the original Title Deed, perform a Land Search at the Lands Registry to confirm the current registered owner and any encumbrances, engage a licensed surveyor to confirm boundaries, and consult an advocate for legal verification. I can guide you through each step or help locate professionals.' },
+      { role: 'user', content: 'What is the difference between freehold and leasehold?' },
+      { role: 'assistant', content: 'Freehold typically means outright ownership of the land. Leasehold means the land is held for a fixed term under a lease. Always check the specific lease terms and consult legal counsel for transactions.' },
+      { role: 'user', content: 'How can I contact you?' },
+      { role: 'assistant', content: 'I can share contact options. Please tell me your preferred method (WhatsApp, phone, or email) and I will provide the best available contact details or request a team member to reach out.' }
+    ];
+
+    for (const ex of examples) messages.push(ex);
 
     // If the caller provided a `messages` array (e.g., via supabase.functions.invoke), prefer that
     if (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 0) {
@@ -192,19 +224,8 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
       messages.push({ role: "user", content: String(message) });
     }
 
-    // Call Lovable AI Gateway
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages,
-        max_tokens: 500,
-      }),
-    });
+    // Call AI gateway (supports LOVABLE_API_KEY or OPENAI_API_KEY)
+    const response = await callAI(messages, 500, "google/gemini-2.5-flash");
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -261,8 +282,9 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
 async function handleBlogSuggestion(body: ChatRequestBody, supabase: SupabaseClientAny) {
   const ctx = body.context;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
-  if (!LOVABLE_API_KEY) {
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+  if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
     return new Response(
       JSON.stringify({ 
         suggestions: [
@@ -286,33 +308,24 @@ async function handleBlogSuggestion(body: ChatRequestBody, supabase: SupabaseCli
   const locations = [...new Set(properties.map((p) => p.location).filter(Boolean))];
   const types = [...new Set(properties.map((p) => p.property_type).filter(Boolean))];
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `You are a real estate blog content strategist for Julin Real Estate in Kenya. Generate blog topic suggestions based on current market trends and available properties.
+  const messages = [
+    {
+      role: "system",
+      content: `You are a real estate blog content strategist for Julin Real Estate in Kenya. Generate blog topic suggestions based on current market trends and available properties.
           
 Current property locations: ${locations.join(', ')}
 Property types available: ${types.join(', ')}
 
 Return a JSON array of 5 blog suggestions with this format:
 [{"title": "Blog Title", "topic": "Category", "excerpt": "Brief description"}]`
-        },
-        {
-          role: "user",
-          content: ctx || "Suggest 5 blog topics for a Kenyan real estate website"
-        }
-      ],
-      max_tokens: 500,
-    }),
-  });
+    },
+    {
+      role: "user",
+      content: ctx || "Suggest 5 blog topics for a Kenyan real estate website"
+    }
+  ];
+
+  const response = await callAI(messages, 500, "google/gemini-2.5-flash");
 
   if (!response.ok) {
     return new Response(
@@ -355,8 +368,9 @@ async function handleGenerateBlog(body: ChatRequestBody) {
   const title = String(body.title || 'Untitled');
   const topic = String(body.topic || 'General');
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
-  if (!LOVABLE_API_KEY) {
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+  if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
     return new Response(
       JSON.stringify({ 
         content: `# ${title}\n\nThis is a placeholder blog post about ${topic}. Enable AI to generate full content.`,
@@ -368,18 +382,10 @@ async function handleGenerateBlog(body: ChatRequestBody) {
     );
   }
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `You are a professional real estate content writer for Julin Real Estate in Kenya. Write engaging, SEO-optimized blog posts.
+  const messages = [
+    {
+      role: "system",
+      content: `You are a professional real estate content writer for Julin Real Estate in Kenya. Write engaging, SEO-optimized blog posts.
 
 Return a JSON object with:
 {
@@ -388,15 +394,14 @@ Return a JSON object with:
   "seo_title": "SEO optimized title (60 chars max)",
   "seo_description": "Meta description (160 chars max)"
 }`
-        },
-        {
-          role: "user",
-          content: `Write a blog post about: ${title}\nTopic category: ${topic}`
-        }
-      ],
-      max_tokens: 2000,
-    }),
-  });
+    },
+    {
+      role: "user",
+      content: `Write a blog post about: ${title}\nTopic category: ${topic}`
+    }
+  ];
+
+  const response = await callAI(messages, 2000, "google/gemini-2.5-flash");
 
   if (!response.ok) {
     return new Response(
@@ -427,41 +432,27 @@ Return a JSON object with:
 async function handleEnhanceDescription(body: ChatRequestBody) {
   const { description, property_type, location, price } = body;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
   
-  if (!LOVABLE_API_KEY) {
+  if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
     return new Response(
       JSON.stringify({ enhanced: description || "A beautiful property in a prime location." }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
+  const messages = [
+    {
+      role: "system",
+      content: "You are a real estate copywriter. Enhance property descriptions to be compelling, professional, and highlight key selling points. Keep it concise (150-250 words)."
     },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: "You are a real estate copywriter. Enhance property descriptions to be compelling, professional, and highlight key selling points. Keep it concise (150-250 words)."
-        },
-        {
-          role: "user",
-          content: `Enhance this property description:
-Property Type: ${property_type || 'Not specified'}
-Location: ${location || 'Not specified'}
-Price: KES ${price?.toLocaleString() || 'Not specified'}
-Current Description: ${description || 'No description provided'}
+    {
+      role: "user",
+      content: `Enhance this property description:\nProperty Type: ${property_type || 'Not specified'}\nLocation: ${location || 'Not specified'}\nPrice: KES ${price?.toLocaleString() || 'Not specified'}\nCurrent Description: ${description || 'No description provided'}\n\nWrite an engaging, professional property description.`
+    }
+  ];
 
-Write an engaging, professional property description.`
-        }
-      ],
-      max_tokens: 400,
-    }),
-  });
+  const response = await callAI(messages, 400, "google/gemini-2.5-flash");
 
   if (!response.ok) {
     return new Response(
@@ -483,7 +474,8 @@ Write an engaging, professional property description.`
 async function handleConversationSummary(body: ChatRequestBody, supabase: SupabaseClientAny) {
   const conversationId = body.conversation_id || '';
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
   if (!conversationId) {
     return new Response(
       JSON.stringify({ summary: "No conversation ID provided." }),
@@ -505,7 +497,7 @@ async function handleConversationSummary(body: ChatRequestBody, supabase: Supaba
     );
   }
 
-  if (!LOVABLE_API_KEY) {
+  if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
     const messageCount = messages.length;
     const userMessages = messages.filter((m: { role: string }) => m.role === 'user').length;
     return new Response(
@@ -520,33 +512,18 @@ async function handleConversationSummary(body: ChatRequestBody, supabase: Supaba
     .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
     .join('\n');
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
+  const messagesForSummary = [
+    {
+      role: "system",
+      content: `Analyze this real estate chat conversation and provide a brief summary including:\n1. User's property interests (type, location, budget)\n2. Key questions asked\n3. Lead quality assessment (Hot/Warm/Cold)\n4. Recommended follow-up actions\n\nKeep the summary concise (100-150 words).`
     },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: `Analyze this real estate chat conversation and provide a brief summary including:
-1. User's property interests (type, location, budget)
-2. Key questions asked
-3. Lead quality assessment (Hot/Warm/Cold)
-4. Recommended follow-up actions
+    {
+      role: "user",
+      content: conversationText
+    }
+  ];
 
-Keep the summary concise (100-150 words).`
-        },
-        {
-          role: "user",
-          content: conversationText
-        }
-      ],
-      max_tokens: 300,
-    }),
-  });
+  const response = await callAI(messagesForSummary, 300, "google/gemini-2.5-flash");
 
   if (!response.ok) {
     return new Response(
@@ -599,7 +576,20 @@ function generateSimpleResponse(message: string, properties: MiniProperty[], use
   }
   
   if (msg.includes('contact') || msg.includes('phone') || msg.includes('call')) {
-    return "You can contact us via WhatsApp or visit our Contact page for more information. Would you like to see any properties?";
+    return "Please tell me your preferred contact method (WhatsApp, phone, or email) and I'll share the best way to reach our team. Would you like me to request a callback from an agent?";
+  }
+
+  // Land and title related fallback guidance
+  if (msg.includes('title') || msg.includes('deed') || msg.includes('verify')) {
+    return "To verify a title deed in Kenya: 1) Request the original title deed from the seller; 2) Perform a Land Search at the relevant Lands Registry to confirm the registered owner and any encumbrances; 3) Engage a licensed surveyor to confirm boundaries; 4) Consult an advocate for legal verification before payment. Would you like help locating a surveyor or advocate?";
+  }
+
+  if (msg.includes('freehold') || msg.includes('leasehold')) {
+    return "Freehold usually means outright ownership of land. Leasehold means the land is held for a fixed term under a lease agreement. Always check the specific lease terms and consult a legal professional for implications on sale or development.";
+  }
+
+  if (msg.includes('survey') || msg.includes('boundary') || msg.includes('boundaries')) {
+    return "A licensed land surveyor will confirm exact boundaries and provide a survey plan. It's recommended to commission a survey before completing any purchase to avoid disputes. Would you like guidance on how to find a licensed surveyor?";
   }
   
   if (properties.length === 0) {
@@ -642,4 +632,37 @@ function findRelevantProperties(message: string, properties: MiniProperty[]): Mi
     
     return titleMatch || locationMatch || typeMatch || countyMatch || budgetMatch;
   }).slice(0, 5);
+}
+
+// Generic AI caller: prefers LOVABLE gateway, falls back to OpenAI if configured.
+async function callAI(messages: Array<{ role: string; content: string }>, max_tokens = 500, model = "google/gemini-2.5-flash") {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+
+  if (LOVABLE_API_KEY) {
+    return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model, messages, max_tokens }),
+    });
+  }
+
+  if (OPENAI_API_KEY) {
+    // Map model to an OpenAI-compatible default if the provided model is Gemini
+    const openaiModel = model && model.startsWith('google/') ? 'gpt-3.5-turbo' : model;
+    return await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ model: openaiModel, messages, max_tokens }),
+    });
+  }
+
+  // No API configured - return a 503-like Response
+  return new Response(JSON.stringify({ error: 'No AI API key configured' }), { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 }
