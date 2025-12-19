@@ -52,6 +52,7 @@ const Hero = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const [totalProperties, setTotalProperties] = useState(0);
+  const [typed, setTyped] = useState('');
   const isMobile = useMediaQuery("(max-width: 640px)");
   
   // Fallback images
@@ -98,11 +99,24 @@ const Hero = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex(prev => prev + 1);
-      setImageError(false); // Reset error state for new image
-    }, 8000); // Change image every 8 seconds
+      setImageError(false);
+    }, 8000);
 
     return () => clearInterval(interval);
   }, [properties.length]);
+
+  // Typing effect for concise tagline
+  useEffect(() => {
+    const target = 'Discover verified properties across Kenya.';
+    let i = 0;
+    setTyped('');
+    const t = setInterval(() => {
+      i += 1;
+      setTyped(target.slice(0, i));
+      if (i >= target.length) clearInterval(t);
+    }, 28);
+    return () => clearInterval(t);
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,7 +133,8 @@ const Hero = () => {
   return (
     <section
       id="home"
-      className="relative min-h-screen flex items-center justify-center pt-20 md:pt-32 overflow-hidden"
+      className="relative min-h-[70vh] md:min-h-screen flex items-center justify-center pt-16 md:pt-32 overflow-hidden"
+      aria-label="Hero section"
     >
       {/* Animated Background */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -127,20 +142,21 @@ const Hero = () => {
           <motion.img
             key={currentImageIndex}
             src={getCurrentBackgroundImage()}
-            alt="Luxury real estate property in Kenya"
-            className="w-full h-full object-cover object-center scale-110"
-            initial={{ opacity: 0, scale: 1.1 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
+            alt="Real estate property in Kenya"
+            className="w-full h-full object-cover object-center"
+            style={{ filter: 'brightness(0.72) saturate(1.02)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: 'easeOut' }}
             loading="eager"
             fetchPriority="high"
             onError={() => setImageError(true)}
           />
         </AnimatePresence>
-        {/* Enhanced Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-navy/95 via-navy/80 to-navy/60" />
-        <div className="absolute inset-0 bg-gradient-to-t from-navy via-transparent to-transparent opacity-50" />
+        {/* Lighter overlay to keep images visible while ensuring text contrast */}
+        <div className="absolute inset-0 bg-gradient-to-br from-navy/40 via-navy/28 to-navy/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-navy/10 via-transparent to-transparent opacity-30" />
         
         {/* Animated Background Elements */}
         <motion.div 
@@ -242,37 +258,35 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <motion.span 
-              className="inline-flex items-center gap-2 text-accent font-semibold text-sm tracking-widest uppercase mb-4 px-4 py-2 bg-accent/10 rounded-full"
+            <motion.span
+              className="inline-flex items-center gap-2 text-accent font-semibold text-sm tracking-widest uppercase mb-3 px-3 py-1 bg-accent/10 rounded-full"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
               <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-              Welcome to Julin Real Estate
+              Julin Real Estate
             </motion.span>
 
-            <motion.h1 
-              className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-primary-foreground mb-6 leading-tight"
-              initial={{ opacity: 0, y: 20 }}
+            <motion.h1
+              className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground mb-3 leading-tight"
+              initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              transition={{ delay: 0.25 }}
             >
-              Discover Your
-              <span className="block bg-gradient-to-r from-accent to-blue-400 bg-clip-text text-transparent mt-2">
-                Perfect Property
-              </span>
+              Find verified properties in Kenya
             </motion.h1>
 
-            <motion.p 
-              className="text-lg sm:text-xl md:text-2xl text-primary-foreground/90 mb-8 max-w-xl mx-auto lg:mx-0 leading-relaxed"
+            <motion.p
+              className="text-sm sm:text-base text-primary-foreground/90 mb-6 max-w-md lg:max-w-xl leading-relaxed"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              Kenya's premier property marketplace with{" "}
-              <span className="font-semibold text-accent">admin-verified listings</span> 
-              {" "}for secure and transparent real estate transactions.
+              {typed}
+              <span className="ml-1 inline-block text-accent" aria-hidden>
+                <span className="animate-pulse">▍</span>
+              </span>
             </motion.p>
 
             {/* Quick Stats */}
@@ -301,8 +315,8 @@ const Hero = () => {
             )}
 
             {/* Call to Action Buttons */}
-            <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8"
+            <motion.div
+              className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
@@ -310,7 +324,7 @@ const Hero = () => {
               <Link to="/properties" className="flex-1 sm:flex-initial">
                 <Button 
                   variant="hero" 
-                  size={isMobile ? "lg" : "xl"} 
+                  size={isMobile ? "md" : "lg"}
                   className="w-full sm:w-auto group"
                 >
                   <Search className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
@@ -319,13 +333,13 @@ const Hero = () => {
                 </Button>
               </Link>
 
-              <Button 
-                variant="heroOutline" 
-                size={isMobile ? "lg" : "xl"} 
+              <Button
+                variant="heroOutline"
+                size={isMobile ? "md" : "lg"}
                 className="group"
                 onClick={scrollToSearch}
               >
-                <Filter className="h-5 w-5 mr-2" />
+                <Filter className="h-4 w-4 mr-2" />
                 Advanced Search
               </Button>
             </motion.div>
