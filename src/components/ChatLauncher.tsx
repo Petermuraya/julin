@@ -1,117 +1,144 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Bot, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import Chat from "./Chat";
 import { supabase } from "@/integrations/supabase/client";
 
+/* ───────────────── types ───────────────── */
+interface ChatMessagePayload {
+  new: {
+    session_id: string;
+    role: string;
+    [key: string]: unknown;
+  };
+}
+
+/* ───────────────── constants ───────────────── */
 const CHAT_SESSION_KEY = "chat_session_id";
 const UNREAD_KEY = "chat_unread";
 const SOUND_KEY = "chat_sound_enabled";
 const FIRST_VISIT_KEY = "chat_first_visit_done";
 const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 
-const ChatLauncher: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [hasNewMessage, setHasNewMessage] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+/* ───────────────── helpers ───────────────── */
+const safeStorage = {
+  get(key: string) {
     try {
-      const raw = localStorage.getItem(SOUND_KEY);
-      return raw === null ? true : raw === "1";
+      return localStorage.getItem(key);
     } catch {
-      return true;
+      return null;
     }
-  });
-
-  const channelRef = useRef<ReturnType<typeof supabase["channel"]> | null>(null);
-
-  type RealtimePayload = {
-    new?: { session_id?: string; role?: string };
-  };
-
-  useEffect(() => {
+  },
+  set(key: string, value: string) {
     try {
-      let sid = localStorage.getItem(CHAT_SESSION_KEY);
-      if (!sid) {
-        sid = `s_${Date.now()}`;
-        localStorage.setItem(CHAT_SESSION_KEY, sid);
-      }
-
-      if (!localStorage.getItem(FIRST_VISIT_KEY)) {
-        setIsOpen(true);
-        localStorage.setItem(FIRST_VISIT_KEY, "1");
-      }
-
-      setHasNewMessage(localStorage.getItem(UNREAD_KEY) === "1");
-    } catch (err) {
-      console.warn("ChatLauncher: storage access failed", err);
+      localStorage.setItem(key, value);
+    } catch {
+      // ignore storage errors silently
     }
+  },
+};
+
+/* ───────────────── component ───────────────── */
+const ChatLauncher: React.FC = () => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [hasNewMessage, setHasNewMessage] = React.useState(false);
+  const [soundEnabled, setSoundEnabled] = React.useState(
+    () => safeStorage.get(SOUND_KEY) !== "0"
+  );
+
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+  const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(
+    null
+  );
+
+  /* ───────────── init session & first visit ───────────── */
+  React.useEffect(() => {
+    let sid = safeStorage.get(CHAT_SESSION_KEY);
+    if (!sid) {
+      sid = `s_${Date.now()}`;
+      safeStorage.set(CHAT_SESSION_KEY, sid);
+    }
+
+    if (!safeStorage.get(FIRST_VISIT_KEY)) {
+      setIsOpen(true);
+      safeStorage.set(FIRST_VISIT_KEY, "1");
+    }
+
+    setHasNewMessage(safeStorage.get(UNREAD_KEY) === "1");
   }, []);
 
-  const playBeep = useCallback(() => {
+  /* ───────────── sound ───────────── */
+  const playBeep = React.useCallback(() => {
+    if (!soundEnabled) return;
+
     try {
-      const AudioContextClass =
-        window.AudioContext ||
-        (window as any).webkitAudioContext;
-      const ctx = new AudioContextClass();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.frequency.value = 650;
-      g.gain.value = 0.02;
-      o.connect(g);
-      g.connect(ctx.destination);
-      o.start();
-      setTimeout(() => {
-        o.stop();
-        ctx.close();
-      }, 120);
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContext();
+      }
+
+      const ctx = audioCtxRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.frequency.value = 680;
+      gain.gain.value = 0.03;
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      setTimeout(() => osc.stop(), 120);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [soundEnabled]);
 
-  const toggleSound = useCallback(() => {
-    setSoundEnabled((v) => {
-      const nv = !v;
-      try {
-        localStorage.setItem(SOUND_KEY, nv ? "1" : "0");
-      } catch {}
-      return nv;
+  const toggleSound = () => {
+    setSoundEnabled((prev) => {
+      safeStorage.set(SOUND_KEY, prev ? "0" : "1");
+      return !prev;
     });
-  }, []);
+  };
 
-  const clearIndicator = useCallback(() => {
+  /* ───────────── unread handling ───────────── */
+  const clearUnread = React.useCallback(() => {
     setHasNewMessage(false);
-    try {
-      localStorage.setItem(UNREAD_KEY, "0");
-    } catch {}
+    safeStorage.set(UNREAD_KEY, "0");
   }, []);
 
-  useEffect(() => {
-    if (isOpen) clearIndicator();
-  }, [isOpen, clearIndicator]);
+  React.useEffect(() => {
+    if (isOpen) clearUnread();
+  }, [isOpen, clearUnread]);
 
-  useEffect(() => {
+  /* ───────────── realtime messages ───────────── */
+  React.useEffect(() => {
     if (!ENABLE_REALTIME) return;
 
     const channel = supabase
-      .channel("chat-launcher-messages")
+      .channel("chat-launcher")
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages" },
-        (payload: RealtimePayload) => {
-          const sid = localStorage.getItem(CHAT_SESSION_KEY);
+        (payload: ChatMessagePayload) => {
+          const sid = safeStorage.get(CHAT_SESSION_KEY);
           const msg = payload.new;
-          if (!msg) return;
 
-          if (msg.session_id === sid && msg.role === "assistant") {
+          if (msg?.session_id === sid && msg?.role === "assistant") {
             if (!isOpen) {
               setHasNewMessage(true);
-              localStorage.setItem(UNREAD_KEY, "1");
-              if (soundEnabled) playBeep();
+              safeStorage.set(UNREAD_KEY, "1");
+              playBeep();
             } else {
-              clearIndicator();
+              clearUnread();
             }
           }
         }
@@ -123,31 +150,31 @@ const ChatLauncher: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [isOpen, soundEnabled, playBeep, clearIndicator]);
+  }, [isOpen, playBeep, clearUnread]);
 
+  /* ───────────── UI ───────────── */
   return (
     <>
       {/* Sound toggle */}
-      <div className="fixed bottom-24 right-6 z-50">
-        <button
-          aria-label={soundEnabled ? "Disable chat sound" : "Enable chat sound"}
-          onClick={toggleSound}
-          className="h-8 w-8 rounded-full bg-white shadow-md flex items-center justify-center"
-        >
-          {soundEnabled ? (
-            <Volume2 className="h-4 w-4 text-slate-700" />
-          ) : (
-            <VolumeX className="h-4 w-4 text-slate-700" />
-          )}
-        </button>
-      </div>
+      <button
+        onClick={toggleSound}
+        aria-label={soundEnabled ? "Disable chat sound" : "Enable chat sound"}
+        title={soundEnabled ? "Mute notifications" : "Enable notifications"}
+        className="fixed bottom-24 right-6 z-50 h-9 w-9 rounded-full bg-white shadow-md flex items-center justify-center focus-visible:ring-2"
+      >
+        {soundEnabled ? (
+          <Volume2 className="h-4 w-4 text-slate-700" />
+        ) : (
+          <VolumeX className="h-4 w-4 text-slate-700" />
+        )}
+      </button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
             size="icon"
             aria-label="Open AI property assistant"
-            className="group fixed bottom-6 right-6 z-50 h-16 w-16 rounded-full bg-blue-600 shadow-xl hover:bg-blue-700"
+            className="group fixed bottom-6 right-6 z-50 h-16 w-16 rounded-full bg-blue-600 shadow-xl hover:bg-blue-700 focus-visible:ring-2"
           >
             <div className="relative">
               <Bot className="h-7 w-7 text-white" />
@@ -155,9 +182,9 @@ const ChatLauncher: React.FC = () => {
               <AnimatePresence>
                 {hasNewMessage && (
                   <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0 }}
                     className="absolute -top-1 -right-1 h-5 w-5"
                   >
                     <span className="absolute inset-0 rounded-full bg-red-400 opacity-60 animate-ping" />
@@ -170,6 +197,14 @@ const ChatLauncher: React.FC = () => {
         </DialogTrigger>
 
         <DialogContent className="m-4 h-[90vh] max-w-6xl p-0">
+          {/* Accessibility (required by Radix) */}
+          <VisuallyHidden>
+            <DialogTitle>AI Property Assistant</DialogTitle>
+            <DialogDescription>
+              Chat with the AI assistant about properties, pricing, and listings.
+            </DialogDescription>
+          </VisuallyHidden>
+
           <div className="h-full overflow-hidden">
             <Chat />
           </div>
