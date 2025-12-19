@@ -1,30 +1,54 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// deno-lint-ignore no-explicit-any
+type SupabaseClientAny = SupabaseClient<any, any, any>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  type MiniProperty = {
-    id?: string;
-    title?: string;
-    location?: string;
-    price?: number;
-    property_type?: string;
-    size?: string | null;
-    description?: string | null;
-    images?: string[] | null;
-    county?: string | null;
-  };
+// Type definition for property data
+type MiniProperty = {
+  id?: string;
+  title?: string;
+  location?: string;
+  price?: number;
+  property_type?: string;
+  size?: string | null;
+  description?: string | null;
+  images?: string[] | null;
+  county?: string | null;
+};
 
+// Type for request body
+interface ChatRequestBody {
+  message?: string;
+  session_id?: string;
+  conversation_id?: string;
+  user_info?: { name?: string; phone?: string };
+  user_role?: string;
+  conversation_history?: Array<{ role: string; content: string }>;
+  type?: string;
+  messages?: Array<{ role?: string; content?: string }>;
+  isAdmin?: boolean;
+  context?: string;
+  title?: string;
+  topic?: string;
+  description?: string;
+  property_type?: string;
+  location?: string;
+  price?: number;
+}
+
+Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json();
+    const body: ChatRequestBody = await req.json();
     const { message, session_id, conversation_id, user_info, user_role, conversation_history, type } = body;
 
     // Create Supabase client
@@ -34,24 +58,23 @@ Deno.serve(async (req) => {
 
     // Handle different request types
     if (type === 'blog_suggestion') {
-      return handleBlogSuggestion(body as unknown, supabase);
+      return handleBlogSuggestion(body, supabase);
     }
 
     if (type === 'generate_blog') {
-      return handleGenerateBlog(body as unknown, supabase);
+      return handleGenerateBlog(body);
     }
 
     if (type === 'enhance_description') {
-      return handleEnhanceDescription(body as unknown);
+      return handleEnhanceDescription(body);
     }
 
     if (type === 'conversation_summary') {
-      return handleConversationSummary(body as unknown, supabase);
+      return handleConversationSummary(body, supabase);
     }
 
     // Default: chat message handling
-    // Support either a single `message` string OR an array of `messages` (used by supabase.functions.invoke)
-    const incomingMessages = (body as Record<string, unknown>)?.messages as Array<{ role?: string; content?: string }> | undefined;
+    const incomingMessages = body.messages;
 
     if ((!message || typeof message !== "string") && (!incomingMessages || !Array.isArray(incomingMessages) || incomingMessages.length === 0)) {
       return new Response(
@@ -75,13 +98,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    const properties = (allProperties || []) as MiniProperty[];
+
     // Check if using Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       // Fallback to simple property-based response without AI
-      const reply = generateSimpleResponse(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), allProperties || [], (body as Record<string, unknown>)?.user_role as string | undefined || user_role);
-      const relevantProperties = findRelevantProperties(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), allProperties || []);
+      const reply = generateSimpleResponse(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), properties, body.user_role || user_role);
+      const relevantProperties = findRelevantProperties(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), properties);
       
       return new Response(
         JSON.stringify({
@@ -94,12 +119,12 @@ Deno.serve(async (req) => {
     }
 
     // Use Lovable AI Gateway
-    const isAdmin = Boolean((body as Record<string, unknown>)?.isAdmin) || user_role === 'admin';
+    const isAdmin = Boolean(body.isAdmin) || user_role === 'admin';
     
     const systemPrompt = isAdmin ? `You are an advanced AI assistant for Julin Real Estate Hub administrators in Kenya.
 
 Available properties:
-${allProperties?.map(p =>
+${properties.map(p =>
   `- ${p.title} (${p.property_type}) in ${p.location}: KES ${Number(p.price).toLocaleString()}${p.size ? `, ${p.size}` : ''}. ${p.description || ''}`
 ).join('\n') || 'No properties available'}
 
@@ -126,7 +151,7 @@ RESPONSE GUIDELINES:
 Current admin user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'})` : `You are an intelligent AI assistant for Julin Real Estate Hub in Kenya.
 
 Available properties:
-${allProperties?.map(p =>
+${properties.map(p =>
   `- ${p.title} (${p.property_type}) in ${p.location}: KES ${Number(p.price).toLocaleString()}${p.size ? `, ${p.size}` : ''}. ${p.description || ''}`
 ).join('\n') || 'No properties available'}
 
@@ -198,8 +223,8 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
       console.error("AI gateway error:", response.status, errorText);
       
       // Fallback to simple response
-      const reply = generateSimpleResponse(message, allProperties || [], user_role);
-      const relevantProperties = findRelevantProperties(message, allProperties || []);
+      const reply = generateSimpleResponse(message || '', properties, user_role);
+      const relevantProperties = findRelevantProperties(message || '', properties);
       
       return new Response(
         JSON.stringify({ reply, properties: relevantProperties, session_id }),
@@ -211,7 +236,7 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
     const aiReply = aiData.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
     // Find relevant properties
-    const relevantProperties = findRelevantProperties(message, allProperties || []);
+    const relevantProperties = findRelevantProperties(message || '', properties);
 
     return new Response(
       JSON.stringify({
@@ -233,8 +258,8 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
 });
 
 // Handle blog suggestion requests
-async function handleBlogSuggestion(body: unknown, supabase: any) {
-  const ctx = (body as Record<string, unknown>)?.context as string | undefined;
+async function handleBlogSuggestion(body: ChatRequestBody, supabase: SupabaseClientAny) {
+  const ctx = body.context;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
@@ -251,13 +276,13 @@ async function handleBlogSuggestion(body: unknown, supabase: any) {
   }
 
   // Get properties for context
-  const { data } = await supabase
+  const { data: propData } = await supabase
     .from("properties")
     .select("location, property_type, price, county")
     .eq("status", "available")
     .limit(20);
 
-  const properties = (data || []) as MiniProperty[];
+  const properties = (propData || []) as MiniProperty[];
   const locations = [...new Set(properties.map((p) => p.location).filter(Boolean))];
   const types = [...new Set(properties.map((p) => p.property_type).filter(Boolean))];
 
@@ -282,7 +307,7 @@ Return a JSON array of 5 blog suggestions with this format:
         },
         {
           role: "user",
-          content: body.context || "Suggest 5 blog topics for a Kenyan real estate website"
+          content: ctx || "Suggest 5 blog topics for a Kenyan real estate website"
         }
       ],
       max_tokens: 500,
@@ -302,8 +327,8 @@ Return a JSON array of 5 blog suggestions with this format:
     );
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "[]";
+  const aiResponse = await response.json();
+  const content = aiResponse.choices?.[0]?.message?.content || "[]";
   
   try {
     // Extract JSON from response
@@ -326,10 +351,9 @@ Return a JSON array of 5 blog suggestions with this format:
 }
 
 // Handle blog generation requests
-async function handleGenerateBlog(body: unknown, supabase: any) {
-  const b = body as Record<string, unknown>;
-  const title = String(b.title || 'Untitled');
-  const topic = String(b.topic || 'General');
+async function handleGenerateBlog(body: ChatRequestBody) {
+  const title = String(body.title || 'Untitled');
+  const topic = String(body.topic || 'General');
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
   if (!LOVABLE_API_KEY) {
@@ -381,8 +405,8 @@ Return a JSON object with:
     );
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || "";
+  const aiData = await response.json();
+  const content = aiData.choices?.[0]?.message?.content || "";
   
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -400,7 +424,7 @@ Return a JSON object with:
 }
 
 // Handle property description enhancement
-async function handleEnhanceDescription(body: unknown) {
+async function handleEnhanceDescription(body: ChatRequestBody) {
   const { description, property_type, location, price } = body;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
@@ -427,8 +451,8 @@ async function handleEnhanceDescription(body: unknown) {
         {
           role: "user",
           content: `Enhance this property description:
-Property Type: ${property_type}
-Location: ${location}
+Property Type: ${property_type || 'Not specified'}
+Location: ${location || 'Not specified'}
 Price: KES ${price?.toLocaleString() || 'Not specified'}
 Current Description: ${description || 'No description provided'}
 
@@ -446,8 +470,8 @@ Write an engaging, professional property description.`
     );
   }
 
-  const data = await response.json();
-  const enhanced = data.choices?.[0]?.message?.content || description;
+  const aiData = await response.json();
+  const enhanced = aiData.choices?.[0]?.message?.content || description;
   
   return new Response(
     JSON.stringify({ enhanced }),
@@ -456,15 +480,22 @@ Write an engaging, professional property description.`
 }
 
 // Handle conversation summary requests
-async function handleConversationSummary(body: unknown, supabase: any) {
-  const conversation_id = (body as Record<string, unknown>)?.conversation_id as string | undefined;
+async function handleConversationSummary(body: ChatRequestBody, supabase: SupabaseClientAny) {
+  const conversationId = body.conversation_id || '';
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   
+  if (!conversationId) {
+    return new Response(
+      JSON.stringify({ summary: "No conversation ID provided." }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   // Get conversation messages
   const { data: messages } = await supabase
     .from("chat_messages")
     .select("role, content, created_at")
-    .eq("session_id", conversation_id)
+    .eq("session_id", conversationId)
     .order("created_at", { ascending: true });
 
   if (!messages || messages.length === 0) {
@@ -479,13 +510,15 @@ async function handleConversationSummary(body: unknown, supabase: any) {
     const userMessages = messages.filter((m: { role: string }) => m.role === 'user').length;
     return new Response(
       JSON.stringify({ 
-        summary: `Conversation with ${messageCount} messages (${userMessages} from user). Enable AI for detailed analysis.`
+        summary: `Conversation with ${messageCount} messages (${userMessages} from user). AI summary not available - enable LOVABLE_API_KEY for detailed summaries.`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const conversationText = messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n');
+  const conversationText = messages
+    .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+    .join('\n');
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -522,8 +555,8 @@ Keep the summary concise (100-150 words).`
     );
   }
 
-  const data = await response.json();
-  const summary = data.choices?.[0]?.message?.content || "Unable to generate summary.";
+  const aiData = await response.json();
+  const summary = aiData.choices?.[0]?.message?.content || "Unable to generate summary.";
   
   return new Response(
     JSON.stringify({ summary }),
