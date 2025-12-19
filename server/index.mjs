@@ -29,7 +29,7 @@ app.get('/api/properties', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('properties')
-      .select('*')
+      .select('id, title, location, price, property_type, size, bathrooms, description, images, county, seller_name, seller_phone, status, created_at')
       .eq('status', 'available')
       .order('created_at', { ascending: false });
 
