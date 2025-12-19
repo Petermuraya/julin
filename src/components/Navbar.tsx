@@ -1,136 +1,165 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
-import { Menu, X, Phone, Mail } from "lucide-react";
+import { Home, Building2, BookOpen, Info, Phone, Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-type NavItem = {
-  label: string;
-  to: string;
-};
-
-const NAV_LINKS: NavItem[] = [
-  { label: "Home", to: "/" },
-  { label: "Properties", to: "/properties" },
-  { label: "Blog", to: "/blogs" },
-  { label: "About", to: "/about" },
-  { label: "Contact", to: "/contact" },
+const NAV_LINKS = [
+  { label: "Home", to: "/", icon: Home },
+  { label: "Properties", to: "/properties", icon: Building2 },
+  { label: "Blog", to: "/blogs", icon: BookOpen },
+  { label: "About", to: "/about", icon: Info },
+  { label: "Contact", to: "/contact", icon: Phone },
 ];
 
-const Navbar = () => {
+export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { pathname } = useLocation();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const isActive = (to: string) =>
     to === "/" ? pathname === "/" : pathname.startsWith(to);
 
-  const desktopLinkClass = (active: boolean) =>
-    [
-      "relative rounded-full px-4 py-2 text-sm font-medium transition-colors",
-      active
-        ? "bg-primary/10 text-primary"
-        : "text-muted-foreground hover:bg-muted hover:text-primary",
-    ].join(" ");
-
-  const mobileLinkClass = (active: boolean) =>
-    [
-      "flex items-center justify-between rounded-xl px-4 py-3 text-base font-medium transition-colors",
-      active
-        ? "bg-primary/10 text-primary"
-        : "text-muted-foreground hover:bg-muted hover:text-primary",
-    ].join(" ");
-
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-      {/* Utility Bar */}
-      <div className="hidden sm:block bg-primary text-primary-foreground">
-        <div className="container mx-auto flex items-center gap-6 px-4 py-2 text-sm">
-          <a
-            href="tel:+254725671504"
-            className="flex items-center gap-2 hover:opacity-90"
-          >
-            <Phone className="h-4 w-4" />
-            <span>+254 725 671 504</span>
-          </a>
-
-          <a
-            href="mailto:juliusmurigi90@gmail.com"
-            className="flex items-center gap-2 hover:opacity-90"
-          >
-            <Mail className="h-4 w-4" />
-            <span>juliusmurigi90@gmail.com</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Main Navigation */}
-      <nav className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Brand */}
-          <Link to="/" className="flex items-baseline gap-1 font-display">
-            <span className="text-2xl font-bold text-primary">JULIN</span>
-            <span className="text-2xl font-light">REAL ESTATE</span>
-          </Link>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(({ label, to }) => {
-              const active = isActive(to);
-
-              return (
-                <NavLink key={label} to={to} className={desktopLinkClass(active)}>
-                  {label}
-                  {active && (
-                    <span className="absolute inset-x-4 -bottom-px h-0.5 rounded bg-primary" />
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
-
-          {/* Mobile Toggle */}
-          <button
-            type="button"
-            aria-label="Toggle navigation menu"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg border transition hover:bg-muted"
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        <div
-          className={`md:hidden grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ${
-            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-          }`}
+    <>
+      {/* ===== TOP NAV ===== */}
+      <motion.header
+        className="fixed inset-x-0 top-0 z-50"
+        initial={{ y: -80 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <motion.div
+          animate={{
+            backdropFilter: "blur(18px)",
+            boxShadow: scrolled
+              ? "0 10px 30px rgba(0,0,0,0.15)"
+              : "none",
+          }}
+          className="bg-background/70 border-b border-border/60"
         >
-          <div className="min-h-0">
-            <div className="mt-2 rounded-2xl border bg-card p-4 shadow-sm">
-              <div className="flex flex-col">
+          <nav className="container mx-auto px-6">
+            <div
+              className={`flex items-center justify-between transition-all ${
+                scrolled ? "h-14" : "h-16"
+              }`}
+            >
+              {/* Brand */}
+              <Link to="/" className="flex items-baseline gap-1">
+                <span className="font-serif text-2xl font-bold text-accent">
+                  JULIN
+                </span>
+                <span className="text-2xl font-light text-foreground/90">
+                  REAL ESTATE
+                </span>
+              </Link>
+
+              {/* Desktop Links */}
+              <div className="hidden md:flex items-center gap-2 relative">
                 {NAV_LINKS.map(({ label, to }) => {
                   const active = isActive(to);
-
                   return (
                     <NavLink
                       key={label}
                       to={to}
-                      onClick={() => setOpen(false)}
-                      className={mobileLinkClass(active)}
+                      className={`relative px-4 py-2 text-sm font-medium transition-colors
+                        ${
+                          active
+                            ? "text-primary"
+                            : "text-muted-foreground hover:text-primary"
+                        }`}
                     >
                       {label}
+
+                      {/* Active glow */}
                       {active && (
-                        <span className="h-2 w-2 rounded-full bg-primary" />
+                        <>
+                          <motion.span
+                            layoutId="nav-glow"
+                            className="absolute inset-x-2 -bottom-1 h-0.5 rounded-full bg-primary"
+                          />
+                          <span className="absolute inset-x-0 -bottom-2 h-4 blur-xl bg-primary/30" />
+                        </>
                       )}
                     </NavLink>
                   );
                 })}
               </div>
+
+              {/* Mobile Toggle */}
+              <button
+                onClick={() => setOpen(!open)}
+                className="md:hidden h-10 w-10 rounded-full border bg-background/60 backdrop-blur flex items-center justify-center"
+              >
+                {open ? <X /> : <Menu />}
+              </button>
             </div>
+
+            {/* Mobile dropdown */}
+            <AnimatePresence>
+              {open && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="md:hidden mt-3 rounded-2xl bg-card/90 backdrop-blur-xl border p-4 shadow-xl"
+                >
+                  {NAV_LINKS.map(({ label, to }) => (
+                    <NavLink
+                      key={label}
+                      to={to}
+                      onClick={() => setOpen(false)}
+                      className="block rounded-xl px-4 py-3 text-base hover:bg-muted"
+                    >
+                      {label}
+                    </NavLink>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </nav>
+        </motion.div>
+      </motion.header>
+
+      {/* ===== iOS STYLE BOTTOM NAV ===== */}
+      <div className="fixed bottom-4 inset-x-0 z-50 md:hidden px-4">
+        <div className="mx-auto max-w-md rounded-3xl bg-background/80 backdrop-blur-xl border shadow-xl">
+          <div className="flex justify-between px-6 py-3">
+            {NAV_LINKS.map(({ to, icon: Icon }) => {
+              const active = isActive(to);
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className="relative flex flex-col items-center gap-1"
+                >
+                  <motion.div
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.9 }}
+                    className={`p-2 rounded-full ${
+                      active ? "bg-primary/15 text-primary" : "text-muted-foreground"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </motion.div>
+
+                  {active && (
+                    <motion.span
+                      layoutId="bottom-indicator"
+                      className="absolute -bottom-1 h-1 w-4 rounded-full bg-primary"
+                    />
+                  )}
+                </NavLink>
+              );
+            })}
           </div>
         </div>
-      </nav>
-    </header>
+      </div>
+    </>
   );
-};
-
-export default Navbar;
+}
