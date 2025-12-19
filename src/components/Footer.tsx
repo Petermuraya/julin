@@ -1,56 +1,77 @@
-import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  MessageCircle,
+  Facebook,
+  Instagram,
+  Linkedin,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
-const Footer = () => {
+const FooterLight = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer
-      className="relative overflow-hidden text-primary-foreground py-16 mt-20"
-      style={{
-        backgroundImage:
-          "url('https://images.unsplash.com/photo-1523217582562-09d0def993a6?auto=format&fit=crop&w=1200&q=80')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      {/* Overlay for luxury feel */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md"></div>
-
-      <div className="relative container mx-auto px-6 sm:px-6 lg:px-20 text-primary-foreground">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-16">
+    <footer className="bg-slate-50 text-slate-700 mt-20 border-t">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-20 py-12">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
           {/* Brand */}
-          <div>
-            <div className="flex items-center gap-2 mb-5">
-              <span className="font-serif text-3xl font-bold text-accent tracking-wide">
+          <div className="text-center md:text-left">
+            <div className="flex justify-center md:justify-start items-center gap-2 mb-4">
+              <span className="font-serif text-2xl font-bold text-accent">
                 JULIN
               </span>
-              <span className="font-sans text-2xl font-light">
+              <span className="font-sans text-lg font-light tracking-wide">
                 REAL ESTATE
               </span>
             </div>
-            <p className="text-primary-foreground/80 leading-relaxed text-lg md:text-base">
-              Premium real estate services connecting buyers and sellers across
-              Kenya with transparency, trust, and excellence.
+
+            <p className="text-sm leading-relaxed text-slate-600 max-w-sm mx-auto md:mx-0">
+              Premium real estate services. Connecting buyers and sellers across
+              Kenya with trust, transparency, and excellence.
             </p>
+
+            {/* Social Icons */}
+            <div className="flex justify-center md:justify-start gap-4 mt-5">
+              <a
+                href="#"
+                aria-label="Facebook"
+                className="p-2 rounded-full bg-white shadow hover:text-accent transition"
+              >
+                <Facebook className="h-4 w-4" />
+              </a>
+              <a
+                href="#"
+                aria-label="Instagram"
+                className="p-2 rounded-full bg-white shadow hover:text-accent transition"
+              >
+                <Instagram className="h-4 w-4" />
+              </a>
+              <a
+                href="#"
+                aria-label="LinkedIn"
+                className="p-2 rounded-full bg-white shadow hover:text-accent transition"
+              >
+                <Linkedin className="h-4 w-4" />
+              </a>
+            </div>
           </div>
 
           {/* Quick Links */}
-          <div>
-            <h4 className="font-display text-xl font-semibold mb-5">
-              Quick Links
-            </h4>
-            <ul className="space-y-3 text-lg md:text-base">
+          <div className="text-center md:text-left">
+            <h4 className="font-semibold text-base mb-4">Quick Links</h4>
+            <ul className="space-y-2 text-sm">
               {[
                 { name: "Home", href: "/" },
                 { name: "Properties", href: "/properties" },
                 { name: "About Us", href: "/about" },
                 { name: "Contact", href: "/contact" },
-              ].map((link, idx) => (
-                <li key={idx}>
+              ].map((link) => (
+                <li key={link.name}>
                   <Link
                     to={link.href}
-                    className="text-primary-foreground/70 hover:text-accent transition-colors"
+                    className="hover:text-accent transition-colors"
                   >
                     {link.name}
                   </Link>
@@ -60,57 +81,53 @@ const Footer = () => {
           </div>
 
           {/* Contact */}
-          <div>
-            <h4 className="font-display text-xl font-semibold mb-5">
-              Contact Us
-            </h4>
-            <ul className="space-y-4 text-lg md:text-base">
-              <li className="flex items-center gap-4">
-                <Phone className="h-6 w-6 text-accent" />
-                <a
-                  href="tel:+254725671504"
-                  className="text-primary-foreground/70 hover:text-accent transition-colors"
-                >
+          <div className="text-center md:text-left">
+            <h4 className="font-semibold text-base mb-4">Contact</h4>
+            <ul className="space-y-3 text-sm">
+              <li className="flex justify-center md:justify-start items-center gap-3">
+                <Phone className="h-4 w-4 text-accent" />
+                <a href="tel:+254725671504" className="hover:text-accent">
                   +254 725 671 504
                 </a>
               </li>
-              <li className="flex items-center gap-4">
-                <MessageCircle className="h-6 w-6 text-accent" />
+
+              <li className="flex justify-center md:justify-start items-center gap-3">
+                <MessageCircle className="h-4 w-4 text-accent" />
                 <a
                   href="https://wa.me/254725671504"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary-foreground/70 hover:text-accent transition-colors"
+                  className="hover:text-accent"
                 >
                   WhatsApp
                 </a>
               </li>
-              <li className="flex items-center gap-4">
-                <Mail className="h-6 w-6 text-accent" />
+
+              <li className="flex justify-center md:justify-start items-center gap-3">
+                <Mail className="h-4 w-4 text-accent" />
                 <a
                   href="mailto:juliusmurigi90@gmail.com"
-                  className="text-primary-foreground/70 hover:text-accent transition-colors"
+                  className="hover:text-accent break-all"
                 >
-                  Email
+                  juliusmurigi90@gmail.com
                 </a>
               </li>
-              <li className="flex items-center gap-4">
-                <MapPin className="h-6 w-6 text-accent" />
-                <span className="text-primary-foreground/70">Nairobi, Kenya</span>
+
+              <li className="flex justify-center md:justify-start items-center gap-3">
+                <MapPin className="h-4 w-4 text-accent" />
+                <span>Nairobi, Kenya</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom copyright */}
-        <div className="border-t border-primary-foreground/20 pt-8 text-center">
-          <p className="text-primary-foreground/60 text-sm md:text-base">
-            © {currentYear} Julin Real Estate. All rights reserved.
-          </p>
+        {/* Bottom */}
+        <div className="mt-10 pt-6 border-t text-center text-xs text-slate-500">
+          © {currentYear} Julin Real Estate. All rights reserved.
         </div>
       </div>
     </footer>
   );
 };
 
-export default Footer;
+export default FooterLight;
