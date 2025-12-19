@@ -4,7 +4,7 @@ import { Bot } from 'lucide-react';
 import { PreChatForm } from './PreChatForm';
 import { ConversationRating } from './ConversationRating';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContextValue';
 import type { Json } from '@/integrations/supabase/types';
 import type { Property } from '@/types/property';
 
