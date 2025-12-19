@@ -4,7 +4,7 @@ import { Bot } from 'lucide-react';
 import { PreChatForm } from './PreChatForm';
 import { ConversationRating } from './ConversationRating';
 import { supabase } from '@/integrations/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Json } from '@/integrations/supabase/types';
 import type { Property } from '@/types/property';
 
@@ -38,7 +38,7 @@ const Chat: React.FC = () => {
   const [phase, setPhase] = useState<ChatPhase>('form');
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [conversationId, setConversationId] = useState<string>('');
-  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
+  const { user, isAdmin } = useAuth();
   const [userRole, setUserRole] = useState<'admin' | 'user' | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -71,75 +71,25 @@ const Chat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Check authentication and user role
+  // Sync auth information from AuthContext
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setAuthUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
-        
-        const isAdmin = !!roleData;
-        setUserRole(isAdmin ? 'admin' : 'user');
-
-        // For admins, skip the form and set user info automatically
-        if (isAdmin) {
-          setUserInfo({
-            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Admin',
-            phone: session.user.user_metadata?.phone || 'Admin'
-          });
-          setPhase('chat');
-        }
-      } else {
-        setUserRole(null);
+    if (isAdmin) {
+      setUserRole('admin');
+      setUserInfo({
+        name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Admin',
+        phone: user?.user_metadata?.phone || 'Admin'
+      });
+      setPhase('chat');
+    } else if (user) {
+      setUserRole('user');
+    } else {
+      setUserRole(null);
+      if (phase !== 'form') {
+        setPhase('form');
+        setUserInfo(null);
       }
-    };
-    
-    checkAuth();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setAuthUser(session?.user ?? null);
-        
-        if (session?.user) {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .eq('role', 'admin')
-            .maybeSingle();
-          
-          const isAdmin = !!roleData;
-          setUserRole(isAdmin ? 'admin' : 'user');
-
-          // For admins, skip the form and set user info automatically
-          if (isAdmin) {
-            setUserInfo({
-              name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Admin',
-              phone: session.user.user_metadata?.phone || 'Admin'
-            });
-            setPhase('chat');
-          }
-        } else {
-          setUserRole(null);
-          // Reset to form phase when user logs out
-          if (phase !== 'form') {
-            setPhase('form');
-            setUserInfo(null);
-          }
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [phase]);
+    }
+  }, [user, isAdmin, phase]);
 
   // Create conversation in database when chat starts
   const createConversation = async () => {
@@ -149,14 +99,15 @@ const Chat: React.FC = () => {
       const { error } = await supabase
         .from('chat_conversations')
         .upsert({
-          id: conversationId,
-          user_display_name: userInfo.name,
-          started_at: new Date().toISOString(),
-          last_message: null,
-          summary: JSON.stringify({ phone: userInfo.phone, is_admin: userRole === 'admin' })
-        }, { onConflict: 'id' });
-
-      if (error) console.error('Error creating conversation:', error);
+        id: conversationId,
+        conversation_id: conversationId,
+        user_display_name: userInfo.name,
+        user_email: user?.email ?? null,
+        started_at: new Date().toISOString(),
+        last_message: null,
+        summary: JSON.stringify({ phone: userInfo.phone, is_admin: userRole === 'admin' })
+      }, { onConflict: 'conversation_id' });
+      if (error) console.error('Failed to create conversation:', error);
     } catch (err) {
       console.error('Failed to create conversation:', err);
     }
@@ -168,7 +119,8 @@ const Chat: React.FC = () => {
     
     try {
       const messageData = {
-        session_id: conversationId,
+        conversation_id: conversationId,
+        session_id: sessionIdRef.current,
         role,
         content,
         metadata: { user_info: userInfo } as unknown as Json
@@ -180,11 +132,11 @@ const Chat: React.FC = () => {
 
       if (error) console.error('Error saving message:', error);
 
-      // Update last message in conversation
+      // Update last message in conversation using conversation_id
       await supabase
         .from('chat_conversations')
         .update({ last_message: content.substring(0, 100) })
-        .eq('id', conversationId);
+        .eq('conversation_id', conversationId);
     } catch (err) {
       console.error('Failed to save message:', err);
     }
@@ -201,11 +153,13 @@ const Chat: React.FC = () => {
           .from('chat_conversations')
           .upsert({
             id: conversationId,
+            conversation_id: conversationId,
             user_display_name: data.name,
+            user_email: user?.email ?? null,
             started_at: new Date().toISOString(),
             last_message: null,
             summary: JSON.stringify({ phone: data.phone, is_admin: false })
-          }, { onConflict: 'id' });
+          }, { onConflict: 'conversation_id' });
       } catch (err) {
         console.error('Failed to create conversation:', err);
       }
@@ -224,7 +178,7 @@ const Chat: React.FC = () => {
       const { data: convData } = await supabase
         .from('chat_conversations')
         .select('summary')
-        .eq('id', conversationId)
+        .eq('conversation_id', conversationId)
         .single();
 
       let existingSummary = {};
@@ -244,7 +198,7 @@ const Chat: React.FC = () => {
             rated_at: new Date().toISOString()
           })
         })
-        .eq('id', conversationId);
+        .eq('conversation_id', conversationId);
     } catch (err) {
       console.error('Failed to save rating:', err);
     }
