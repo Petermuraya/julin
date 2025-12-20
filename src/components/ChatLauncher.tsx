@@ -33,14 +33,19 @@ const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 const safeStorage = {
   get(key: string) {
     try {
-      return localStorage.getItem(key);
+      if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+        return sessionStorage.getItem(key);
+      }
+      return null;
     } catch {
       return null;
     }
   },
   set(key: string, value: string) {
     try {
-      localStorage.setItem(key, value);
+      if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+        sessionStorage.setItem(key, value);
+      }
     } catch {
       // ignore storage errors silently
     }

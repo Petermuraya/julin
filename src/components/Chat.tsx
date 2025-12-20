@@ -45,17 +45,18 @@ const Chat: React.FC = () => {
   const sessionIdRef = useRef<string>('');
   
   useEffect(() => {
-    let sid = localStorage.getItem('chat_session_id');
+    const hasSessionStorage = typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined';
+    let sid = hasSessionStorage ? sessionStorage.getItem('chat_session_id') : null;
     if (!sid) {
       sid = `s_${Date.now()}`;
-      localStorage.setItem('chat_session_id', sid);
+      if (hasSessionStorage) sessionStorage.setItem('chat_session_id', sid);
     }
     sessionIdRef.current = sid;
 
     const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setConversationId(convId);
 
-    if (!localStorage.getItem(`chat:${sid}`)) {
+    if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' && !sessionStorage.getItem(`chat:${sid}`)) {
       const welcomeMessage = userRole === 'admin' 
         ? "Hello Admin! I'm your AI property assistant with enhanced capabilities. You can:\n\n• Search and manage properties\n• Access admin commands (type 'analytics' or 'summary')\n• Get detailed analytics and reports\n• Manage listings and inquiries\n• Use the full analytics dashboard"
         : "Hello! I'm your AI property assistant. Ask me about properties, prices, or locations. For example:\n\n• 'Show me houses in Nairobi'\n• 'Land under 5 million'\n• 'Available plots'";
@@ -248,8 +249,10 @@ const Chat: React.FC = () => {
       try {
         const stored = [...newMessages];
         if (data?.reply) stored.push({ role: 'assistant', content: data.reply });
-        localStorage.setItem(`chat:${sessionIdRef.current}`, JSON.stringify(stored));
-      } catch (e) { console.error('Failed to save local chat messages', e); }
+        if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
+          sessionStorage.setItem(`chat:${sessionIdRef.current}`, JSON.stringify(stored));
+        }
+      } catch (e) { console.error('Failed to save session chat messages', e); }
 
       if (data?.reply) {
         const full = data.reply;
