@@ -4,13 +4,11 @@ import { LayoutDashboard, Home, BookOpen, FileText, MessageSquare, Settings, Men
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useAuth } from "@/contexts/AuthContextValue";
 
 const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,63 +25,11 @@ const AdminLayout = () => {
   const isActive = (href: string) => location.pathname === href;
 
   useEffect(() => {
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Check admin role using setTimeout to avoid deadlock
-          setTimeout(async () => {
-            const { data: roleData } = await supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id)
-              .eq("role", "admin")
-              .maybeSingle();
-            
-            setIsAdmin(!!roleData);
-            setLoading(false);
-            
-            if (!roleData) {
-              toast({ title: "Access Denied", description: "Admin privileges required", variant: "destructive" });
-              await supabase.auth.signOut();
-              navigate("/admin/login");
-            }
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setLoading(false);
-        }
-      }
-    );
-
-    // Check existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .eq("role", "admin")
-          .maybeSingle();
-        
-        setIsAdmin(!!roleData);
-        setLoading(false);
-        
-        if (!roleData) {
-          navigate("/admin/login");
-        }
-      } else {
-        setLoading(false);
-        navigate("/admin/login");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    // If not admin and not loading, redirect to login
+    if (!loading && (!user || !isAdmin)) {
+      navigate("/admin/login");
+    }
+  }, [user, isAdmin, loading, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

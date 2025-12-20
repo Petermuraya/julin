@@ -28,9 +28,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .eq('role', 'admin')
             .maybeSingle();
 
+          if (!mounted) return;
           setIsAdmin(!!roleData);
         } catch (e) {
           console.error('Failed to check user role', e);
+          if (!mounted) return;
+          setIsAdmin(false);
         }
       } else {
         setIsAdmin(false);
@@ -43,6 +46,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const u = session?.user ?? null;
+      if (!mounted) return;
+      
       setUser(u);
 
       if (u) {
@@ -54,9 +59,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             .eq('role', 'admin')
             .maybeSingle();
 
+          if (!mounted) return;
           setIsAdmin(!!roleData);
         } catch (e) {
           console.error('Failed to check user role', e);
+          if (!mounted) return;
+          setIsAdmin(false);
         }
       } else {
         setIsAdmin(false);
