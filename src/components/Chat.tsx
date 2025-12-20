@@ -23,6 +23,7 @@ type Message = { role: 'user' | 'assistant' | 'system'; content: string };
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://fakkzdfwpucpgndofgcu.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
+const SERVER_API = (import.meta.env.VITE_SERVER_API_URL || '').replace(/\/$/, '');
 
 async function restUpsertConversation(payload: any) {
   const url = `${SUPABASE_URL}/rest/v1/chat_conversations?on_conflict=conversation_id`;
@@ -41,22 +42,27 @@ async function restUpsertConversation(payload: any) {
     body: JSON.stringify([bodyPayload])
   });
   if (!res.ok) {
-    // Try server-side proxy fallback
-    try {
-      const proxyRes = await fetch('/api/chat/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload)
-      });
-      if (!proxyRes.ok) {
-        const err = await proxyRes.text();
-        throw new Error(`Server proxy upsert failed: ${proxyRes.status} ${err}`);
+    // Try server-side proxy fallback if SERVER_API is configured
+    if (SERVER_API) {
+      try {
+        const proxyRes = await fetch(`${SERVER_API}/api/chat/conversations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bodyPayload)
+        });
+        if (!proxyRes.ok) {
+          const err = await proxyRes.text();
+          throw new Error(`Server proxy upsert failed: ${proxyRes.status} ${err}`);
+        }
+        try { return await proxyRes.json(); } catch { return null; }
+      } catch (fallbackErr) {
+        const errText = await res.text().catch(() => 'no-body');
+        throw new Error(`Supabase REST upsert failed: ${res.status} ${errText}; fallback error: ${String(fallbackErr)}`);
       }
-      try { return await proxyRes.json(); } catch { return null; }
-    } catch (fallbackErr) {
-      const errText = await res.text().catch(() => 'no-body');
-      throw new Error(`Supabase REST upsert failed: ${res.status} ${errText}; fallback error: ${String(fallbackErr)}`);
     }
+
+    const err = await res.text().catch(() => 'no-body');
+    throw new Error(`Supabase REST upsert failed: ${res.status} ${err}`);
   }
 
   // Some endpoints may return 204 No Content — handle empty responses safely
@@ -80,22 +86,27 @@ async function restInsertMessage(payload: any) {
     body: JSON.stringify([payload])
   });
   if (!res.ok) {
-    // Fallback to server-side proxy
-    try {
-      const proxyRes = await fetch('/api/chat/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!proxyRes.ok) {
-        const err = await proxyRes.text();
-        throw new Error(`Server proxy insert failed: ${proxyRes.status} ${err}`);
+    // Fallback to server-side proxy if configured
+    if (SERVER_API) {
+      try {
+        const proxyRes = await fetch(`${SERVER_API}/api/chat/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!proxyRes.ok) {
+          const err = await proxyRes.text();
+          throw new Error(`Server proxy insert failed: ${proxyRes.status} ${err}`);
+        }
+        try { return await proxyRes.json(); } catch { return null; }
+      } catch (fallbackErr) {
+        const err = await res.text().catch(() => 'no-body');
+        throw new Error(`Supabase REST insert message failed: ${res.status} ${err}; fallback error: ${String(fallbackErr)}`);
       }
-      try { return await proxyRes.json(); } catch { return null; }
-    } catch (fallbackErr) {
-      const err = await res.text().catch(() => 'no-body');
-      throw new Error(`Supabase REST insert message failed: ${res.status} ${err}; fallback error: ${String(fallbackErr)}`);
     }
+
+    const err = await res.text().catch(() => 'no-body');
+    throw new Error(`Supabase REST insert message failed: ${res.status} ${err}`);
   }
   if (res.status === 204) return null;
   try {
@@ -137,7 +148,26 @@ async function restPatchConversation(conversation_id: string, patch: any) {
     body: JSON.stringify(patch)
   });
   if (!res.ok) {
-    const err = await res.text();
+    // Fallback: use server proxy upsert endpoint to apply patch (service role)
+    if (SERVER_API) {
+      try {
+        const proxyRes = await fetch(`${SERVER_API}/api/chat/conversations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_id, ...patch })
+        });
+        if (!proxyRes.ok) {
+          const err = await proxyRes.text();
+          throw new Error(`Server proxy patch failed: ${proxyRes.status} ${err}`);
+        }
+        try { return await proxyRes.json(); } catch { return null; }
+      } catch (fallbackErr) {
+        const err = await res.text().catch(() => 'no-body');
+        throw new Error(`Supabase REST patch conversation failed: ${res.status} ${err}; fallback error: ${String(fallbackErr)}`);
+      }
+    }
+
+    const err = await res.text().catch(() => 'no-body');
     throw new Error(`Supabase REST patch conversation failed: ${res.status} ${err}`);
   }
   if (res.status === 204) return null;
