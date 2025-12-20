@@ -1,9 +1,9 @@
 const CACHE_NAME = 'juln-pwa-v1';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/site.webmanifest',
-  '/favicon.ico',
+  './',
+  'index.html',
+  'site.webmanifest',
+  'favicon.ico',
 ];
 
 self.addEventListener('install', (event) => {
@@ -38,7 +38,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return res;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/index.html'))
+        .catch(() => caches.match(request).then((r) => r || caches.match('/index.html')))
     );
     return;
   }

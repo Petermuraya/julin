@@ -22,6 +22,131 @@ interface ChatResponse {
 type Message = { role: 'user' | 'assistant' | 'system'; content: string };
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://fakkzdfwpucpgndofgcu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
+
+async function restUpsertConversation(payload: any) {
+  const url = `${SUPABASE_URL}/rest/v1/chat_conversations?on_conflict=conversation_id`;
+  const bodyPayload = { ...payload };
+  // Avoid sending primary `id` which can cause duplicate-key conflicts on insert
+  if ('id' in bodyPayload) delete bodyPayload.id;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify([bodyPayload])
+  });
+  if (!res.ok) {
+    // Try server-side proxy fallback
+    try {
+      const proxyRes = await fetch('/api/chat/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload)
+      });
+      if (!proxyRes.ok) {
+        const err = await proxyRes.text();
+        throw new Error(`Server proxy upsert failed: ${proxyRes.status} ${err}`);
+      }
+      try { return await proxyRes.json(); } catch { return null; }
+    } catch (fallbackErr) {
+      const errText = await res.text().catch(() => 'no-body');
+      throw new Error(`Supabase REST upsert failed: ${res.status} ${errText}; fallback error: ${String(fallbackErr)}`);
+    }
+  }
+
+  // Some endpoints may return 204 No Content — handle empty responses safely
+  if (res.status === 204) return null;
+  try {
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function restInsertMessage(payload: any) {
+  const url = `${SUPABASE_URL}/rest/v1/chat_messages`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+    },
+    body: JSON.stringify([payload])
+  });
+  if (!res.ok) {
+    // Fallback to server-side proxy
+    try {
+      const proxyRes = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!proxyRes.ok) {
+        const err = await proxyRes.text();
+        throw new Error(`Server proxy insert failed: ${proxyRes.status} ${err}`);
+      }
+      try { return await proxyRes.json(); } catch { return null; }
+    } catch (fallbackErr) {
+      const err = await res.text().catch(() => 'no-body');
+      throw new Error(`Supabase REST insert message failed: ${res.status} ${err}; fallback error: ${String(fallbackErr)}`);
+    }
+  }
+  if (res.status === 204) return null;
+  try {
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function restUpdateConversationLastMessage(conversation_id: string, last_message: string) {
+  const url = `${SUPABASE_URL}/rest/v1/chat_conversations?conversation_id=eq.${encodeURIComponent(conversation_id)}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify({ last_message: last_message.substring(0, 100) })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase REST update conversation failed: ${res.status} ${err}`);
+  }
+  return res.json();
+}
+
+async function restPatchConversation(conversation_id: string, patch: any) {
+  const url = `${SUPABASE_URL}/rest/v1/chat_conversations?conversation_id=eq.${encodeURIComponent(conversation_id)}`;
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      Prefer: 'return=representation'
+    },
+    body: JSON.stringify(patch)
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Supabase REST patch conversation failed: ${res.status} ${err}`);
+  }
+  if (res.status === 204) return null;
+  try {
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
 
 type ChatPhase = 'form' | 'chat' | 'rating' | 'completed';
 
@@ -97,18 +222,14 @@ const Chat: React.FC = () => {
     if (!conversationId || !userInfo) return;
     
     try {
-      const { error } = await supabase
-        .from('chat_conversations')
-        .upsert({
-        id: conversationId,
+      await restUpsertConversation({
         conversation_id: conversationId,
         user_display_name: userInfo.name,
         user_email: user?.email ?? null,
         started_at: new Date().toISOString(),
         last_message: null,
         summary: JSON.stringify({ phone: userInfo.phone, is_admin: userRole === 'admin' })
-      }, { onConflict: 'conversation_id' });
-      if (error) console.error('Failed to create conversation:', error);
+      });
     } catch (err) {
       console.error('Failed to create conversation:', err);
     }
@@ -127,17 +248,18 @@ const Chat: React.FC = () => {
         metadata: { user_info: userInfo } as unknown as Json
       };
       
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert(messageData);
-
-      if (error) console.error('Error saving message:', error);
+      try {
+        await restInsertMessage(messageData);
+      } catch (e) {
+        console.error('Error saving message:', e);
+      }
 
       // Update last message in conversation using conversation_id
-      await supabase
-        .from('chat_conversations')
-        .update({ last_message: content.substring(0, 100) })
-        .eq('conversation_id', conversationId);
+      try {
+        await restPatchConversation(conversationId, { last_message: content.substring(0, 100) });
+      } catch (e) {
+        console.error('Failed to update conversation last_message:', e);
+      }
     } catch (err) {
       console.error('Failed to save message:', err);
     }
@@ -150,17 +272,14 @@ const Chat: React.FC = () => {
     // Create conversation after form submit
     setTimeout(async () => {
       try {
-        await supabase
-          .from('chat_conversations')
-          .upsert({
-            id: conversationId,
-            conversation_id: conversationId,
-            user_display_name: data.name,
-            user_email: user?.email ?? null,
-            started_at: new Date().toISOString(),
-            last_message: null,
-            summary: JSON.stringify({ phone: data.phone, is_admin: false })
-          }, { onConflict: 'conversation_id' });
+        await restUpsertConversation({
+          conversation_id: conversationId,
+          user_display_name: data.name,
+          user_email: user?.email ?? null,
+          started_at: new Date().toISOString(),
+          last_message: null,
+          summary: JSON.stringify({ phone: data.phone, is_admin: false })
+        });
       } catch (err) {
         console.error('Failed to create conversation:', err);
       }
@@ -176,30 +295,25 @@ const Chat: React.FC = () => {
     
     // Save rating to conversation summary
     try {
-      const { data: convData } = await supabase
-        .from('chat_conversations')
-        .select('summary')
-        .eq('conversation_id', conversationId)
-        .single();
-
+      // Fetch existing summary via REST
+      const getUrl = `${SUPABASE_URL}/rest/v1/chat_conversations?conversation_id=eq.${encodeURIComponent(conversationId)}&select=summary&limit=1`;
+      const getRes = await fetch(getUrl, { headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` } });
       let existingSummary = {};
-      if (convData?.summary) {
-        try {
-          existingSummary = JSON.parse(convData.summary);
-        } catch (e) { console.warn('Failed to parse conversation summary', e); }
+      if (getRes.ok) {
+        const arr = await getRes.json();
+        if (Array.isArray(arr) && arr[0]?.summary) {
+          try { existingSummary = JSON.parse(arr[0].summary); } catch (e) { console.warn('Failed to parse conversation summary', e); }
+        }
       }
 
-      await supabase
-        .from('chat_conversations')
-        .update({
-          summary: JSON.stringify({
-            ...existingSummary,
-            rating,
-            feedback,
-            rated_at: new Date().toISOString()
-          })
+      await restPatchConversation(conversationId, {
+        summary: JSON.stringify({
+          ...existingSummary,
+          rating,
+          feedback,
+          rated_at: new Date().toISOString()
         })
-        .eq('conversation_id', conversationId);
+      });
     } catch (err) {
       console.error('Failed to save rating:', err);
     }

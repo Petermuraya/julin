@@ -179,6 +179,45 @@ app.get('/api/chats/:session_id', async (req, res) => {
   }
 });
 
+// POST /api/chat/conversations
+// Proxy endpoint to create/upsert a conversation using the service role key
+app.post('/api/chat/conversations', async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') return res.status(400).json({ error: 'Invalid payload' });
+
+    // Ensure on_conflict behavior by using upsert
+    const { data, error } = await supabase.from('chat_conversations').upsert([payload], { onConflict: 'conversation_id' }).select();
+    if (error) {
+      console.error('Server upsert conversation error', error);
+      return res.status(500).json({ error: error.message || error });
+    }
+    return res.json({ result: data || null });
+  } catch (err) {
+    console.error('POST /api/chat/conversations error', err);
+    return res.status(500).json({ error: 'Failed to upsert conversation' });
+  }
+});
+
+// POST /api/chat/messages
+// Proxy endpoint to insert chat messages using the service role key
+app.post('/api/chat/messages', async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') return res.status(400).json({ error: 'Invalid payload' });
+
+    const { data, error } = await supabase.from('chat_messages').insert([payload]).select();
+    if (error) {
+      console.error('Server insert message error', error);
+      return res.status(500).json({ error: error.message || error });
+    }
+    return res.json({ result: data || null });
+  } catch (err) {
+    console.error('POST /api/chat/messages error', err);
+    return res.status(500).json({ error: 'Failed to insert chat message' });
+  }
+});
+
 const port = process.env.PORT || 8787;
 app.listen(port, () => {
   console.log(`Admin upload server listening on http://localhost:${port}`);

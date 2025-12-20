@@ -45,3 +45,48 @@ export const supabase = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
       }
     })
   : createDisabledClient();
+
+// Debug helper: optional runtime logging for outgoing requests to Supabase endpoints.
+// Enable by setting `localStorage.setItem('debug_supabase', '1')` in the browser, then reload.
+// This wrapper only logs when the flag is set to avoid noisy logs in production.
+try {
+  if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const _w: any = window;
+    const originalFetch = _w.fetch.bind(_w);
+    _w.fetch = async (input: RequestInfo, init?: RequestInit) => {
+      try {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        const enabled = typeof window.localStorage !== 'undefined' && window.localStorage.getItem('debug_supabase') === '1';
+        if (enabled && typeof url === 'string' && url.includes('.supabase.co')) {
+          // Mask key when printing
+          const maskedKey = SUPABASE_PUBLISHABLE_KEY ? `${String(SUPABASE_PUBLISHABLE_KEY).slice(0, 6)}...` : 'not-set';
+          // eslint-disable-next-line no-console
+          console.groupCollapsed('[supabase-debug] outgoing request to Supabase');
+          // eslint-disable-next-line no-console
+          console.log('URL:', url);
+          // eslint-disable-next-line no-console
+          console.log('Masked publishable key:', maskedKey);
+          // Print headers if available
+          if (init?.headers) {
+            // Normalized printing for Headers / object
+            const h = init.headers instanceof Headers ? Object.fromEntries(init.headers.entries()) : init.headers;
+            // eslint-disable-next-line no-console
+            console.log('Request headers:', h);
+            // eslint-disable-next-line no-console
+            console.log('Authorization:', (h as any)?.Authorization || (h as any)?.authorization || null);
+            // eslint-disable-next-line no-console
+            console.log('apikey:', (h as any)?.apikey || null);
+          }
+          // eslint-disable-next-line no-console
+          console.groupEnd();
+        }
+      } catch (e) {
+        // swallow
+      }
+      return originalFetch(input, init);
+    };
+  }
+} catch (err) {
+  // ignore
+}

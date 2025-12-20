@@ -10,8 +10,7 @@ import {
 import { Bot, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import Chat from "./Chat";
-import { supabase } from "@/integrations/supabase/client";
+const Chat = React.lazy(() => import("./Chat"));
 
 /* ───────────────── types ───────────────── */
 interface ChatMessagePayload {
@@ -61,9 +60,7 @@ const ChatLauncher: React.FC = () => {
   );
 
   const audioCtxRef = React.useRef<AudioContext | null>(null);
-  const channelRef = React.useRef<ReturnType<typeof supabase.channel> | null>(
-    null
-  );
+  const channelRef = React.useRef<any | null>(null);
 
   /* ───────────── init session & first visit ───────────── */
   React.useEffect(() => {
@@ -127,33 +124,50 @@ const ChatLauncher: React.FC = () => {
   /* ───────────── realtime messages ───────────── */
   React.useEffect(() => {
     if (!ENABLE_REALTIME) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const mod = await import("@/integrations/supabase/client");
+        const sb = (mod as any).supabase;
+        if (!mounted) return;
 
-    const channel = supabase
-      .channel("chat-launcher")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages" },
-        (payload: ChatMessagePayload) => {
-          const sid = safeStorage.get(CHAT_SESSION_KEY);
-          const msg = payload.new;
+        const channel = sb
+          .channel("chat-launcher")
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "chat_messages" },
+            (payload: ChatMessagePayload) => {
+              const sid = safeStorage.get(CHAT_SESSION_KEY);
+              const msg = payload.new;
 
-          if (msg?.session_id === sid && msg?.role === "assistant") {
-            if (!isOpen) {
-              setHasNewMessage(true);
-              safeStorage.set(UNREAD_KEY, "1");
-              playBeep();
-            } else {
-              clearUnread();
+              if (msg?.session_id === sid && msg?.role === "assistant") {
+                if (!isOpen) {
+                  setHasNewMessage(true);
+                  safeStorage.set(UNREAD_KEY, "1");
+                  playBeep();
+                } else {
+                  clearUnread();
+                }
+              }
             }
-          }
-        }
-      )
-      .subscribe();
+          )
+          .subscribe();
 
-    channelRef.current = channel;
+        channelRef.current = { channel, sb };
+      } catch (e) {
+        // fail gracefully — realtime is optional
+      }
+    })();
 
     return () => {
-      supabase.removeChannel(channel);
+      mounted = false;
+      try {
+        if (channelRef.current) {
+          const { channel, sb } = channelRef.current;
+          if (channel && typeof channel.unsubscribe === "function") channel.unsubscribe();
+          else if (sb && typeof sb.removeChannel === "function") sb.removeChannel(channel);
+        }
+      } catch {}
     };
   }, [isOpen, playBeep, clearUnread]);
 
@@ -204,14 +218,16 @@ const ChatLauncher: React.FC = () => {
         <DialogContent className="m-4 h-[90vh] max-w-6xl p-0">
           {/* Accessibility (required by Radix) */}
           <VisuallyHidden>
-            <DialogTitle>AI Property Assistant</DialogTitle>
+            <DialogTitle>chat Assistant</DialogTitle>
             <DialogDescription>
               Chat with the AI assistant about properties, pricing, and listings.
             </DialogDescription>
           </VisuallyHidden>
 
           <div className="h-full overflow-hidden">
-            <Chat />
+            <React.Suspense fallback={<div className="p-4">Loading chat…</div>}>
+              <Chat />
+            </React.Suspense>
           </div>
         </DialogContent>
       </Dialog>

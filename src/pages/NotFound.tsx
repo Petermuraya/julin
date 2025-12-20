@@ -47,30 +47,30 @@ const NotFound = () => {
   const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // --- Sentry observability (safe & structured)
-    (async () => {
-      try {
-        const mod = await import('@sentry/react');
-        Sentry = mod as unknown as SentryType;
-      } catch {
-        Sentry = null;
-      }
+    // --- Sentry observability (safe & structured) - disabled for now
+    // (async () => {
+    //   try {
+    //     const mod = await import('@sentry/react');
+    //     Sentry = mod as unknown as SentryType;
+    //   } catch {
+    //     Sentry = null;
+    //   }
 
-      try {
-        Sentry?.captureMessage("404 – Route Not Found", {
-          level: "warning",
-          tags: { type: "routing", status: "404" },
-          extra: {
-            path: location.pathname,
-            search: location.search,
-            referrer: document.referrer || "direct",
-            userAgent: navigator.userAgent,
-          },
-        });
-      } catch {
-        // Fail silently — UX must never depend on telemetry
-      }
-    })();
+    //   try {
+    //     Sentry?.captureMessage("404 – Route Not Found", {
+    //       level: "warning",
+    //       tags: { type: "routing", status: "404" },
+    //       extra: {
+    //         path: location.pathname,
+    //         search: location.search,
+    //         referrer: document.referrer || "direct",
+    //         userAgent: navigator.userAgent,
+    //       },
+    //     });
+    //   } catch {
+    //     // Fail silently — UX must never depend on telemetry
+    //   }
+    // })();
 
     // Decrement countdown every second and redirect immediately when it reaches 0.
     intervalRef.current = window.setInterval(() => {
