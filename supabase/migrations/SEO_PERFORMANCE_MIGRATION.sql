@@ -101,7 +101,7 @@ BEGIN
   WHERE id = NEW.property_id;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 CREATE TRIGGER trigger_update_inquiry_count
 AFTER INSERT ON buyer_inquiries
@@ -133,7 +133,7 @@ BEGIN
     setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'C');
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 CREATE TRIGGER trigger_update_search_vector
 BEFORE INSERT OR UPDATE ON properties

@@ -46,7 +46,7 @@ BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 CREATE TRIGGER contact_submissions_updated_at_trigger
 BEFORE UPDATE ON contact_submissions
