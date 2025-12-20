@@ -484,9 +484,25 @@ const AdminProperties = () => {
       const totalVideoCount = videoUrls.length + videoFiles.length;
       if (totalVideoCount > 3) throw new Error("Maximum 3 videos allowed. Please remove some videos or URLs.");
 
+      // If there's no description, try to generate one via the AI function.
+      let descriptionToUse = form.description.trim();
+      try {
+        if (!descriptionToUse && form.title.trim()) {
+          const gen = await supabase.functions.invoke('chat', {
+            body: { type: 'enhance_description', title: form.title.trim(), description: form.description, isAdmin: true }
+          });
+          if (!(gen as any).error) {
+            const d = (gen as any).data;
+            descriptionToUse = typeof d === 'string' ? d : d?.response || d?.reply || d?.message || '';
+          }
+        }
+      } catch (e) {
+        console.warn('AI description generation failed, continuing without it', e);
+      }
+
       const propertyData = {
         title: form.title.trim(),
-        description: form.description.trim() || null,
+        description: descriptionToUse || null,
         property_type: form.property_type,
         price: Number(form.price),
         location: form.location.trim(),

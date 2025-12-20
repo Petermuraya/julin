@@ -63,40 +63,40 @@ export const PropertyForm = ({
     setGeneratingDescription(true);
     try {
       const details = [
-          form.title,
-          form.location && `located in ${form.location}`,
-          form.size && `size: ${form.size}`,
-          form.property_type && `property type: ${form.property_type}`,
-          form.price && `price: KES ${Number(form.price).toLocaleString()}`,
-          showResidentialFields && form.bathrooms && `${form.bathrooms} bathrooms`,
-          showResidentialFields && form.features && `features: ${form.features}`,
-        ].filter(Boolean).join(', ');
+        form.title,
+        form.location && `located in ${form.location}`,
+        form.size && `size: ${form.size}`,
+        form.property_type && `property type: ${form.property_type}`,
+        form.price && `price: KES ${Number(form.price).toLocaleString()}`,
+        showResidentialFields && form.bathrooms && `${form.bathrooms} bathrooms`,
+        showResidentialFields && form.features && `features: ${form.features}`,
+      ].filter(Boolean).join(', ');
 
       const prompt = `Write a compelling property description for a real estate listing in Kenya with these details: ${details}. Make it professional, highlight key selling points, and keep it under 200 words.`;
 
       const response = await supabase.functions.invoke('chat', {
-        body: { 
+        body: {
           messages: [{ role: 'user', content: prompt }],
-          isAdmin: true
+          isAdmin: true,
+          type: 'generate_blog'
         }
       });
 
-      if (response.error) throw response.error;
-      
-      const aiResponse = response.data?.response || response.data;
+      if ((response as any).error) throw (response as any).error;
+
+      // Normalize various possible response shapes from functions
+      const dataAny = (response as any).data;
+      let aiResponse: string = '';
+      if (!dataAny) aiResponse = '';
+      else if (typeof dataAny === 'string') aiResponse = dataAny;
+      else aiResponse = dataAny?.response || dataAny?.reply || dataAny?.message || JSON.stringify(dataAny);
+
       setForm(prev => ({ ...prev, description: aiResponse }));
 
-      toast({
-        title: "Success",
-        description: "Description generated successfully",
-      });
+      toast({ title: 'Success', description: 'Description generated successfully' });
     } catch (err: any) {
-      console.error("Error generating description:", err);
-      toast({
-        title: "Error",
-        description: "Failed to generate description. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Error generating description:', err);
+      toast({ title: 'Error', description: 'Failed to generate description. Please try again.', variant: 'destructive' });
     } finally {
       setGeneratingDescription(false);
     }
