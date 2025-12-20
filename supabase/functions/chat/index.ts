@@ -34,7 +34,7 @@ interface ChatRequestBody {
   message?: string;
   session_id?: string;
   conversation_id?: string;
-  user_info?: { name?: string; phone?: string };
+  user_info?: { name?: string; phone?: string; email?: string };
   user_role?: string;
   conversation_history?: Array<{ role: string; content: string }>;
   type?: string;
@@ -49,6 +49,84 @@ interface ChatRequestBody {
   price?: number;
 }
 
+// Helper: extract local part from email (before @)
+function extractLocalPartFromEmail(email?: string): string | null {
+  if (!email) return null;
+  const local = String(email).split('@')[0] || '';
+  // remove anything after + (tags), take first segment before dots, remove non-alphanum
+  const beforePlus = local.split('+')[0];
+  const firstSegment = beforePlus.split('.')[0];
+  const cleaned = firstSegment.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!cleaned) return null;
+  // Capitalize first letter for nicer display
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+// Helper: get display name from user_info (prefer name, fall back to email local part)
+function getDisplayName(user_info?: { name?: string; phone?: string; email?: string }): string {
+  if (user_info?.name && String(user_info.name).trim()) {
+    // prefer first name if full name provided, capitalize
+    const first = String(user_info.name).trim().split(' ')[0];
+    return first.charAt(0).toUpperCase() + first.slice(1);
+  }
+  const fromEmail = extractLocalPartFromEmail(user_info?.email);
+  if (fromEmail) return fromEmail;
+  return 'Admin';
+}
+
+// Helper: time-based greeting based on local server time
+function getTimeGreeting(timezone = 'Africa/Nairobi'): string {
+  try {
+    // Use Intl to get hour in specified timezone
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).formatToParts(new Date());
+    const hourPart = parts.find(p => p.type === 'hour')?.value;
+    const hour = hourPart ? parseInt(hourPart, 10) : new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  } catch (e) {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+}
+
+// Heuristic: detect if a message is a greeting
+// Load greeting patterns from env or use defaults per locale
+function loadGreetingPatterns(): Record<string, string[]> {
+  const defaultPatterns: Record<string, string[]> = {
+    en: ['hi', 'hello', 'hey', 'hiya', 'good morning', 'good afternoon', 'good evening', 'morning', 'afternoon', 'evening', 'greetings'],
+  };
+
+  const envJson = Deno.env.get('GREETING_PATTERNS_JSON');
+  if (envJson) {
+    try {
+      const parsed = JSON.parse(envJson) as Record<string, string[]>;
+      return { ...defaultPatterns, ...parsed };
+    } catch {
+      return defaultPatterns;
+    }
+  }
+
+  // allow selecting locale via GREETING_LOCALE
+  const locale = Deno.env.get('GREETING_LOCALE') || 'en';
+  return { [locale]: defaultPatterns[locale] || defaultPatterns['en'] };
+}
+
+const GREETING_PATTERNS = loadGreetingPatterns();
+
+function isGreeting(message?: string, locale = Deno.env.get('GREETING_LOCALE') || 'en'): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase().replace(/[!.,?]/g, '').trim();
+  const greetings = GREETING_PATTERNS[locale] || GREETING_PATTERNS['en'] || [];
+  for (const g of greetings) {
+    if (m === g) return true;
+    if (m.startsWith(g + ' ') || m.includes(g + ' ')) return true;
+  }
+  return false;
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -58,6 +136,14 @@ Deno.serve(async (req: Request) => {
   try {
     const body: ChatRequestBody = await req.json();
     const { message, session_id, conversation_id, user_info, user_role, conversation_history, type } = body;
+
+    // Accept alternative top-level text fields used by some clients
+    const altContent = (body as any).content || (body as any).text || '';
+    const incomingMessages = body.messages;
+    // Determine effective message: explicit message, last incoming message, or altContent
+    const effectiveMessage = String(
+      message || (Array.isArray(incomingMessages) && incomingMessages.length > 0 && incomingMessages[incomingMessages.length - 1].content) || altContent || ''
+    );
 
     // Create Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -82,11 +168,10 @@ Deno.serve(async (req: Request) => {
     }
 
     // Default: chat message handling
-    const incomingMessages = body.messages;
 
-    if ((!message || typeof message !== "string") && (!incomingMessages || !Array.isArray(incomingMessages) || incomingMessages.length === 0)) {
+    if (!effectiveMessage || effectiveMessage.trim().length === 0) {
       return new Response(
-        JSON.stringify({ error: "Message is required" }),
+        JSON.stringify({ error: "Message is required. Provide `message` or `messages` array or `content`/`text` field." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -114,8 +199,8 @@ Deno.serve(async (req: Request) => {
 
     if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
       // Fallback to simple property-based response without AI
-      const reply = generateSimpleResponse(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), properties, body.user_role || user_role);
-      const relevantProperties = findRelevantProperties(String(message || (incomingMessages?.[incomingMessages.length-1]?.content ?? '')), properties);
+      const reply = generateSimpleResponse(effectiveMessage, properties, body.user_role || user_role, user_info);
+      const relevantProperties = findRelevantProperties(effectiveMessage, properties);
       
       return new Response(
         JSON.stringify({
@@ -136,6 +221,9 @@ Deno.serve(async (req: Request) => {
 - Ownership types: Freehold (outright ownership), Leasehold (time-limited lease from landowner), Customary/community tenure.
 - Practical checks: confirm rates and taxes with county, inspect the property physically, ask for original documents and recent search extracts, verify land rates and rent if applicable.
 - When in doubt: recommend consulting a qualified advocate or licensed land surveyor and using official government records.`;
+
+    const displayName = getDisplayName(user_info);
+    const timeGreeting = getTimeGreeting();
 
     const baseSystem = isAdmin ? `You are an advanced AI assistant for Julin Real Estate Hub administrators in Kenya.
 
@@ -164,7 +252,6 @@ RESPONSE GUIDELINES:
 - Offer administrative insights and recommendations
 - Support admin commands and system queries
 
-Current admin user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'})` : `You are an intelligent AI assistant for Julin Real Estate Hub in Kenya.
 
 Available properties:
 ${properties.map(p =>
@@ -183,7 +270,8 @@ RESPONSE GUIDELINES:
 - Keep responses concise but comprehensive
 - Always offer next steps or additional help
 
-Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'})`;
+Current admin user: ${displayName} (${user_info?.phone || 'No phone'})` : `You are an intelligent AI assistant for Julin Real Estate Hub in Kenya.
+Current user: ${displayName} (${user_info?.phone || 'No phone'})`;
 
     const systemPrompt = `${baseSystem}\n\n${landKnowledge}`;
 
@@ -221,7 +309,7 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
         }
       }
 
-      messages.push({ role: "user", content: String(message) });
+      messages.push({ role: "user", content: effectiveMessage });
     }
 
     // Call AI gateway (supports LOVABLE_API_KEY or OPENAI_API_KEY)
@@ -244,8 +332,8 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
       console.error("AI gateway error:", response.status, errorText);
       
       // Fallback to simple response
-      const reply = generateSimpleResponse(message || '', properties, user_role);
-      const relevantProperties = findRelevantProperties(message || '', properties);
+      const reply = generateSimpleResponse(effectiveMessage, properties, user_role, user_info);
+      const relevantProperties = findRelevantProperties(effectiveMessage, properties);
       
       return new Response(
         JSON.stringify({ reply, properties: relevantProperties, session_id }),
@@ -256,12 +344,48 @@ Current user: ${user_info?.name || 'Unknown'} (${user_info?.phone || 'No phone'}
     const aiData = await response.json();
     const aiReply = aiData.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
+    // Decide whether to prefix greeting: only if user's latest message looks like a greeting
+    const userLatestMessage = (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 0)
+      ? String(incomingMessages[incomingMessages.length - 1].content || '')
+      : effectiveMessage;
+
+    // Determine if this is the very first message in the session
+    async function checkFirstMessage(): Promise<boolean> {
+      // If session_id present, check DB for existing messages
+      if (session_id) {
+        try {
+          const { data: existing, error } = await supabase
+            .from('chat_messages')
+            .select('id')
+            .eq('session_id', session_id)
+            .limit(1);
+          if (error) return false;
+          return !(existing && existing.length > 0);
+        } catch {
+          return false;
+        }
+      }
+
+      // Fallback: if conversation_history exists it's not first; if incomingMessages length > 1 not first
+      if (conversation_history && Array.isArray(conversation_history) && conversation_history.length > 0) return false;
+      if (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 1) return false;
+      return true;
+    }
+
+    const firstMessage = await checkFirstMessage();
+
+    let finalReply = aiReply;
+    // Only prefix when: displayName known, message is a greeting, and this is the first message
+    if (displayName && displayName !== 'Admin' && isGreeting(userLatestMessage) && firstMessage) {
+      finalReply = `${timeGreeting} ${displayName}! ${aiReply}`;
+    }
+
     // Find relevant properties
-    const relevantProperties = findRelevantProperties(message || '', properties);
+    const relevantProperties = findRelevantProperties(effectiveMessage, properties);
 
     return new Response(
       JSON.stringify({
-        reply: aiReply,
+        reply: finalReply,
         properties: relevantProperties,
         session_id
       }),
@@ -542,9 +666,11 @@ async function handleConversationSummary(body: ChatRequestBody, supabase: Supaba
 }
 
 // Simple response generator when AI is not available
-function generateSimpleResponse(message: string, properties: MiniProperty[], userRole?: string): string {
+function generateSimpleResponse(message: string, properties: MiniProperty[], userRole?: string, userInfo?: { name?: string; phone?: string; email?: string }): string {
   const msg = message.toLowerCase();
   const isAdmin = userRole === 'admin';
+  const displayName = getDisplayName(userInfo);
+  const timeGreeting = getTimeGreeting();
   
   // Admin commands
   if (isAdmin) {
@@ -567,12 +693,13 @@ function generateSimpleResponse(message: string, properties: MiniProperty[], use
     }
     
     if (msg.includes('hello') || msg.includes('hi')) {
-      return "Hello Admin! Welcome to the Julin Real Estate admin assistant. Type 'admin help' for available commands or ask about properties and analytics.";
+      return `${timeGreeting} ${displayName}! Welcome to the Julin Real Estate admin assistant. Type 'admin help' for available commands or ask about properties and analytics.`;
     }
   }
   
   if (msg.includes('hello') || msg.includes('hi')) {
-    return "Hello! Welcome to Julin Real Estate. I can help you find properties in Kenya. What are you looking for? You can ask about houses, land, apartments, or plots in any location.";
+    // Keep simple fallback greeting behavior (message-based)
+    return `${timeGreeting} ${displayName}! I can help you find properties in Kenya. What are you looking for? You can ask about houses, land, apartments, or plots in any location.`;
   }
   
   if (msg.includes('contact') || msg.includes('phone') || msg.includes('call')) {
