@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Home, ArrowLeft, Moon, Star } from "lucide-react";
-import * as Sentry from "@sentry/react";
+
+// Use a narrow Sentry type and load it dynamically at runtime to avoid
+// bundling the package in environments where it's not installed.
+type SentryType = {
+  captureMessage: (msg: string, opts?: unknown) => void;
+  init?: (opts?: unknown) => void;
+  configureScope?: (fn: (scope: unknown) => void) => void;
+  withScope?: (fn: (scope: unknown) => void) => void;
+};
+
+let Sentry: SentryType | null = null;
 
 const REDIRECT_SECONDS = 8;
 
@@ -16,7 +26,7 @@ const float = {
   initial: { y: -20 },
   animate: {
     y: [ -20, 0, -20 ],
-    transition: { duration: 6, repeat: Infinity, ease: "easeInOut" },
+    transition: { duration: 6, repeat: Infinity },
   },
 };
 
@@ -38,20 +48,29 @@ const NotFound = () => {
 
   useEffect(() => {
     // --- Sentry observability (safe & structured)
-    try {
-      Sentry.captureMessage("404 – Route Not Found", {
-        level: "warning",
-        tags: { type: "routing", status: "404" },
-        extra: {
-          path: location.pathname,
-          search: location.search,
-          referrer: document.referrer || "direct",
-          userAgent: navigator.userAgent,
-        },
-      });
-    } catch {
-      // Fail silently — UX must never depend on telemetry
-    }
+    (async () => {
+      try {
+        const mod = await import('@sentry/react');
+        Sentry = mod as unknown as SentryType;
+      } catch {
+        Sentry = null;
+      }
+
+      try {
+        Sentry?.captureMessage("404 – Route Not Found", {
+          level: "warning",
+          tags: { type: "routing", status: "404" },
+          extra: {
+            path: location.pathname,
+            search: location.search,
+            referrer: document.referrer || "direct",
+            userAgent: navigator.userAgent,
+          },
+        });
+      } catch {
+        // Fail silently — UX must never depend on telemetry
+      }
+    })();
 
     // Decrement countdown every second and redirect immediately when it reaches 0.
     intervalRef.current = window.setInterval(() => {
