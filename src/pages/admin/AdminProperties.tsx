@@ -27,7 +27,6 @@ const emptyForm: PropertyFormType = {
   videos: "",
   latitude: "",
   longitude: "",
-  bedrooms: "",
   bathrooms: "",
   features: "",
 };
@@ -439,7 +438,6 @@ const AdminProperties = () => {
       videos: "",
       latitude: property.latitude?.toString() || "",
       longitude: property.longitude?.toString() || "",
-      bedrooms: property.bedrooms?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
       features: property.features?.join(", ") || "",
     });
@@ -497,7 +495,6 @@ const AdminProperties = () => {
         seller_phone: form.seller_phone.trim() || null,
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
-        bedrooms: form.bedrooms ? Number(form.bedrooms) : null,
         bathrooms: form.bathrooms ? Number(form.bathrooms) : null,
         features: form.features ? form.features.split(",").map((f: string) => f.trim()).filter(Boolean) : null,
         is_admin_property: true,

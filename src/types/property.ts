@@ -11,7 +11,6 @@ export type PropertyForm = {
   videos: string;
   latitude: string;
   longitude: string;
-  bedrooms: string;
   bathrooms: string;
   features: string;
 };

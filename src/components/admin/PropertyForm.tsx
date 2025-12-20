@@ -63,15 +63,14 @@ export const PropertyForm = ({
     setGeneratingDescription(true);
     try {
       const details = [
-        form.title,
-        form.location && `located in ${form.location}`,
-        form.size && `size: ${form.size}`,
-        form.property_type && `property type: ${form.property_type}`,
-        form.price && `price: KES ${Number(form.price).toLocaleString()}`,
-        showResidentialFields && form.bedrooms && `${form.bedrooms} bedrooms`,
-        showResidentialFields && form.bathrooms && `${form.bathrooms} bathrooms`,
-        showResidentialFields && form.features && `features: ${form.features}`,
-      ].filter(Boolean).join(', ');
+          form.title,
+          form.location && `located in ${form.location}`,
+          form.size && `size: ${form.size}`,
+          form.property_type && `property type: ${form.property_type}`,
+          form.price && `price: KES ${Number(form.price).toLocaleString()}`,
+          showResidentialFields && form.bathrooms && `${form.bathrooms} bathrooms`,
+          showResidentialFields && form.features && `features: ${form.features}`,
+        ].filter(Boolean).join(', ');
 
       const prompt = `Write a compelling property description for a real estate listing in Kenya with these details: ${details}. Make it professional, highlight key selling points, and keep it under 200 words.`;
 
@@ -148,12 +147,6 @@ export const PropertyForm = ({
       {/* Residential-only fields: bedrooms, bathrooms, features */}
       {showResidentialFields && (
         <div className="grid grid-cols-3 gap-4">
-          <Input
-            placeholder="Bedrooms"
-            type="number"
-            value={form.bedrooms}
-            onChange={(e) => setForm((f) => ({ ...f, bedrooms: e.target.value }))}
-          />
           <Input
             placeholder="Bathrooms"
             type="number"
