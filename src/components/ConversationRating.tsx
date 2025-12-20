@@ -1,109 +1,134 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, Bot } from 'lucide-react';
+import React, { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Star, Bot } from "lucide-react";
+import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ConversationRatingProps {
-  onSubmit: (rating: number, feedback?: string) => void;
-  onSkip: () => void;
+  page?: string;
+  accent?: string; // tailwind color e.g. "emerald", "blue", "violet"
+  onComplete?: () => void;
 }
 
-export const ConversationRating: React.FC<ConversationRatingProps> = ({ onSubmit, onSkip }) => {
-  const [rating, setRating] = useState<number>(0);
-  const [hoveredRating, setHoveredRating] = useState<number>(0);
-  const [feedback, setFeedback] = useState('');
+const sentimentMap = {
+  positive: { emoji: "😄", label: "Positive" },
+  neutral: { emoji: "😐", label: "Neutral" },
+  negative: { emoji: "😞", label: "Negative" },
+};
 
-  const handleSubmit = () => {
-    onSubmit(rating, feedback.trim() || undefined);
-  };
+export const ConversationRating: React.FC<ConversationRatingProps> = ({
+  page = "chat",
+  accent = "emerald",
+  onComplete,
+}) => {
+  const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const getRatingText = (rating: number) => {
-    switch (rating) {
-      case 1: return 'Poor';
-      case 2: return 'Fair';
-      case 3: return 'Good';
-      case 4: return 'Very Good';
-      case 5: return 'Excellent';
-      default: return '';
-    }
+  const sentiment = useMemo(() => {
+    if (rating >= 4) return "positive";
+    if (rating === 3) return "neutral";
+    if (rating > 0) return "negative";
+    return null;
+  }, [rating]);
+
+  const followUpQuestion = useMemo(() => {
+    if (rating >= 4) return "What did you love most?";
+    if (rating === 3) return "What could we improve?";
+    if (rating > 0) return "What went wrong?";
+    return "How was your experience?";
+  }, [rating]);
+
+  const handleSubmit = async () => {
+    if (!rating || !sentiment) return;
+
+    setLoading(true);
+
+    await supabase.from("conversation_feedback").insert({
+      rating,
+      sentiment,
+      feedback: feedback.trim() || null,
+      page,
+      created_at: new Date().toISOString(),
+    });
+
+    setLoading(false);
+    onComplete?.();
   };
 
   return (
-    <div className="h-full flex items-center justify-center p-4">
+    <div className="flex h-full items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
-            <Bot className="h-6 w-6 text-green-600" />
-          </div>
-          <CardTitle className="text-xl">How was your experience?</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            Your feedback helps us improve our AI assistant service.
-          </p>
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-${accent}-100`}
+          >
+            <Bot className={`h-7 w-7 text-${accent}-600`} />
+          </motion.div>
+
+          <CardTitle className="text-xl">
+            {followUpQuestion}
+          </CardTitle>
+
+          {sentiment && (
+            <p className="mt-1 text-sm text-muted-foreground flex justify-center gap-2">
+              <span>{sentimentMap[sentiment].emoji}</span>
+              {sentimentMap[sentiment].label}
+            </p>
+          )}
         </CardHeader>
+
         <CardContent className="space-y-6">
-          {/* Star Rating */}
-          <div className="text-center space-y-3">
-            <p className="text-sm font-medium">Rate your experience</p>
-            <div className="flex justify-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  onMouseEnter={() => setHoveredRating(star)}
-                  onMouseLeave={() => setHoveredRating(0)}
-                  className="transition-colors"
-                >
-                  <Star
-                    className={`h-8 w-8 ${
-                      star <= (hoveredRating || rating)
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                </button>
-              ))}
-            </div>
-            {(rating > 0 || hoveredRating > 0) && (
-              <p className="text-sm font-medium text-muted-foreground">
-                {getRatingText(hoveredRating || rating)}
-              </p>
-            )}
+          {/* Stars */}
+          <div className="flex justify-center gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <motion.button
+                key={star}
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                onMouseEnter={() => setHovered(star)}
+                onMouseLeave={() => setHovered(0)}
+                onClick={() => setRating(star)}
+              >
+                <Star
+                  className={`h-8 w-8 transition ${
+                    star <= (hovered || rating)
+                      ? `fill-${accent}-400 text-${accent}-400`
+                      : "text-muted"
+                  }`}
+                />
+              </motion.button>
+            ))}
           </div>
 
-          {/* Feedback Text */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              Additional feedback (optional)
-            </label>
+          {/* Feedback */}
+          {rating > 0 && (
             <textarea
+              rows={3}
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Tell us more about your experience..."
-              className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              placeholder="Tell us more (optional)…"
+              className={`w-full resize-none rounded-lg border p-3 focus:ring-2 focus:ring-${accent}-500`}
             />
-          </div>
+          )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onSkip}
-              className="flex-1"
-            >
-              Skip
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={rating === 0}
-              className="flex-1"
-            >
-              Submit Rating
-            </Button>
-          </div>
+          {/* Actions */}
+          <Button
+            disabled={!rating || loading}
+            onClick={handleSubmit}
+            className="w-full"
+          >
+            {loading ? "Submitting…" : "Send feedback"}
+          </Button>
         </CardContent>
       </Card>
     </div>
