@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Navbar from "@/components/Navbar";
@@ -277,6 +278,30 @@ const BlogDetailPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const blog = slug ? sampleBlogs[slug] : null;
 
+  const [sanitizedHtml, setSanitizedHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Sanitize HTML on the client using DOMPurify to prevent XSS when content
+    // becomes dynamic from the database. We import dynamically so SSR won't fail.
+    let mounted = true;
+    if (!blog) return;
+    if (typeof window === 'undefined') {
+      setSanitizedHtml(blog.content);
+      return;
+    }
+    import('dompurify')
+      .then((mod) => {
+        if (!mounted) return;
+        const DOMPurify = (mod as any).default || mod;
+        setSanitizedHtml(DOMPurify.sanitize(blog.content));
+      })
+      .catch(() => {
+        // If DOMPurify isn't available, fall back to raw content (not ideal).
+        setSanitizedHtml(blog.content);
+      });
+    return () => { mounted = false; };
+  }, [blog]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -414,7 +439,7 @@ const BlogDetailPage = () => {
               {/* Content */}
               <div
                 className="prose prose-lg max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: blog.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizedHtml ?? blog.content }}
               />
 
               {/* CTA */}

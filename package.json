@@ -72,6 +72,9 @@
     "vaul": "^0.9.9",
     "zod": "^3.25.76"
   },
+  "optionalDependencies": {
+    "dompurify": "^2.4.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
