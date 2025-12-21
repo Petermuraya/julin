@@ -82,10 +82,12 @@ export const PropertyForm = ({
         }
       });
 
-      if ((response as any).error) throw (response as any).error;
+      type FnResp = { error?: unknown; data?: unknown };
+      const resp = response as FnResp;
+      if (resp.error) throw resp.error;
 
       // Normalize various possible response shapes from functions
-      const dataAny = (response as any).data;
+      const dataAny = resp.data;
       let aiResponse: string = '';
       if (!dataAny) aiResponse = '';
       else if (typeof dataAny === 'string') aiResponse = dataAny;
@@ -94,7 +96,7 @@ export const PropertyForm = ({
       setForm(prev => ({ ...prev, description: aiResponse }));
 
       toast({ title: 'Success', description: 'Description generated successfully' });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error generating description:', err);
       toast({ title: 'Error', description: 'Failed to generate description. Please try again.', variant: 'destructive' });
     } finally {
@@ -125,7 +127,7 @@ export const PropertyForm = ({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v as any }))}>
+        <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v as unknown as PropertyFormType['property_type'] }))}>
           <SelectTrigger>
             <SelectValue placeholder="Property Type" />
           </SelectTrigger>
