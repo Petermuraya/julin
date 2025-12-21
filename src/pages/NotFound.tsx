@@ -12,7 +12,7 @@ type SentryType = {
   withScope?: (fn: (scope: unknown) => void) => void;
 };
 
-let Sentry: SentryType | null = null;
+const Sentry: SentryType | null = null;
 
 const REDIRECT_SECONDS = 8;
 

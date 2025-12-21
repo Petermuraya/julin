@@ -8,7 +8,6 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   // Helpful runtime warning during development if env vars are missing
   // (don't throw — allow server-side tooling to import the file safely)
-  // eslint-disable-next-line no-console
   console.warn('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Supabase client may not work.');
 }
 
@@ -22,7 +21,7 @@ const storage = typeof window !== 'undefined' && typeof window.localStorage !== 
 // and instead export a lightweight proxy that throws a helpful error when used.
 function createDisabledClient() {
   const err = new Error('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Initialize these variables to use Supabase client.');
-  const handler: ProxyHandler<any> = {
+  const handler: ProxyHandler<unknown> = {
     get() {
       throw err;
     },
@@ -51,8 +50,7 @@ export const supabase = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
 // This wrapper only logs when the flag is set to avoid noisy logs in production.
 try {
   if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const _w: any = window;
+    const _w = window as unknown as { fetch: (input: RequestInfo, init?: RequestInit) => Promise<Response> };
     const originalFetch = _w.fetch.bind(_w);
     _w.fetch = async (input: RequestInfo, init?: RequestInit) => {
       try {
@@ -61,24 +59,17 @@ try {
         if (enabled && typeof url === 'string' && url.includes('.supabase.co')) {
           // Mask key when printing
           const maskedKey = SUPABASE_PUBLISHABLE_KEY ? `${String(SUPABASE_PUBLISHABLE_KEY).slice(0, 6)}...` : 'not-set';
-          // eslint-disable-next-line no-console
           console.groupCollapsed('[supabase-debug] outgoing request to Supabase');
-          // eslint-disable-next-line no-console
           console.log('URL:', url);
-          // eslint-disable-next-line no-console
           console.log('Masked publishable key:', maskedKey);
           // Print headers if available
           if (init?.headers) {
             // Normalized printing for Headers / object
-            const h = init.headers instanceof Headers ? Object.fromEntries(init.headers.entries()) : init.headers;
-            // eslint-disable-next-line no-console
+            const h = init.headers instanceof Headers ? Object.fromEntries(init.headers.entries()) as Record<string, string> : (init.headers as Record<string, string> | undefined);
             console.log('Request headers:', h);
-            // eslint-disable-next-line no-console
-            console.log('Authorization:', (h as any)?.Authorization || (h as any)?.authorization || null);
-            // eslint-disable-next-line no-console
-            console.log('apikey:', (h as any)?.apikey || null);
+            console.log('Authorization:', (h && (h['Authorization'] || h['authorization'])) ?? null);
+            console.log('apikey:', h ? h['apikey'] ?? null : null);
           }
-          // eslint-disable-next-line no-console
           console.groupEnd();
         }
       } catch (e) {
