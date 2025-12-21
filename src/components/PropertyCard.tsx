@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   MapPin,
@@ -87,20 +87,22 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
   const gallery = images || [];
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const openLightboxAt = (i: number, e?: React.MouseEvent) => {
+  const openLightboxAt = useCallback((i: number, e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
     setIndex(i);
     setLightboxOpen(true);
-  };
-  const prev = (e?: React.MouseEvent) => {
+  }, []);
+
+  const prev = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     setIndex((p) => (p - 1 + gallery.length) % Math.max(1, gallery.length));
-  };
-  const next = (e?: React.MouseEvent) => {
+  }, [gallery.length]);
+
+  const next = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
     setIndex((p) => (p + 1) % Math.max(1, gallery.length));
-  };
+  }, [gallery.length]);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -111,7 +113,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [lightboxOpen, gallery.length]);
+  }, [lightboxOpen, gallery.length, prev, next]);
 
   const statusLabel = status === "available" ? "For Sale" : status === "sold" ? "Sold" : status === "pending" ? "Pending" : String(status);
 
