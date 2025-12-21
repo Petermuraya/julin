@@ -60,7 +60,7 @@ const ChatLauncher: React.FC = () => {
   );
 
   const audioCtxRef = React.useRef<AudioContext | null>(null);
-  const channelRef = React.useRef<any | null>(null);
+  const channelRef = React.useRef<{ channel?: unknown; sb?: unknown } | null>(null);
 
   /* ───────────── init session & first visit ───────────── */
   React.useEffect(() => {
@@ -128,7 +128,7 @@ const ChatLauncher: React.FC = () => {
     (async () => {
       try {
         const mod = await import("@/integrations/supabase/client");
-        const sb = (mod as any).supabase;
+        const sb = (mod as { supabase?: unknown }).supabase;
         if (!mounted) return;
 
         const channel = sb
@@ -156,18 +156,30 @@ const ChatLauncher: React.FC = () => {
         channelRef.current = { channel, sb };
       } catch (e) {
         // fail gracefully — realtime is optional
+        // log the error for debugging
+        console.warn('Realtime init failed', e);
       }
     })();
 
     return () => {
       mounted = false;
       try {
-        if (channelRef.current) {
-          const { channel, sb } = channelRef.current;
-          if (channel && typeof channel.unsubscribe === "function") channel.unsubscribe();
-          else if (sb && typeof sb.removeChannel === "function") sb.removeChannel(channel);
+        const cur = channelRef.current;
+        if (cur) {
+          const { channel, sb } = cur;
+          type ChannelWithUnsub = { unsubscribe?: () => void };
+          type SupabaseLike = { removeChannel?: (c: ChannelWithUnsub) => void };
+
+          if (channel && typeof (channel as ChannelWithUnsub).unsubscribe === 'function') {
+            (channel as ChannelWithUnsub).unsubscribe();
+          } else if (sb && typeof (sb as SupabaseLike).removeChannel === 'function') {
+            (sb as SupabaseLike).removeChannel(channel as ChannelWithUnsub);
+          }
         }
-      } catch {}
+      } catch (e) {
+        // ignore cleanup errors but log for visibility
+        console.warn('Failed to cleanup realtime channel', e);
+      }
     };
   }, [isOpen, playBeep, clearUnread]);
 
