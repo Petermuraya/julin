@@ -124,7 +124,6 @@ const PropertiesPage = () => {
     } catch (err) {
       // Don't crash the page if realtime handshake fails (403, etc.)
       // The console will still show the underlying error for debugging.
-      // eslint-disable-next-line no-console
       console.warn('Realtime subscription failed:', err);
     }
 
