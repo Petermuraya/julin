@@ -146,7 +146,7 @@ const AdminProperties = () => {
     }, 100); // Small delay to ensure DOM is ready
 
     return () => clearTimeout(timeoutId);
-  }, [dialogOpen, mapToken]);
+  }, [dialogOpen, mapToken, form.latitude, form.longitude]);
 
   // Update marker position when coordinates change
   useEffect(() => {
@@ -491,9 +491,19 @@ const AdminProperties = () => {
           const gen = await supabase.functions.invoke('chat', {
             body: { type: 'enhance_description', title: form.title.trim(), description: form.description, isAdmin: true }
           });
-          if (!(gen as any).error) {
-            const d = (gen as any).data;
-            descriptionToUse = typeof d === 'string' ? d : d?.response || d?.reply || d?.message || '';
+          type FnResp = { error?: unknown; data?: unknown };
+          const genResp = gen as FnResp;
+          if (!genResp.error) {
+            const d = genResp.data;
+            if (typeof d === 'string') {
+              descriptionToUse = d;
+            } else if (d && typeof d === 'object') {
+              const obj = d as Record<string, unknown>;
+              const candidate = obj['response'] ?? obj['reply'] ?? obj['message'];
+              descriptionToUse = typeof candidate === 'string' ? candidate : '';
+            } else {
+              descriptionToUse = '';
+            }
           }
         }
       } catch (e) {
