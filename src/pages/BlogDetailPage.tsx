@@ -292,7 +292,9 @@ const BlogDetailPage = () => {
     import('dompurify')
       .then((mod) => {
         if (!mounted) return;
-        const DOMPurify = (mod as any).default || mod;
+        type DOMPurifyModule = { default?: { sanitize: (s: string) => string }; sanitize?: (s: string) => string };
+        const m = mod as DOMPurifyModule;
+        const DOMPurify = m.default ?? m;
         setSanitizedHtml(DOMPurify.sanitize(blog.content));
       })
       .catch(() => {
