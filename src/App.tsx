@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import ScrollToTop from "./components/ScrollToTop";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -38,6 +39,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <HashRouter>
+          <ScrollToTop />
           <AuthRedirectHandler />
           <Routes>
             <Route path="/" element={<Index />} />
