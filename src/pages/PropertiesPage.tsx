@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchWithTimeout } from '@/lib/utils';
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -31,8 +32,13 @@ const PropertiesPage = () => {
     try {
       // Call Supabase Edge Function (handles CORS for all origins)
       const url = `${SUPABASE_URL}/functions/v1/get-properties`;
-      // Call without custom headers to avoid CORS preflight redirects
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        }
+      }, 10000);
       if (!response.ok) {
         throw new Error(`Failed to fetch properties: ${response.statusText}`);
       }
