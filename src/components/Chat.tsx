@@ -11,6 +11,7 @@ import type { Property } from '@/types/property';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
 import ChatInput from '@/components/chat/ChatInput';
+import { fetchWithTimeout, safeSessionGet, safeSessionSet } from '@/lib/utils';
 
 interface ChatResponse {
   reply: string;
@@ -21,7 +22,8 @@ interface ChatResponse {
 
 type Message = { role: 'user' | 'assistant' | 'system'; content: string };
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://fakkzdfwpucpgndofgcu.supabase.co";
+// Use environment-provided Supabase URL; avoid shipping defaults that may leak project IDs
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
 const SERVER_API = (import.meta.env.VITE_SERVER_API_URL || '').replace(/\/$/, '');
 
@@ -31,26 +33,33 @@ async function restUpsertConversation(payload: Record<string, unknown>) {
   if ('id' in bodyPayload) delete bodyPayload.id;
 
   if (SERVER_API) {
-    const proxyRes = await fetch(`${SERVER_API}/api/chat/conversations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bodyPayload)
-    });
-    if (!proxyRes.ok) {
-      const err = await proxyRes.text().catch(() => 'no-body');
-      throw new Error(`Server proxy upsert failed: ${proxyRes.status} ${err}`);
-    }
-    try { return await proxyRes.json(); } catch { return null; }
+    const doProxy = async () => {
+      const proxyRes = await fetch(`${SERVER_API}/api/chat/conversations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload)
+      });
+      if (!proxyRes.ok) {
+        const err = await proxyRes.text().catch(() => 'no-body');
+        throw new Error(`Server proxy upsert failed: ${proxyRes.status} ${err}`);
+      }
+      try { return await proxyRes.json(); } catch { return null; }
+    };
+    // retry proxy upsert a few times
+    return await retry(doProxy, 3, 200);
   }
 
   // Fallback to using client-side Supabase SDK (uses user's session/anon key)
   try {
-    const { data, error } = await supabase
-      .from('chat_conversations')
-      .upsert(bodyPayload, { onConflict: 'conversation_id' })
-      .select();
-    if (error) throw error;
-    return data;
+    const doUpsert = async () => {
+      const { data, error } = await supabase
+        .from('chat_conversations')
+        .upsert(bodyPayload, { onConflict: 'conversation_id' })
+        .select();
+      if (error) throw error;
+      return data;
+    };
+    return await retry(doUpsert, 3, 200);
   } catch (e) {
     throw new Error(`Supabase client upsert failed: ${String(e)}`);
   }
@@ -59,23 +68,29 @@ async function restUpsertConversation(payload: Record<string, unknown>) {
 async function restInsertMessage(payload: Record<string, unknown> | Array<Record<string, unknown>>) {
   // Prefer server proxy
   if (SERVER_API) {
-    const proxyRes = await fetch(`${SERVER_API}/api/chat/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!proxyRes.ok) {
-      const err = await proxyRes.text().catch(() => 'no-body');
-      throw new Error(`Server proxy insert failed: ${proxyRes.status} ${err}`);
-    }
-    try { return await proxyRes.json(); } catch { return null; }
+    const doProxy = async () => {
+      const proxyRes = await fetch(`${SERVER_API}/api/chat/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!proxyRes.ok) {
+        const err = await proxyRes.text().catch(() => 'no-body');
+        throw new Error(`Server proxy insert failed: ${proxyRes.status} ${err}`);
+      }
+      try { return await proxyRes.json(); } catch { return null; }
+    };
+    return await retry(doProxy, 3, 200);
   }
 
   // Fallback to client-side Supabase SDK
   try {
-    const { data, error } = await supabase.from('chat_messages').insert(payload);
-    if (error) throw error;
-    return data;
+    const doInsert = async () => {
+      const { data, error } = await supabase.from('chat_messages').insert(payload);
+      if (error) throw error;
+      return data;
+    };
+    return await retry(doInsert, 3, 200);
   } catch (e) {
     throw new Error(`Supabase client insert message failed: ${String(e)}`);
   }
@@ -159,18 +174,17 @@ const Chat: React.FC = () => {
   const sessionIdRef = useRef<string>('');
   
   useEffect(() => {
-    const hasSessionStorage = typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined';
-    let sid = hasSessionStorage ? sessionStorage.getItem('chat_session_id') : null;
+    let sid = safeSessionGet<string>('chat_session_id');
     if (!sid) {
       sid = `s_${Date.now()}`;
-      if (hasSessionStorage) sessionStorage.setItem('chat_session_id', sid);
+      safeSessionSet('chat_session_id', sid);
     }
-    sessionIdRef.current = sid;
+    sessionIdRef.current = sid as string;
 
     const convId = `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setConversationId(convId);
 
-    if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined' && !sessionStorage.getItem(`chat:${sid}`)) {
+    if (!safeSessionGet(`chat:${sid}`)) {
       const welcomeMessage = userRole === 'admin' 
         ? "Hello Admin! I'm your AI property assistant with enhanced capabilities. You can:\n\n• Search and manage properties\n• Access admin commands (type 'analytics' or 'summary')\n• Get detailed analytics and reports\n• Manage listings and inquiries\n• Use the full analytics dashboard"
         : "Hello! I'm your AI property assistant. Ask me about properties, prices, or locations. For example:\n\n• 'Show me houses in Nairobi'\n• 'Land under 5 million'\n• 'Available plots'";
@@ -317,6 +331,63 @@ const Chat: React.FC = () => {
   const sendMessage = async () => {
     const text = input.trim();
     if (!text) return;
+    // Admin quick-commands handled locally to avoid unnecessary AI calls
+    if (userRole === 'admin') {
+      const cmd = text.toLowerCase().trim();
+      if (cmd === 'admin help' || cmd === 'help') {
+        setMessages((m) => [...m, { role: 'assistant', content: "Admin Commands: 'analytics', 'summary', 'admin help'" }]);
+        setInput('');
+        return;
+      }
+      if (cmd === 'analytics' || cmd === 'stats') {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase.from('properties').select('price');
+          if (error) throw error;
+          const prices = (data || []).map((p: any) => Number(p.price || 0));
+          const total = prices.reduce((s: number, v: number) => s + v, 0);
+          const avg = prices.length ? Math.round(total / prices.length) : 0;
+          setMessages((m) => [...m, { role: 'assistant', content: `Property stats — total: ${prices.length}, average price: KES ${avg.toLocaleString()}` }]);
+          setInput('');
+          return;
+        } catch (e) {
+          console.error('Analytics error', e);
+          setMessages((m) => [...m, { role: 'assistant', content: 'Failed to fetch analytics.' }]);
+          setInput('');
+          return;
+        } finally {
+          setLoading(false);
+        }
+      }
+      if (cmd === 'summary') {
+        // Ask Edge Function to summarize current conversation
+        try {
+          setLoading(true);
+          const res = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ type: 'conversation_summary', conversation_id: conversationId })
+          }, 15000);
+          if (res.ok) {
+            const js = await res.json();
+            setMessages((m) => [...m, { role: 'assistant', content: js.summary || 'No summary available.' }]);
+            setInput('');
+            return;
+          }
+        } catch (e) {
+          console.error('Summary error', e);
+          setMessages((m) => [...m, { role: 'assistant', content: 'Failed to generate summary.' }]);
+          setInput('');
+          return;
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
     const userMsg: Message = { role: 'user', content: text };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -332,10 +403,14 @@ const Chat: React.FC = () => {
         content: msg.content
       }));
 
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/chat`, {
+      const response = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          // Supabase Edge Functions typically require the project's anon/publishable key
+          // when called from the browser. Include both apikey and Authorization for compatibility.
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
           message: text,
@@ -345,17 +420,20 @@ const Chat: React.FC = () => {
           user_role: userRole,
           conversation_history: conversationHistory
         }),
-      });
+      }, 15000);
+
+      if (!response.ok) {
+        const txt = await response.text().catch(() => '');
+        throw new Error(`Chat function error: ${response.status} ${txt}`);
+      }
 
       const data: ChatResponse = await response.json();
 
-      try {
-        const stored = [...newMessages];
-        if (data?.reply) stored.push({ role: 'assistant', content: data.reply });
-        if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
-          sessionStorage.setItem(`chat:${sessionIdRef.current}`, JSON.stringify(stored));
-        }
-      } catch (e) { console.error('Failed to save session chat messages', e); }
+        try {
+          const stored = [...newMessages];
+          if (data?.reply) stored.push({ role: 'assistant', content: data.reply });
+          safeSessionSet(`chat:${sessionIdRef.current}`, stored);
+        } catch (e) { console.error('Failed to save session chat messages', e); }
 
       if (data?.reply) {
         const full = data.reply;
