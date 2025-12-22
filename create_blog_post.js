@@ -1,9 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  'https://fakkzdfwpucpgndofgcu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZha2t6ZGZ3cHVjcGduZG9mZ2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzODkzMjcsImV4cCI6MjA4MDk2NTMyN30.C_V3yvLOJ30JdY28luXjuX0gLJ_ML0QXxQh181Zvunk'
-);
+// Read Supabase config from environment. This script should be executed
+// in a secure environment (CI or local dev) where env vars are provided.
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables. Aborting.');
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 async function createBlogPost() {
   try {
