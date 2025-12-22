@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { fetchWithTimeout } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Home, DollarSign, Filter, ArrowRight, TrendingUp, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -72,7 +73,14 @@ const Hero = () => {
     const fetchHeroData = async () => {
       try {
         const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-properties`);
+        const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const response = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/get-properties`, {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          }
+        }, 8000);
         if (response.ok) {
           const data = await response.json();
           const props = Array.isArray(data) ? data : data?.properties || [];
