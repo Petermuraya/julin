@@ -179,6 +179,43 @@ app.get('/api/chats/:session_id', async (req, res) => {
   }
 });
 
+// POST /api/generate-description
+// Lightweight fallback generator when AI gateway / OpenAI is not configured.
+app.post('/api/generate-description', async (req, res) => {
+  try {
+    const { propertyDetails } = req.body || {};
+
+    if (!propertyDetails || typeof propertyDetails !== 'string') {
+      return res.status(400).json({ error: 'Missing propertyDetails in request body' });
+    }
+
+    const details = propertyDetails.trim();
+
+    // Simple heuristics to create a friendly, SEO-aware description
+    const sentences = [];
+
+    // Title/lead
+    const lead = details.split(/[\.\!\?\n]/)[0];
+    sentences.push(`${lead || 'Beautiful property'} — an exceptional listing in Kenya.`);
+
+    // Add more details if present
+    if (details.length > 40) {
+      sentences.push(`Featuring: ${details}.`);
+    }
+
+    // Add selling points and call-to-action
+    sentences.push('This property offers great value, excellent location, and attractive amenities for buyers and investors.');
+    sentences.push('Contact the seller for viewing arrangements and more information.');
+
+    const description = sentences.join(' ');
+
+    return res.json({ description });
+  } catch (err) {
+    console.error('Error generating description:', err);
+    return res.status(500).json({ error: 'Failed to generate description' });
+  }
+});
+
 // POST /api/chat/conversations
 // Proxy endpoint to create/upsert a conversation using the service role key
 app.post('/api/chat/conversations', async (req, res) => {
