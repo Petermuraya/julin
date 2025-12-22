@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchWithTimeout } from '@/lib/utils';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -12,7 +13,8 @@ import { AdminPropertiesFilters } from "@/components/admin/AdminPropertiesFilter
 import { AdminPropertiesTable } from "@/components/admin/AdminPropertiesTable";
 import { PropertyForm as PropertyFormType, Property } from "@/types/property";
 
-const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
+// Read Supabase URL from environment; do not hardcode in source.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
 
 const emptyForm: PropertyFormType = {
   title: "",
@@ -73,7 +75,14 @@ const AdminProperties = () => {
   useEffect(() => {
     const fetchMapToken = async () => {
       try {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-mapbox-token`);
+        const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const response = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/get-mapbox-token`, {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          }
+        }, 10000);
         const data = await response.json();
         if (data.token) {
           setMapToken(data.token);
@@ -488,22 +497,36 @@ const AdminProperties = () => {
       let descriptionToUse = form.description.trim();
       try {
         if (!descriptionToUse && form.title.trim()) {
-          const gen = await supabase.functions.invoke('chat', {
+          // Give the AI function a short timeout so a slow AI endpoint doesn't block saving forever.
+          const aiPromise = supabase.functions.invoke('chat', {
             body: { type: 'enhance_description', title: form.title.trim(), description: form.description, isAdmin: true }
           });
-          type FnResp = { error?: unknown; data?: unknown };
-          const genResp = gen as FnResp;
-          if (!genResp.error) {
-            const d = genResp.data;
-            if (typeof d === 'string') {
-              descriptionToUse = d;
-            } else if (d && typeof d === 'object') {
-              const obj = d as Record<string, unknown>;
-              const candidate = obj['response'] ?? obj['reply'] ?? obj['message'];
-              descriptionToUse = typeof candidate === 'string' ? candidate : '';
+
+          const timeoutMs = 8000; // 8 seconds
+          const resAny = await Promise.race([
+            aiPromise,
+            new Promise((res) => setTimeout(() => res({ error: 'timeout' }), timeoutMs))
+          ]);
+
+          try {
+            type FnResp = { error?: unknown; data?: unknown };
+            const genResp = resAny as FnResp;
+            if (!genResp || (genResp as any).error) {
+              // timed out or errored - continue without AI
             } else {
-              descriptionToUse = '';
+              const d = genResp.data;
+              if (typeof d === 'string') {
+                descriptionToUse = d;
+              } else if (d && typeof d === 'object') {
+                const obj = d as Record<string, unknown>;
+                const candidate = obj['response'] ?? obj['reply'] ?? obj['message'] ?? obj['enhanced'];
+                descriptionToUse = typeof candidate === 'string' ? candidate : '';
+              } else {
+                descriptionToUse = '';
+              }
             }
+          } catch (inner) {
+            console.warn('AI response parsing failed, continuing without it', inner);
           }
         }
       } catch (e) {
