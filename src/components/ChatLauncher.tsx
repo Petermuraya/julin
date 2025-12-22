@@ -32,9 +32,18 @@ const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 const safeStorage = {
   get(key: string) {
     try {
-      if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
-        return sessionStorage.getItem(key);
+      if (typeof window === 'undefined') return null;
+
+      // prefer sessionStorage, but fall back to localStorage when unavailable
+      if (typeof window.sessionStorage !== 'undefined') {
+        const v = sessionStorage.getItem(key);
+        if (v !== null) return v;
       }
+
+      if (typeof window.localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+
       return null;
     } catch {
       return null;
@@ -42,8 +51,18 @@ const safeStorage = {
   },
   set(key: string, value: string) {
     try {
-      if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
-        sessionStorage.setItem(key, value);
+      if (typeof window === 'undefined') return;
+
+      // try sessionStorage first, then localStorage
+      try {
+        if (typeof window.sessionStorage !== 'undefined') {
+          sessionStorage.setItem(key, value);
+          return;
+        }
+      } catch {}
+
+      if (typeof window.localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
       }
     } catch {
       // ignore storage errors silently
@@ -186,19 +205,27 @@ const ChatLauncher: React.FC = () => {
   /* ───────────── UI ───────────── */
   return (
     <>
-      {/* Sound toggle */}
-      <button
-        onClick={toggleSound}
-        aria-label={soundEnabled ? "Disable chat sound" : "Enable chat sound"}
-        title={soundEnabled ? "Mute notifications" : "Enable notifications"}
-        className="fixed bottom-24 right-6 z-50 h-9 w-9 rounded-full bg-white shadow-md flex items-center justify-center focus-visible:ring-2"
-      >
-        {soundEnabled ? (
-          <Volume2 className="h-4 w-4 text-slate-700" />
-        ) : (
-          <VolumeX className="h-4 w-4 text-slate-700" />
-        )}
-      </button>
+      {/* screen reader announcements for new messages */}
+      <VisuallyHidden>
+        <div aria-live="polite">{hasNewMessage ? 'New message received' : ''}</div>
+      </VisuallyHidden>
+      {/* Sound toggle - uses shared Button for consistent styling */}
+      <div className="fixed bottom-24 right-6 z-50">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={toggleSound}
+          aria-label={soundEnabled ? "Disable chat sound" : "Enable chat sound"}
+          title={soundEnabled ? "Mute notifications (Ctrl+.)" : "Enable notifications (Ctrl+.)"}
+          className="h-9 w-9 rounded-full bg-white shadow-md flex items-center justify-center focus-visible:ring-2"
+        >
+          {soundEnabled ? (
+            <Volume2 className="h-4 w-4 text-slate-700" />
+          ) : (
+            <VolumeX className="h-4 w-4 text-slate-700" />
+          )}
+        </Button>
+      </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
