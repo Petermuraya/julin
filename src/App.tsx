@@ -27,6 +27,7 @@ import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
 import Chat from "./components/Chat";
 import ChatLauncher from "./components/ChatLauncher";
+import AuthRedirectHandler from "./components/AuthRedirectHandler";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <HashRouter>
+          <AuthRedirectHandler />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/properties" element={<PropertiesPage />} />
