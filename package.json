@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest",
+    "test:unit": "vitest",
     "test:supabase": "node scripts/test-supabase.mjs",
     "start:server": "node server/index.mjs",
     "build": "vite build",
@@ -54,6 +56,7 @@
     "express": "^4.18.2",
     "framer-motion": "^12.23.26",
     "input-otp": "^1.4.2",
+    "jsdom": "^27.3.0",
     "lucide-react": "^0.462.0",
     "mapbox-gl": "^3.17.0",
     "multer": "^1.4.5-lts.1",
@@ -78,6 +81,8 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@testing-library/jest-dom": "^6.0.1",
+    "@testing-library/react": "^14.0.0",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
@@ -94,6 +99,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "vitest": "^1.1.6"
   }
 }
