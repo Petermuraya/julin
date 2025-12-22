@@ -13,6 +13,8 @@ declare const Deno: {
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Credentials": "false",
 };
 
 // Type definition for property data
@@ -138,16 +140,28 @@ Deno.serve(async (req: Request) => {
     const { message, session_id, conversation_id, user_info, user_role, conversation_history, type } = body;
 
     // Accept alternative top-level text fields used by some clients
-    const altContent = (body as any).content || (body as any).text || '';
+    const bodyRec = body as unknown as Record<string, unknown>;
+    const altContent = (typeof bodyRec['content'] === 'string' ? bodyRec['content'] : (typeof bodyRec['text'] === 'string' ? bodyRec['text'] : ''));
     const incomingMessages = body.messages;
     // Determine effective message: explicit message, last incoming message, or altContent
-    const effectiveMessage = String(
+    let effectiveMessage = String(
       message || (Array.isArray(incomingMessages) && incomingMessages.length > 0 && incomingMessages[incomingMessages.length - 1].content) || altContent || ''
     );
 
+    // Sanitize and enforce reasonable length to avoid abuse or huge payloads
+    if (effectiveMessage.length > 2000) {
+      effectiveMessage = effectiveMessage.slice(0, 2000);
+    }
+
     // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({ error: "Server misconfiguration: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Handle different request types
@@ -298,7 +312,10 @@ Current user: ${displayName} (${user_info?.phone || 'No phone'})`;
     if (incomingMessages && Array.isArray(incomingMessages) && incomingMessages.length > 0) {
       const recent = incomingMessages.slice(-10);
       for (const msg of recent) {
-        if (msg && msg.role && msg.content) messages.push({ role: String(msg.role), content: String(msg.content) });
+        // Normalize message shape and types
+        const role = String(msg?.role || 'user').toLowerCase();
+        const content = String(msg?.content || '').slice(0, 2000);
+        if (content.trim()) messages.push({ role: role as string, content });
       }
     } else {
       // Add recent conversation history
@@ -316,25 +333,21 @@ Current user: ${displayName} (${user_info?.phone || 'No phone'})`;
     const response = await callAI(messages, 500, "google/gemini-2.5-flash");
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      // If AI service reports it's unavailable, return a specific error.
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "AI service temporarily unavailable." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // For rate limits (429) or other non-fatal errors, log and fall back to a simple, non-AI response
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
-      // Fallback to simple response
+      console.warn("AI gateway non-fatal error:", response.status, errorText);
+
       const reply = generateSimpleResponse(effectiveMessage, properties, user_role, user_info);
       const relevantProperties = findRelevantProperties(effectiveMessage, properties);
-      
+
       return new Response(
         JSON.stringify({ reply, properties: relevantProperties, session_id }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
