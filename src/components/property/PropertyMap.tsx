@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { fetchWithTimeout } from '@/lib/utils';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -18,7 +19,14 @@ const PropertyMap: React.FC<Props> = ({ property }) => {
   useEffect(() => {
     const fetchMapToken = async () => {
       try {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-mapbox-token`);
+        const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const response = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/get-mapbox-token`, {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+          }
+        }, 8000);
         const data = await response.json();
         if (data.token) setMapToken(data.token);
       } catch (error) {
