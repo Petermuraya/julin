@@ -33,7 +33,13 @@ export function safeSessionGet<T = unknown>(key: string): T | null {
     if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined') return null;
     const raw = sessionStorage.getItem(key);
     if (!raw) return null;
-    return JSON.parse(raw) as T;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      // If the stored value wasn't JSON (older code stores plain strings),
+      // return the raw string to avoid crashing callers that expect a string.
+      return raw as unknown as T;
+    }
   } catch (e) {
     console.warn('safeSessionGet failed', e);
     return null;
