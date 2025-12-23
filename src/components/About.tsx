@@ -24,7 +24,8 @@ const About = () => {
     {
       title: "Professional property photography",
       icon: Award,
-      description: "High-quality visuals that showcase properties in their best light.",
+      description:
+        "High-quality visuals that showcase properties in their best light.",
     },
     {
       title: "Transparent pricing with market rates",
@@ -35,7 +36,8 @@ const About = () => {
     {
       title: "Local market expertise",
       icon: MapPin,
-      description: "Deep understanding of Kenya's 47 counties and property markets.",
+      description:
+        "Deep understanding of Kenya's 47 counties and property markets.",
     },
     {
       title: "Secure transaction support",
@@ -76,13 +78,23 @@ const About = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-20">
           {/* Header */}
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary font-semibold text-sm uppercase tracking-wider mb-6">
-              <Award className="h-4 w-4" /> Trusted Since 2022
+            <span
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full
+              bg-gradient-to-r from-primary/15 to-primary/5
+             text-primary font-semibold text-sm uppercase tracking-wide
+             border border-primary/20 shadow-sm mb-6"
+            >
+              <Award className="h-4 w-4 text-primary" />
+              Trusted Since 2022
             </span>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-              Your Trusted Partner in{" "}
-              <span className="text-primary font-serif">Kenyan Real Estate</span>
-            </h1>
+
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.15] mb-6">
+  Your Trusted Partner in
+  <span className="block text-primary font-serif tracking-tight">
+    Kenyan Real Estate
+  </span>
+</h1>
+
             <p className="text-lg md:text-xl text-muted-foreground leading-relaxed">
               Transforming property transactions across Kenya with transparency,
               expertise, and commitment to excellence.
@@ -108,11 +120,13 @@ const About = () => {
                 </div>
                 <p className="text-muted-foreground text-lg leading-relaxed">
                   At Julin Real Estate, we’ve redefined property transactions in
-                  Kenya by combining local market expertise with modern technology.
+                  Kenya by combining local market expertise with modern
+                  technology.
                 </p>
                 <p className="text-muted-foreground text-lg leading-relaxed">
                   From Nairobi’s urban spaces to serene countryside locations,
-                  thousands trust us to guide them through Kenya’s property market.
+                  thousands trust us to guide them through Kenya’s property
+                  market.
                 </p>
               </div>
 
@@ -214,7 +228,9 @@ const About = () => {
                           <h4 className="font-semibold group-hover:text-primary transition-colors">
                             {f.title}
                           </h4>
-                          <p className="text-sm text-muted-foreground">{f.description}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {f.description}
+                          </p>
                         </div>
                       </div>
                     </div>
