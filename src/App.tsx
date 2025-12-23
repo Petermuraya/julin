@@ -1,6 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import ScrollProgress from "@/components/ui/ScrollProgress";
+import BackToTop from "@/components/ui/BackToTop";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
@@ -26,8 +28,8 @@ import BlogsPage from "./pages/BlogsPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
 import AboutPage from "./pages/About";
 import ContactPage from "./pages/Contact";
-import Chat from "./components/Chat";
-import ChatLauncher from "./components/ChatLauncher";
+import Chat from "./components/chat/Chat";
+import ChatLauncher from "./components/chat/ChatLauncher";
 import AuthRedirectHandler from "./components/AuthRedirectHandler";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,7 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <ScrollProgress />
         <Toaster />
         <Sonner />
         <HashRouter>
@@ -67,6 +70,7 @@ const App = () => (
           </Routes>
           <ChatLauncher />
         </HashRouter>
+        <BackToTop />
       </TooltipProvider>
     </QueryClientProvider>
   </HelmetProvider>
