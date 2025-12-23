@@ -19,6 +19,8 @@ type Submission = {
   property_type?: string;
 };
 
+import Reveal from "@/components/ui/Reveal";
+
 const AdminSubmissions = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,8 @@ const AdminSubmissions = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Reveal>
+      <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Property Submissions</h1>
@@ -331,7 +334,8 @@ const AdminSubmissions = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </Reveal>
   );
 };
 

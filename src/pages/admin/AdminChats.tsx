@@ -16,6 +16,8 @@ interface ChatMessage {
   created_at?: string;
 }
 
+import Reveal from "@/components/ui/Reveal";
+
 const AdminChats: React.FC = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -44,7 +46,8 @@ const AdminChats: React.FC = () => {
   }, [selected]);
 
   return (
-    <div className="p-4 max-w-6xl mx-auto">
+    <Reveal>
+      <div className="p-4 max-w-6xl mx-auto">
       <h2 className="text-2xl font-semibold mb-4">Chat Conversations</h2>
       <div className="flex gap-4">
         <div className="w-80 border rounded p-2 overflow-auto h-[60vh]">
@@ -72,7 +75,8 @@ const AdminChats: React.FC = () => {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </Reveal>
   );
 };
 

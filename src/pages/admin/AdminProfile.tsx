@@ -10,6 +10,8 @@ import { User, Lock, Mail, Phone, Save } from "lucide-react";
 
 type SimpleUser = { id: string; email?: string | null };
 
+import Reveal from "@/components/ui/Reveal";
+
 const AdminProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,7 +129,8 @@ const AdminProfile = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <Reveal>
+      <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Profile Settings</h1>
         <p className="text-slate-600 dark:text-slate-400 mt-1">Manage your account settings and preferences</p>
@@ -231,7 +234,8 @@ const AdminProfile = () => {
           </Button>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Reveal>
   );
 };
 

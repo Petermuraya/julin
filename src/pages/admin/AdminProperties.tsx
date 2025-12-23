@@ -12,6 +12,7 @@ import { AdminPropertiesHeader } from "@/components/admin/AdminPropertiesHeader"
 import { AdminPropertiesFilters } from "@/components/admin/AdminPropertiesFilters";
 import { AdminPropertiesTable } from "@/components/admin/AdminPropertiesTable";
 import { PropertyForm as PropertyFormType, Property } from "@/types/property";
+import Reveal from "@/components/ui/Reveal";
 
 // Read Supabase URL from environment; do not hardcode in source.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
@@ -745,7 +746,8 @@ const AdminProperties = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Reveal>
+      <div className="space-y-6">
       {/* Header */}
       <AdminPropertiesHeader
         selectedProperties={selectedProperties}
@@ -839,7 +841,8 @@ const AdminProperties = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </Reveal>
   );
 };
 

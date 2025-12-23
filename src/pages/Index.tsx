@@ -1,10 +1,11 @@
 import { Helmet } from "react-helmet-async";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
-import Properties from "@/components/Properties";
+import Properties from "@/components/property/Properties";
 import About from "@/components/About";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
+import Reveal from "@/components/ui/Reveal";
 
 const Index = () => {
   return (
@@ -19,8 +20,15 @@ const Index = () => {
       <div className="min-h-screen">
         <Navbar />
         <main className="pt-28">
-          <Hero />
-          <Properties />
+          <Reveal>
+            <Hero />
+          </Reveal>
+
+          <section className="container mx-auto px-4">
+            <Reveal>
+              <Properties />
+            </Reveal>
+          </section>
         </main>
         <Footer />
       </div>

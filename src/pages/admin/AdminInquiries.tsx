@@ -17,6 +17,8 @@ type Inquiry = {
   created_at?: string | null;
 };
 
+import Reveal from "@/components/ui/Reveal";
+
 const AdminInquiries = () => {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,8 @@ const AdminInquiries = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Reveal>
+      <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Buyer Inquiries</h1>
@@ -169,7 +172,8 @@ const AdminInquiries = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </Reveal>
   );
 };
 

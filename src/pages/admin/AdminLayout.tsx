@@ -1,6 +1,20 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Home, BookOpen, FileText, MessageSquare, Settings, Menu, X, User, LogOut, BarChart3 } from "lucide-react";
+import {
+  Squares2X2Icon,
+  HomeIcon,
+  DocumentTextIcon,
+  CalendarDaysIcon,
+  ChatBubbleLeftRightIcon,
+  Cog6ToothIcon,
+  Bars3Icon,
+  XMarkIcon,
+  UserIcon,
+  ArrowRightOnRectangleIcon,
+  ChartBarIcon,
+} from "@heroicons/react/24/outline";
+import { motion } from "framer-motion";
+import AdminTopProgress from "@/components/ui/AdminTopProgress";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -13,13 +27,13 @@ const AdminLayout = () => {
   const navigate = useNavigate();
 
   const navItems = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/properties", label: "Properties", icon: Home },
-    { href: "/admin/chats", label: "Chat Analytics", icon: BarChart3 },
-    { href: "/admin/blogs", label: "Blog Posts", icon: BookOpen },
-    { href: "/admin/submissions", label: "Submissions", icon: FileText },
-    { href: "/admin/inquiries", label: "Buyer Inquiries", icon: MessageSquare },
-    { href: "/admin/profile", label: "Profile", icon: Settings },
+    { href: "/admin", label: "Dashboard", icon: Squares2X2Icon },
+    { href: "/admin/properties", label: "Properties", icon: HomeIcon },
+    { href: "/admin/chats", label: "Chat Analytics", icon: ChartBarIcon },
+    { href: "/admin/blogs", label: "Blog Posts", icon: DocumentTextIcon },
+    { href: "/admin/submissions", label: "Submissions", icon: DocumentTextIcon },
+    { href: "/admin/inquiries", label: "Buyer Inquiries", icon: ChatBubbleLeftRightIcon },
+    { href: "/admin/profile", label: "Profile", icon: Cog6ToothIcon },
   ];
 
   const isActive = (href: string) => location.pathname === href;
@@ -30,6 +44,18 @@ const AdminLayout = () => {
       navigate("/admin/login");
     }
   }, [user, isAdmin, loading, navigate]);
+
+  // Keyboard shortcut: Ctrl/Cmd+B to toggle sidebar
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setSidebarOpen((s) => !s);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -55,10 +81,10 @@ const AdminLayout = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       {/* Sidebar */}
-      <aside
-        className={`fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 z-50 ${
-          sidebarOpen ? "w-64" : "w-20"
-        }`}
+      <motion.aside
+        className="fixed left-0 top-0 h-screen bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 z-50"
+        animate={{ width: sidebarOpen ? 256 : 80 }}
+        transition={{ type: "spring", stiffness: 260, damping: 30 }}
       >
         {/* Header */}
         <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -87,7 +113,9 @@ const AdminLayout = () => {
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
               >
-                <Icon size={20} className="flex-shrink-0" />
+                <motion.div whileHover={{ x: -4 }} className="flex-shrink-0">
+                  <Icon className="h-5 w-5" />
+                </motion.div>
                 {sidebarOpen && <span>{item.label}</span>}
               </Link>
             );
@@ -123,11 +151,16 @@ const AdminLayout = () => {
       </aside>
 
       {/* Main Content */}
-      <main className={`transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-20"}`}>
+      <motion.main
+        className="transition-all duration-300 relative"
+        animate={{ marginLeft: sidebarOpen ? 256 : 80 }}
+        transition={{ type: "spring", stiffness: 260, damping: 30 }}
+      >
+        <AdminTopProgress />
         <div className="p-6 md:p-8">
           <Outlet />
         </div>
-      </main>
+      </motion.main>
     </div>
   );
 };

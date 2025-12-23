@@ -54,6 +54,8 @@ const sampleBlogs = [
   }
 ];
 
+import Reveal from "@/components/ui/Reveal";
+
 const AdminBlogs = () => {
   const [blogSuggestions, setBlogSuggestions] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -96,7 +98,8 @@ const AdminBlogs = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <Reveal>
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -258,7 +261,8 @@ const AdminBlogs = () => {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Reveal>
   );
 };
 

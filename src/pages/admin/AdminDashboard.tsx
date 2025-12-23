@@ -1,49 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import DashboardHeader from "@/components/admin/DashboardHeader";
+import StatsGrid from "@/components/admin/StatsGrid";
+import RecentSubmissions from "@/components/admin/RecentSubmissions";
+import RecentInquiries from "@/components/admin/RecentInquiries";
+import RecentProperties from "@/components/admin/RecentProperties";
+import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { toast } from "@/components/ui/use-toast";
-import { Home, FileText, MessageSquare, CheckCircle, Clock, ArrowRight } from "lucide-react";
-
-type ConfirmAction = "approve" | "reject" | null;
-
-// Minimal local types to avoid `any`
-type Submission = {
-  id: string;
-  title: string;
-  seller_name?: string | null;
-  seller_phone?: string | null;
-  price?: number | null;
-  status?: string | null;
-  images?: string[] | null;
-  description?: string | null;
-  property_type?: string | null;
-  location?: string | null;
-  _firstImage?: string | null;
-};
-
-type Inquiry = {
-  id: string;
-  buyer_name: string;
-  buyer_phone: string;
-  property_id?: string | null;
-  message?: string | null;
-  lead_status?: "hot" | "warm" | "cold" | null;
-  created_at?: string | null;
-};
-
-type PropertySummary = {
-  id: string;
-  title: string;
-  location?: string | null;
-  price?: number | null;
-  status?: string | null;
-  is_verified?: boolean;
-  images?: string[] | null;
-  _firstImage?: string | null;
-};
+import { Submission, Inquiry, PropertySummary, ConfirmAction } from "@/components/admin/types";
+import Reveal from "@/components/ui/Reveal";
+import Stagger from "@/components/ui/Stagger";
+import RealtimeCharts from "@/components/admin/RealtimeCharts";
 
 const AdminDashboard = () => {
   const [counts, setCounts] = useState({ properties: 0, submissions: 0, inquiries: 0, verified: 0 });
@@ -52,12 +19,11 @@ const AdminDashboard = () => {
   const [recentProperties, setRecentProperties] = useState<PropertySummary[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [confirmItem, setConfirmItem] = useState<Submission | null>(null);
 
-  const openConfirm = (action: "approve" | "reject", item: Submission) => {
+  const openConfirm = (action: ConfirmAction, item: Submission) => {
     setConfirmAction(action);
     setConfirmItem(item);
     setConfirmOpen(true);
@@ -68,15 +34,12 @@ const AdminDashboard = () => {
     const prev = recentSubmissions;
     setRecentSubmissions((s) => s.filter((x) => x.id !== confirmItem.id));
     setCounts((c) => ({ ...c, submissions: Math.max(0, c.submissions - 1) }));
-
     setConfirmOpen(false);
+
     try {
-      if (confirmAction === "approve") {
-        await handleApprove(confirmItem);
-      } else {
-        await handleReject(confirmItem);
-      }
-    } catch (err) {
+      if (confirmAction === "approve") await handleApprove(confirmItem);
+      else await handleReject(confirmItem);
+    } catch {
       setRecentSubmissions(prev);
       toast({ title: "Error", description: "Action failed. Changes rolled back.", variant: "destructive" });
     } finally {
@@ -99,38 +62,23 @@ const AdminDashboard = () => {
           supabase.from("properties").select("id,title,location,price,status,is_verified,images").order("created_at", { ascending: false }).limit(5),
         ]);
 
-        const p = pRes.count ?? 0;
-        const s = sRes.count ?? 0;
-        const i = iRes.count ?? 0;
-        const v = vRes.count ?? 0;
-
-        setCounts({ properties: p, submissions: s, inquiries: i, verified: v });
-        const subsRaw = (subsRes.data as Submission[]) || [];
-        // Resolve first image url for submissions
-        const subs = subsRaw.map((s) => {
-          const images = (s.images as string[]) || [];
-          let first = images[0];
-          if (first && !first.startsWith("http")) {
-            const { data: url } = supabase.storage.from("properties").getPublicUrl(first || "");
-            first = url.publicUrl;
-          }
-          return { ...s, _firstImage: first } as Submission;
-        });
-        setRecentSubmissions(subs);
-        setRecentInquiries((inqRes.data as Inquiry[]) || []);
-        // Resolve first image public urls for recent properties
-        const propsRaw = (propRes.data as PropertySummary[]) || [];
-        const props = propsRaw.map((p) => {
-          const images = (p.images as string[]) || [];
-          let first = images[0];
-          if (first && !first.startsWith("http")) {
-            const { data: url } = supabase.storage.from("properties").getPublicUrl(first || "");
-            first = url.publicUrl;
-          }
-          return { ...p, _firstImage: first } as PropertySummary;
+        setCounts({
+          properties: pRes.count ?? 0,
+          submissions: sRes.count ?? 0,
+          inquiries: iRes.count ?? 0,
+          verified: vRes.count ?? 0,
         });
 
-        setRecentProperties(props);
+        setRecentSubmissions((subsRes.data as Submission[]).map((s) => ({
+          ...s,
+          _firstImage: s.images?.[0] ? supabase.storage.from("properties").getPublicUrl(s.images[0]).data?.publicUrl : undefined,
+        })) || []);
+
+        setRecentInquiries(inqRes.data as Inquiry[] || []);
+        setRecentProperties((propRes.data as PropertySummary[]).map((p) => ({
+          ...p,
+          _firstImage: p.images?.[0] ? supabase.storage.from("properties").getPublicUrl(p.images[0]).data?.publicUrl : undefined,
+        })) || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -140,10 +88,10 @@ const AdminDashboard = () => {
     load();
   }, []);
 
+  // --- Approve/Reject Handlers ---
   const handleApprove = async (submission: Submission) => {
     try {
-      // create a new property from submission
-      const payload = {
+      const { data, error } = await supabase.from("properties").insert([{
         title: submission.title,
         description: submission.description || null,
         property_type: (submission.property_type || "land") as "land" | "plot" | "house" | "apartment" | "commercial",
@@ -154,359 +102,49 @@ const AdminDashboard = () => {
         seller_phone: submission.seller_phone || null,
         is_admin_property: false,
         approved_at: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabase.from("properties").insert([payload]).select().single();
+      }]).select().single();
       if (error) throw error;
 
       await supabase.from("property_submissions").update({ status: "approved", created_property_id: data.id, reviewed_at: new Date().toISOString() }).eq("id", submission.id);
-
-      // update local state
-      setRecentSubmissions((s) => s.filter((x) => x.id !== submission.id));
-      setCounts((c) => ({ ...c, properties: c.properties + 1, submissions: Math.max(0, c.submissions - 1) }));
+      setCounts((c) => ({ ...c, properties: c.properties + 1 }));
       toast({ title: "Approved", description: "Submission approved and published.", variant: "default" });
     } catch (err: unknown) {
       console.error(err);
-      const message = err instanceof Error ? err.message : String(err);
-      toast({ title: "Error", description: message || "Failed to approve submission.", variant: "destructive" });
+      toast({ title: "Error", description: (err as Error).message || "Failed to approve submission.", variant: "destructive" });
     }
   };
 
   const handleReject = async (submission: Submission) => {
     try {
       await supabase.from("property_submissions").update({ status: "rejected", reviewed_at: new Date().toISOString() }).eq("id", submission.id);
-      setRecentSubmissions((s) => s.filter((x) => x.id !== submission.id));
-      setCounts((c) => ({ ...c, submissions: Math.max(0, c.submissions - 1) }));
       toast({ title: "Rejected", description: "Submission rejected.", variant: "default" });
     } catch (err: unknown) {
       console.error(err);
-      const message = err instanceof Error ? err.message : String(err);
-      toast({ title: "Error", description: message || "Failed to reject submission.", variant: "destructive" });
+      toast({ title: "Error", description: (err as Error).message || "Failed to reject submission.", variant: "destructive" });
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Quick overview — manage properties, submissions and leads
-          </p>
+    <Reveal>
+      <div className="space-y-6">
+        <DashboardHeader />
+
+        <Stagger>
+          <RealtimeCharts />
+          <StatsGrid counts={counts} />
+        </Stagger>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Stagger>
+            <RecentSubmissions submissions={recentSubmissions} loading={loading} onApprove={openConfirm.bind(null, "approve")} onReject={openConfirm.bind(null, "reject")} />
+            <RecentInquiries inquiries={recentInquiries} loading={loading} />
+            <RecentProperties properties={recentProperties} loading={loading} />
+          </Stagger>
         </div>
-        <div className="flex gap-3 flex-wrap">
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link to="/admin/properties" className="inline-flex items-center gap-2">
-              <Home size={18} />
-              Properties
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/admin/submissions" className="inline-flex items-center gap-2">
-              <FileText size={18} />
-              Submissions
-            </Link>
-          </Button>
-        </div>
+
+        <ConfirmDialog open={confirmOpen} action={confirmAction} item={confirmItem} onClose={() => setConfirmOpen(false)} onConfirm={onConfirm} />
       </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Properties */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Properties</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-2">{counts.properties}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-                <span className="inline-block bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 px-2 py-1 rounded">
-                  {counts.verified} verified
-                </span>
-              </p>
-            </div>
-            <div className="bg-primary/5 p-3 rounded-lg">
-              <Home size={24} className="text-primary" />
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Submissions */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-muted-foreground">Pending Submissions</p>
-              <p className="text-3xl font-bold text-foreground mt-2">{counts.submissions}</p>
-              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-primary">
-                <Link to="/admin/submissions" className="inline-flex items-center gap-1">
-                  Review submissions <ArrowRight size={14} />
-                </Link>
-              </Button>
-            </div>
-            <div className="bg-orange-50 dark:bg-orange-950 p-3 rounded-lg">
-              <Clock size={24} className="text-orange-600 dark:text-orange-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Buyer Inquiries */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-muted-foreground">Buyer Inquiries</p>
-              <p className="text-3xl font-bold text-foreground mt-2">{counts.inquiries}</p>
-              <Button asChild size="sm" variant="ghost" className="mt-3 h-auto p-0 text-xs text-primary">
-                <Link to="/admin/inquiries" className="inline-flex items-center gap-1">
-                  View leads <ArrowRight size={14} />
-                </Link>
-              </Button>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-950 p-3 rounded-lg">
-              <MessageSquare size={24} className="text-purple-600 dark:text-purple-400" />
-            </div>
-          </div>
-        </div>
-
-        {/* Conversion Rate */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-muted-foreground">Status</p>
-              <p className="text-3xl font-bold text-foreground mt-2">Active</p>
-              <p className="text-xs text-muted-foreground mt-3">All systems operational</p>
-            </div>
-            <div className="bg-green-50 dark:bg-green-950 p-3 rounded-lg">
-              <CheckCircle size={24} className="text-green-600 dark:text-green-400" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Submissions */}
-        <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Submissions</h2>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/submissions">View All</Link>
-            </Button>
-          </div>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : recentSubmissions.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No recent submissions</p>
-          ) : (
-            <div className="space-y-3">
-              {recentSubmissions.map((s) => (
-                <div
-                  key={s.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <div className="flex gap-3">
-                    {s._firstImage ? (
-                      <img
-                        src={s._firstImage}
-                        alt={s.title}
-                        className="w-16 h-12 object-cover rounded flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-16 h-12 bg-slate-300 dark:bg-slate-600 rounded flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-slate-900 dark:text-white text-sm truncate">
-                        {s.title}
-                      </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                        {s.seller_name}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        KES {Number(s.price || 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="flex-1 h-7 text-xs"
-                      onClick={() => openConfirm("reject", s)}
-                    >
-                      Reject
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 h-7 text-xs bg-green-600 hover:bg-green-700"
-                      onClick={() => openConfirm("approve", s)}
-                    >
-                      Approve
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Recent Inquiries */}
-        <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Inquiries</h2>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/inquiries">View All</Link>
-            </Button>
-          </div>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : recentInquiries.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No recent inquiries</p>
-          ) : (
-            <div className="space-y-3">
-              {recentInquiries.map((q) => (
-                <div
-                  key={q.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-slate-900 dark:text-white text-sm">
-                        {q.buyer_name}
-                      </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                        📱 {q.buyer_phone}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">
-                        {(q.message || "").slice(0, 60)}
-                        {(q.message || "").length > 60 ? "..." : ""}
-                      </p>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={`flex-shrink-0 text-xs ${
-                        q.lead_status === "hot"
-                          ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-700"
-                          : q.lead_status === "warm"
-                          ? "bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-700"
-                          : "bg-primary/5 text-primary border-primary/20"
-                      }`}
-                    >
-                      {q.lead_status || "Warm"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Recent Properties */}
-        <section className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent Properties</h2>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/admin/properties">View All</Link>
-            </Button>
-          </div>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-20 bg-slate-100 dark:bg-slate-700 rounded animate-pulse" />
-              ))}
-            </div>
-          ) : recentProperties.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">No recent properties</p>
-          ) : (
-            <div className="space-y-3">
-              {recentProperties.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
-                >
-                  <div className="flex gap-3">
-                    {p._firstImage ? (
-                      <img
-                        src={p._firstImage}
-                        alt={p.title}
-                        className="w-16 h-12 object-cover rounded flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-16 h-12 bg-slate-300 dark:bg-slate-600 rounded flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-slate-900 dark:text-white text-sm truncate">
-                        {p.title}
-                      </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
-                        {p.location}
-                      </p>
-                      <div className="flex items-center justify-between mt-1">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          KES {Number(p.price || 0).toLocaleString()}
-                        </p>
-                        {p.is_verified && (
-                          <Badge variant="secondary" className="text-xs h-5">
-                            ✓ Verified
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* Confirm dialog */}
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-lg">
-              {confirmAction === "approve" ? "✓ Approve Submission" : "✗ Reject Submission"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {confirmAction === "approve" ? (
-              <p className="text-slate-700 dark:text-slate-300">
-                Are you sure you want to approve and publish <strong>{confirmItem?.title}</strong>? It will be
-                visible to buyers immediately.
-              </p>
-            ) : (
-              <p className="text-slate-700 dark:text-slate-300">
-                Are you sure you want to reject <strong>{confirmItem?.title}</strong>? The seller will be
-                notified.
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={onConfirm}
-                className={
-                  confirmAction === "approve"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
-                }
-              >
-                {confirmAction === "approve" ? "Approve" : "Reject"}
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </Reveal>
   );
 };
 

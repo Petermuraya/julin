@@ -111,6 +111,15 @@ const PropertiesPage = () => {
     }
 
     let channel: ReturnType<typeof supabase['channel']> | undefined;
+
+    // Runtime guard: ensure the Supabase client supports realtime before calling.
+    // This prevents runtime "is not a function" errors when the client doesn't
+    // expose `channel` (e.g. in disabled / stubbed clients or limited builds).
+    if (!supabase || typeof (supabase as any).channel !== 'function') {
+      console.warn('Supabase realtime not available — skipping realtime setup');
+      return;
+    }
+
     try {
       channel = supabase
         .channel("properties-page-realtime")
