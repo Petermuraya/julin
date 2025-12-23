@@ -95,7 +95,7 @@ const AdminLayout = () => {
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="ml-auto"
           >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            {sidebarOpen ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
           </Button>
         </div>
 
@@ -127,7 +127,7 @@ const AdminLayout = () => {
           {sidebarOpen && user && (
             <div className="flex items-center gap-3 mb-3 px-2">
               <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                <User size={16} className="text-blue-600 dark:text-blue-400" />
+                <UserIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
@@ -144,7 +144,7 @@ const AdminLayout = () => {
               !sidebarOpen ? "px-3" : ""
             }`}
           >
-            <LogOut size={20} className="flex-shrink-0" />
+            <ArrowRightOnRectangleIcon className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
             {sidebarOpen && <span className="ml-3">Logout</span>}
           </Button>
         </div>
