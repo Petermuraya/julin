@@ -2,7 +2,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ImageIcon, Video, Edit2, Share2, Trash2, Facebook, Instagram, MessageCircle, Twitter, Send } from "lucide-react";
+import {
+  PhotoIcon,
+  VideoCameraIcon,
+  PencilSquareIcon,
+  ShareIcon,
+  TrashIcon,
+  GlobeAltIcon,
+  ArrowTopRightOnSquareIcon,
+  ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
+  CameraIcon,
+} from "@heroicons/react/24/outline";
 import { Property } from "@/types/property";
 
 interface AdminPropertiesTableProps {
@@ -102,12 +113,12 @@ export const AdminPropertiesTable = ({
                           <img src={p.images[0]} alt={p.title} className="w-12 h-12 rounded-lg object-cover" />
                         ) : (
                           <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                            <ImageIcon size={20} className="text-muted-foreground" />
+                            <PhotoIcon className="h-5 w-5 text-muted-foreground" />
                           </div>
                         )}
                         {p.video_url && (
                           <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full p-1">
-                            <Video size={8} />
+                            <VideoCameraIcon className="h-3 w-3" />
                           </div>
                         )}
                       </div>
@@ -152,37 +163,37 @@ export const AdminPropertiesTable = ({
                         onClick={() => openEditDialog(p)}
                         className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                       >
-                        <Edit2 size={16} />
+                        <PencilSquareIcon className="h-4 w-4" />
                       </Button>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild>
                           <Button
                             size="sm"
                             variant="ghost"
                             className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/5"
                           >
-                            <Share2 size={16} />
+                            <ShareIcon className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={() => shareToFacebook(p)} className="flex items-center gap-2">
-                            <Facebook size={16} className="text-blue-600" />
+                            <GlobeAltIcon className="h-4 w-4 text-blue-600" />
                             Share on Facebook
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => shareToTwitter(p)} className="flex items-center gap-2">
-                            <Twitter size={16} className="text-blue-400" />
+                            <ArrowTopRightOnSquareIcon className="h-4 w-4 text-blue-400" />
                             Share on X (Twitter)
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => shareToWhatsApp(p)} className="flex items-center gap-2">
-                            <MessageCircle size={16} className="text-green-600" />
+                            <ChatBubbleLeftRightIcon className="h-4 w-4 text-green-600" />
                             Share on WhatsApp
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => shareToTelegram(p)} className="flex items-center gap-2">
-                            <Send size={16} className="text-blue-500" />
+                            <PaperAirplaneIcon className="h-4 w-4 text-blue-500" />
                             Share on Telegram
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => shareToInstagram(p)} className="flex items-center gap-2">
-                            <Instagram size={16} className="text-pink-600" />
+                            <CameraIcon className="h-4 w-4 text-pink-600" />
                             Copy for Instagram
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => shareToTikTok(p)} className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { PlusIcon } from "@heroicons/react/24/outline";
 
 interface AdminPropertiesHeaderProps {
   selectedProperties: string[];
@@ -22,7 +22,7 @@ export const AdminPropertiesHeader = ({
       </div>
       <div className="flex flex-wrap gap-3">
         <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90 inline-flex items-center gap-2">
-          <Plus size={18} />
+            <PlusIcon className="h-4 w-4 mr-2" />
           Add Property
         </Button>
         {selectedProperties.length > 0 && (
