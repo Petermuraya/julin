@@ -1,7 +1,7 @@
-import PropertyCard from './PropertyCard';
-import { Building2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { Property } from '@/types/property';
+import PropertyCard from "./PropertyCard";
+import { Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Property } from "@/types/property";
 
 interface PropertyGridProps {
   properties: Property[];
@@ -62,24 +62,9 @@ export const PropertyGrid = ({ properties, loading, errorMsg, fetchProperties, c
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {properties.map((property) => (
-          <PropertyCard
-            key={property.id}
-            id={property.id}
-            title={property.title}
-            location={property.location}
-            price={`KES ${Number(property.price).toLocaleString()}`}
-            size={property.size || "-"}
-            details={property.description || ""}
-            phone={property.seller_phone || "+254725671504"}
-            hasVideo={!!property.video_url}
-            image={property.images?.[0]}
-            imageCount={(property.images || []).length}
-            status={property.status === "available" ? "For Sale" : property.status}
-          />
+          <PropertyCard key={property.id} property={property} />
         ))}
       </div>
     </>
   );
 };
-
-export default PropertyGrid;

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import { PropertyFilters, PROPERTY_TYPES, SORT_OPTIONS } from "../PropertyFilters";
+import { PropertyFilters, PROPERTY_TYPES, SORT_OPTIONS } from "./PropertyFilters";
 
 interface PropertySearchBarProps {
   query: string;
@@ -125,5 +125,3 @@ export const PropertySearchBar = ({
     </div>
   );
 };
-
-export default PropertySearchBar;

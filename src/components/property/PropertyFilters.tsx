@@ -194,5 +194,3 @@ export const PropertyFilters = ({
     </div>
   );
 };
-
-export default PropertyFilters;
