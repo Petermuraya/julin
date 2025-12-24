@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import useInView from "@/hooks/use-in-view";
 import { fetchWithTimeout } from '@/lib/utils';
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,7 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 
 const PropertiesPage = () => {
+  const header = useInView<HTMLDivElement>();
   const [query, setQuery] = useState("");
   const [type, setType] = useState<string | undefined>(undefined);
   const [minPrice, setMinPrice] = useState("");
@@ -196,7 +198,10 @@ const PropertiesPage = () => {
         <main className="pt-24 pb-20">
           <div className="container mx-auto px-4">
             {/* Header */}
-            <div className="mb-8">
+            <div
+              ref={header.ref as React.RefObject<HTMLDivElement>}
+              className={`mb-8 transition-all duration-700 ${header.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+            >
               <h1 className="text-4xl font-bold text-foreground mb-2">Properties</h1>
               <p className="text-lg text-muted-foreground">Discover your perfect property from our curated collection</p>
             </div>
