@@ -92,7 +92,30 @@ const BlogsPage = () => {
           <div className="container mx-auto px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {loading ? (
-                <div className="col-span-3 text-center py-12">Loading blogs…</div>
+                <div
+  className="col-span-3 flex flex-col items-center justify-center py-16 space-y-6"
+  role="status"
+  aria-live="polite"
+>
+  {/* Spinner */}
+  <div className="h-10 w-10 rounded-full border-4 border-gray-200 border-t-primary animate-spin" />
+
+  {/* Text */}
+  <p className="text-sm font-medium text-gray-500 tracking-wide">
+    Fetching latest insights…
+  </p>
+
+  {/* Skeleton cards */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mt-6">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div
+        key={i}
+        className="h-48 rounded-xl bg-gray-100 animate-pulse"
+      />
+    ))}
+  </div>
+</div>
+
               ) : error ? (
                 <div className="col-span-3 text-center py-12 text-red-500">{error}</div>
               ) : (
