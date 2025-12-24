@@ -89,14 +89,13 @@ const AdminLayout = () => {
         {/* Header */}
         <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           {sidebarOpen && <h1 className="text-xl font-bold text-slate-900 dark:text-white">JulinHub</h1>}
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="ml-auto"
+            className="ml-auto p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
+            aria-label="Toggle sidebar"
           >
             {sidebarOpen ? <XMarkIcon className="h-5 w-5" /> : <Bars3Icon className="h-5 w-5" />}
-          </Button>
+          </button>
         </div>
 
         {/* Navigation */}
@@ -137,18 +136,19 @@ const AdminLayout = () => {
               </div>
             </div>
           )}
-          <Button
-            variant="ghost"
+          <button
             onClick={handleLogout}
-            className={`w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 ${
+            className={`w-full text-left p-2 rounded-md text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 ${
               !sidebarOpen ? "px-3" : ""
             }`}
           >
-            <ArrowRightOnRectangleIcon className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
-            {sidebarOpen && <span className="ml-3">Logout</span>}
-          </Button>
+            <div className="inline-flex items-center gap-3">
+              <ArrowRightOnRectangleIcon className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
+              {sidebarOpen && <span className="ml-1">Logout</span>}
+            </div>
+          </button>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main Content */}
       <motion.main
