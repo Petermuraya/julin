@@ -8,6 +8,7 @@ import { generateWhatsAppLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import useInView from "@/hooks/use-in-view";
 
 interface ContactInfo {
   icon: React.ComponentType<{ className?: string }>;
@@ -34,6 +35,9 @@ interface FormErrors {
 }
 
 const Contact = () => {
+  const header = useInView<HTMLDivElement>();
+  const left = useInView<HTMLDivElement>();
+  const formRef = useInView<HTMLDivElement>();
   const contactInfo: ContactInfo[] = [
     {
       icon: Phone,
@@ -72,7 +76,10 @@ const Contact = () => {
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12 md:mb-20">
+        <div
+          ref={header.ref as React.RefObject<HTMLDivElement>}
+          className={`text-center max-w-3xl mx-auto mb-12 md:mb-20 transition-all duration-700 ${header.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+        >
           <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary font-semibold text-sm uppercase tracking-wider mb-6">
             Get in Touch
           </span>
@@ -89,7 +96,10 @@ const Contact = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
           {/* Contact Info Cards */}
-          <div className="lg:col-span-1 space-y-6">
+          <div
+            ref={left.ref as React.RefObject<HTMLDivElement>}
+            className={`lg:col-span-1 space-y-6 transition-all duration-700 ${left.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+          >
             {contactInfo.map((item, index) => (
               <a
                 key={index}
@@ -97,9 +107,11 @@ const Contact = () => {
                 aria-label={`${item.label}: ${item.value}`}
                 target={item.href.startsWith('http') ? '_blank' : undefined}
                 rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                style={{ transitionDelay: `${index * 80}ms` }}
                 className={cn(
                   "flex items-start gap-4 p-5 sm:p-6 bg-white rounded-2xl border border-slate-200",
-                  "hover:border-primary/30 hover:shadow-lg hover:bg-slate-50 transition-all duration-300"
+                  "hover:border-primary/30 hover:shadow-lg hover:bg-slate-50 transition-all duration-500",
+                  left.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
                 )}
               >
                 <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -141,7 +153,10 @@ const Contact = () => {
 
           {/* Contact Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-100">
+            <div
+              ref={formRef.ref as React.RefObject<HTMLDivElement>}
+              className={`bg-white rounded-3xl p-8 md:p-10 shadow-xl border border-slate-100 transition-all duration-700 ${formRef.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+            >
               <h3 className="font-display text-2xl md:text-3xl font-bold text-slate-900 mb-2">Send Us a Message</h3>
               <p className="text-slate-600 mb-8 text-sm md:text-base">
                 Fill in your details below. We'll save your inquiry and you'll be redirected to WhatsApp 
