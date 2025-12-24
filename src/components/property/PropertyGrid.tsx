@@ -61,8 +61,11 @@ export const PropertyGrid = ({ properties, loading, errorMsg, fetchProperties, c
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {properties.map((property) => (
-          <PropertyCard key={property.id} property={property} />
+        {properties.map((property, i) => (
+          <PropertyCard
+            key={property.id}
+            property={Object.assign(property, { __delay: i * 70 }) as unknown as Property}
+          />
         ))}
       </div>
     </>
