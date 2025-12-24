@@ -58,29 +58,41 @@ self.addEventListener('fetch', (event) => {
 
   // Navigation requests: try network first, fallback to cache
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return res;
-        })
-        .catch(() => caches.match(request).then((r) => r || caches.match(`${BASE_PATH}index.html`)))
-    );
+    event.respondWith((async () => {
+      try {
+        const res = await fetch(request);
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        return res;
+      } catch (err) {
+        // network failed — try to return the cached request, then index.html, then a generic offline page
+        const cachedReq = await caches.match(request);
+        if (cachedReq) return cachedReq;
+        const index = await caches.match(`${BASE_PATH}index.html`);
+        if (index) return index;
+        return new Response('<!doctype html><html><body><h1>Offline</h1><p>The application is offline.</p></body></html>', { headers: { 'Content-Type': 'text/html' }, status: 503 });
+      }
+    })());
     return;
   }
 
   // For other requests, use cache-first strategy
-  event.respondWith(
-    caches.match(request).then((cached) =>
-      cached || fetch(request).then((res) => {
-        // don't cache opaque responses (e.g., cross-origin)
-        if (res && res.type === 'basic' && res.status === 200) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return res;
-      }).catch(() => cached)
-    )
-  );
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+
+    try {
+      const res = await fetch(request);
+      if (res && res.type === 'basic' && res.status === 200) {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+      }
+      return res;
+    } catch (err) {
+      // network failed, return cached fallback or index.html or a 503 response
+      const fallback = await caches.match(`${BASE_PATH}index.html`);
+      if (fallback) return fallback;
+      return new Response('Service unavailable', { status: 503, statusText: 'Service unavailable' });
+    }
+  })());
 });
