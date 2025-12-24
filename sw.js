@@ -1,15 +1,42 @@
 const CACHE_NAME = 'juln-pwa-v1';
-const ASSETS_TO_CACHE = [
-  './',
-  'index.html',
-  'site.webmanifest',
-  'favicon.ico',
-];
+
+// Build asset URLs relative to the service worker scope so the SW works when
+// the site is hosted under a repo subpath (e.g. GitHub Pages /username/repo/).
+const ensureTrailing = (s) => (s.endsWith('/') ? s : `${s}/`);
+const SCOPE_PATH = (self.registration && self.registration.scope)
+  ? new URL(self.registration.scope).pathname
+  : '/';
+const BASE_PATH = ensureTrailing(SCOPE_PATH);
+
+const ASSETS_TO_CACHE = ['','index.html','site.webmanifest','favicon.ico']
+  .map((p) => new URL(p, `${self.location.origin}${BASE_PATH}`).href);
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+
+    // Use Promise.allSettled so a single missing/failed resource doesn't
+    // abort the entire install. Log failures for diagnostics.
+    const results = await Promise.allSettled(
+      ASSETS_TO_CACHE.map(async (url) => {
+        try {
+          const res = await fetch(url, { cache: 'no-cache' });
+          if (!res || !res.ok) throw new Error(`Failed to fetch ${url} (status: ${res && res.status})`);
+          await cache.put(url, res.clone());
+        } catch (err) {
+          // rethrow to be captured by allSettled
+          throw err;
+        }
+      })
+    );
+
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length) {
+      // Non-fatal: log the failures but allow activation
+      console.warn('[sw] some assets failed to cache during install:', failed.map((f) => f.reason));
+    }
+  })());
+
   self.skipWaiting();
 });
 
@@ -38,7 +65,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return res;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/index.html')))
+        .catch(() => caches.match(request).then((r) => r || caches.match(`${BASE_PATH}index.html`)))
     );
     return;
   }
