@@ -28,12 +28,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import type { Property } from "@/types/property";
+import useInView from "@/hooks/use-in-view";
 
 interface PropertyCardProps {
   property: Property;
+  delay?: number;
 }
 
 const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
+  const reveal = useInView<HTMLDivElement>();
   const {
     id,
     title,
@@ -119,7 +122,13 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
 
   return (
     <Link to={`/property/${id}`} className="block" aria-label={`View details for ${title}`}>
-      <article className="group bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1">
+      <article
+        ref={reveal.ref as React.RefObject<HTMLElement>}
+        style={{ transitionDelay: `${(property as any).__delay ?? 0}ms` }}
+        className={`group bg-card rounded-2xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 ${
+          reveal.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+        }`}
+      >
         {/* Image */}
         <div className="relative h-64 overflow-hidden">
           <button
