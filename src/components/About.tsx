@@ -12,8 +12,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import useInView from "@/hooks/use-in-view";
 
 const About = () => {
+  const header = useInView<HTMLDivElement>();
+  const left = useInView<HTMLDivElement>();
+  const right = useInView<HTMLDivElement>();
   const features = [
     {
       title: "Verified property listings in Kenya",
@@ -77,7 +81,12 @@ const About = () => {
       <div className="backdrop-blur-sm bg-white/70 py-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-20">
           {/* Header */}
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div
+            ref={header.ref as React.RefObject<HTMLDivElement>}
+            className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ${
+              header.inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            }`}
+          >
             <span
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full
               bg-gradient-to-r from-primary/15 to-primary/5
@@ -104,7 +113,10 @@ const About = () => {
           {/* Grid Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             {/* Left Column */}
-            <div className="space-y-12">
+            <div
+              ref={left.ref as React.RefObject<HTMLDivElement>}
+              className={`space-y-12 transition-all duration-700 ${left.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+            >
               {/* Intro */}
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -165,7 +177,8 @@ const About = () => {
                   ].map((item, i) => (
                     <div
                       key={i}
-                      className={`group p-6 bg-card rounded-2xl border border-gray-200 ${item.border} hover:shadow-lg transition-all duration-300`}
+                      style={{ transitionDelay: `${i * 80}ms` }}
+                      className={`group p-6 bg-card rounded-2xl border border-gray-200 ${item.border} hover:shadow-lg transition-all duration-500 ${left.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
                     >
                       <div className="flex gap-4 items-start">
                         <div
@@ -197,7 +210,10 @@ const About = () => {
             </div>
 
             {/* Right Column */}
-            <div className="space-y-10">
+            <div
+              ref={right.ref as React.RefObject<HTMLDivElement>}
+              className={`space-y-10 transition-all duration-700 ${right.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+            >
               {/* Features */}
               <div className="bg-card rounded-3xl p-8 shadow-xl border border-gray-100">
                 <div className="flex items-center gap-4 mb-8">
@@ -218,7 +234,8 @@ const About = () => {
                   {features.map((f, i) => (
                     <div
                       key={i}
-                      className="group p-5 bg-gradient-to-b from-white to-gray-50 rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all duration-300 cursor-pointer"
+                      style={{ transitionDelay: `${i * 65}ms` }}
+                      className={`group p-5 bg-gradient-to-b from-white to-gray-50 rounded-xl border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all duration-500 cursor-pointer ${right.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
                     >
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
