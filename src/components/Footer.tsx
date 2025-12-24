@@ -18,13 +18,12 @@ const FooterLight = () => {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
           {/* Brand */}
           <div className="text-center md:text-left">
-            <div className="flex justify-center md:justify-start items-center gap-2 mb-4">
-              <span className="font-serif text-2xl font-bold text-accent">
-                JULIN
-              </span>
-              <span className="font-sans text-lg font-light tracking-wide">
-                REAL ESTATE
-              </span>
+            <div className="flex justify-center md:justify-start items-center gap-3 mb-4">
+              <img
+                src="/logo.png"
+                alt="Julin Real Estate logo"
+                className="h-16 md:h-20 lg:h-24 w-auto object-contain"
+              />
             </div>
 
             <p className="text-sm leading-relaxed text-slate-600 max-w-sm mx-auto md:mx-0">
