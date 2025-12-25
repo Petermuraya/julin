@@ -8,12 +8,13 @@ import {
 } from "@/components/ui/card";
 import { Star, Bot } from "lucide-react";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
+// ConversationRating is a presentational component. Parent should handle persistence.
 
 interface ConversationRatingProps {
   page?: string;
   accent?: string; // tailwind color e.g. "emerald", "blue", "violet"
-  onComplete?: () => void;
+  // Called with rating payload when user submits: { rating, sentiment, feedback }
+  onSubmit?: (payload: { rating: number; sentiment: string; feedback: string | null }) => void;
 }
 
 const sentimentMap = {
@@ -46,21 +47,14 @@ export const ConversationRating: React.FC<ConversationRatingProps> = ({
     return "How was your experience?";
   }, [rating]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!rating || !sentiment) return;
-
     setLoading(true);
-
-    await supabase.from("conversation_feedback").insert({
-      rating,
-      sentiment,
-      feedback: feedback.trim() || null,
-      page,
-      created_at: new Date().toISOString(),
-    });
-
-    setLoading(false);
-    onComplete?.();
+    try {
+      onSubmit?.({ rating, sentiment, feedback: feedback.trim() || null });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

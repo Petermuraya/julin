@@ -54,3 +54,16 @@ Security & RLS:
 - Ensure your frontend uses the publishable key for Edge Function calls (the app includes `apikey` and `Authorization` headers when calling functions).
 
 If you need, I can add deployment steps showing how to set these environment variables and run the migration in Supabase.
+
+## Achievements Practice
+
+This repo includes a small practice flow to generate meaningful, event-based GitHub activity (docs improvements, quick fixes, PR merges) that map to GitHub achievements like Pull Shark, YOLO, Quickdraw, Galaxy Brain and Starstruck.
+
+Suggested actions:
+- Open PRs with docs or bugfix changes that can be merged (Pull Shark).
+- Create a small PR and merge it yourself once to get YOLO (merge without review).
+- Open a tiny issue and immediately fix & close it for Quickdraw.
+- Use Discussions for technical Q&A and accepted answers for Galaxy Brain.
+- Open-source a practical starter (templates or integrations) and promote it to gain stars for Starstruck.
+
+See `docs/achievements.md` for a step-by-step playbook.

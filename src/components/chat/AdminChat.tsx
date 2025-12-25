@@ -4,13 +4,12 @@ import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
 import ChatInput from '@/components/chat/ChatInput';
 import { PreChatForm } from '@/components/chat/PreChatForm';
-import { ConversationRating } from '@/components/chat/ConversationRating';
 import { useAuth } from '@/contexts/AuthContextValue';
 import { restUpsertConversation, restInsertMessage, restPatchConversation, fetchReply } from './chatService';
 import { safeSessionGet, safeSessionSet } from '@/lib/utils';
 
 type Message = { role: 'user' | 'assistant' | 'system'; content: string };
-type ChatPhase = 'form' | 'chat' | 'rating' | 'completed';
+type ChatPhase = 'form' | 'chat' | 'completed';
 
 const AdminChat: React.FC = () => {
   const { user } = useAuth();
@@ -62,7 +61,7 @@ const AdminChat: React.FC = () => {
   };
 
   if (phase === 'form') return <PreChatForm onSubmit={() => setPhase('chat')} onCancel={() => {}} />;
-  if (phase === 'rating') return <ConversationRating {...({ onSubmit: () => setPhase('completed'), onSkip: () => setPhase('completed') } as any)} />;
+  // Rating & analytics moved to the admin dashboard UI
 
   return (
     <div className="h-full flex flex-col">
@@ -70,9 +69,7 @@ const AdminChat: React.FC = () => {
         <ChatHeader userRole={'admin'} userInfo={null} />
         <ChatMessages messages={messages} messagesEndRef={messagesEndRef} />
         <ChatInput input={input} setInput={setInput} sendMessage={sendMessage} loading={loading} />
-        <div className="mt-4 text-center">
-          <button onClick={() => setPhase('rating')} className="text-sm text-gray-500 underline">End conversation and rate</button>
-        </div>
+        {/* Rating removed from chat; admins will manage feedback in dashboard */}
       </div>
     </div>
   );

@@ -39,11 +39,11 @@ const AdminLayout = () => {
   const isActive = (href: string) => location.pathname === href;
 
   useEffect(() => {
-    // If not admin and not loading, redirect to login
-    if (!loading && (!user || !isAdmin)) {
+    // If not authenticated and not loading, redirect to login
+    if (!loading && !user) {
       navigate("/admin/login");
     }
-  }, [user, isAdmin, loading, navigate]);
+  }, [user, loading, navigate]);
 
   // Keyboard shortcut: Ctrl/Cmd+B to toggle sidebar
   useEffect(() => {
@@ -74,7 +74,7 @@ const AdminLayout = () => {
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!user) {
     return null; // Will redirect via useEffect
   }
 

@@ -3,12 +3,11 @@ import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessages from '@/components/chat/ChatMessages';
 import ChatInput from '@/components/chat/ChatInput';
 import { PreChatForm } from '@/components/chat/PreChatForm';
-import { ConversationRating } from '@/components/chat/ConversationRating';
 import { restUpsertConversation, restInsertMessage, restPatchConversation, fetchReply } from './chatService';
 import { safeSessionGet, safeSessionSet } from '@/lib/utils';
 
 type Message = { role: 'user' | 'assistant' | 'system'; content: string };
-type ChatPhase = 'form' | 'chat' | 'rating' | 'completed';
+type ChatPhase = 'form' | 'chat' | 'completed';
 
 const CustomerChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -31,6 +30,18 @@ const CustomerChat: React.FC = () => {
   useEffect(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages]);
 
   const createConversation = async (name: string, phone: string) => {
+    // Runtime check: if the app was built without a SUPABASE URL / publishable
+    // key and no server proxy, provide a clear error rather than letting a
+    // low-level proxy throw (which may be silent in the console).
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+    const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+    const SERVER_API = (import.meta.env.VITE_SERVER_API_URL || '').replace(/\/$/, '');
+    if (!SERVER_API && (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY)) {
+      const msg = 'Chat not configured: missing Supabase URL or publishable key in site build.';
+      console.error('[CustomerChat] createConversation aborted', { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SERVER_API });
+      throw new Error(msg);
+    }
+
     await restUpsertConversation({ conversation_id: conversationId, user_display_name: name, started_at: new Date().toISOString(), summary: JSON.stringify({ phone }) });
   };
 
@@ -58,8 +69,25 @@ const CustomerChat: React.FC = () => {
     } finally { setLoading(false); }
   };
 
-  if (phase === 'form') return <PreChatForm onSubmit={async (info) => { await createConversation(info.name, info.phone); setPhase('chat'); }} onCancel={() => { window.history.back(); }} />;
-  if (phase === 'rating') return <ConversationRating onSubmit={() => setPhase('completed')} onSkip={() => setPhase('completed')} />;
+  if (phase === 'form') return (
+    <PreChatForm
+      onSubmit={async (info) => {
+        try {
+          await createConversation(info.name, info.phone);
+          setPhase('chat');
+        } catch (err) {
+          console.error('[CustomerChat] createConversation failed', err);
+          // Visible feedback to the user so they know something went wrong
+          // and to encourage checking the console/network logs.
+          // Keep this simple for debugging; can be removed later.
+          // eslint-disable-next-line no-alert
+          alert('Failed to start chat. Check the browser console for details.');
+        }
+      }}
+      onCancel={() => { window.history.back(); }}
+    />
+  );
+  // rating is now handled in the admin dashboard; chat is only for messaging
 
   return (
     <div className="h-full flex flex-col">
@@ -67,9 +95,7 @@ const CustomerChat: React.FC = () => {
         <ChatHeader userRole={'user'} userInfo={null} />
         <ChatMessages messages={messages} messagesEndRef={messagesEndRef} />
         <ChatInput input={input} setInput={setInput} sendMessage={sendMessage} loading={loading} />
-        <div className="mt-4 text-center">
-          <button onClick={() => setPhase('rating')} className="text-sm text-gray-500 underline">End conversation and rate</button>
-        </div>
+        {/* Rating removed from chat; admins will manage feedback in dashboard */}
       </div>
     </div>
   );
