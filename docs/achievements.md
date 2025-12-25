@@ -28,3 +28,5 @@ Notes:
 - Real achievements are awarded by GitHub based on events on github.com (PR merges, issue actions, discussions). Pushing local commits is necessary but do the PR/merge/issue actions on GitHub for recognition.
 
 Good luck — I can create branches and step through these commits for you now.
+
+YOLO test note: This repository contains an example branch merged locally to demonstrate a "YOLO" merge (merge without review).
