@@ -66,6 +66,11 @@ export type ChatResponse = { reply: string; properties?: any[]; session_id?: str
 
 export async function fetchReply(payload: Record<string, unknown>, timeout = 15000): Promise<ChatResponse> {
   const url = `${SUPABASE_URL}/functions/v1/chat`;
+  console.debug('[chatService] fetchReply called', { url, payload });
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    console.error('[chatService] Missing Supabase configuration', { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY });
+    throw new Error('Chat service not configured. Missing Supabase URL or publishable key.');
+  }
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
@@ -82,9 +87,12 @@ export async function fetchReply(payload: Record<string, unknown>, timeout = 150
     clearTimeout(id);
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
+      console.error('[chatService] edge function responded with error', { status: res.status, body: txt });
       throw new Error(`edge function error ${res.status}: ${txt}`);
     }
-    return res.json().catch(() => null);
+    const json = await res.json().catch(() => null);
+    console.debug('[chatService] fetchReply response', json);
+    return json;
   } finally { clearTimeout(id); }
 }
 

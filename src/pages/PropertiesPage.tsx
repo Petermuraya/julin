@@ -5,6 +5,7 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import TypingText from "@/components/ui/TypingText";
 import { PropertySearchBar } from "@/components/property/PropertySearchBar";
 import { PropertyGrid } from "@/components/property/PropertyGrid";
 import type { Property } from '@/types/property';
@@ -200,10 +201,16 @@ const PropertiesPage = () => {
             {/* Header */}
             <div
               ref={header.ref as React.RefObject<HTMLDivElement>}
-              className={`mb-8 transition-all duration-700 ${header.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+              className={`mb-8 transition-all duration-700 ${header.inView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} text-center`}
             >
-              <h1 className="text-4xl font-bold text-foreground mb-2">Properties</h1>
-              <p className="text-lg text-muted-foreground">Discover your perfect property from our curated collection</p>
+              <h1 className="text-4xl font-bold text-primary mb-2">Properties</h1>
+              <div className="mx-auto max-w-2xl">
+                <TypingText
+                  text="Discover your perfect property from our curated collection"
+                  speed={28}
+                  className="text-lg text-primary/80"
+                />
+              </div>
             </div>
 
             <PropertySearchBar

@@ -13,7 +13,7 @@ const ContactPage = () => {
 
       <div className="min-h-screen">
         <Navbar />
-        <main className="pt-28">
+        <main>
           <Contact />
         </main>
         <Footer />

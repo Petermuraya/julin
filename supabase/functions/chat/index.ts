@@ -136,7 +136,36 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const body: ChatRequestBody = await req.json();
+    // Read raw request text for robust debugging (some clients or proxies may
+    // send malformed JSON or alter the Content-Type). We log it and attempt
+    // to parse it. If parsing fails, return a helpful 400 with the raw payload.
+    let rawText = '';
+    try {
+      rawText = await req.text();
+    } catch (e) {
+      console.warn('Failed to read raw request text', e);
+    }
+
+    // Log headers and a truncated raw body to the function logs for debugging.
+    try {
+      const hdrs: Record<string, string> = {};
+      for (const [k, v] of req.headers.entries()) hdrs[k] = String(v);
+      console.info('[chat-function] incoming request headers:', hdrs);
+      console.info('[chat-function] incoming raw body (truncated 200 chars):', (rawText || '').slice(0, 200));
+    } catch {
+      // swallow
+    }
+
+    let body: ChatRequestBody;
+    try {
+      body = rawText ? JSON.parse(rawText) as ChatRequestBody : {} as ChatRequestBody;
+    } catch (parseErr) {
+      console.error('Failed to parse JSON request body', { parseErr: String(parseErr), rawText: (rawText || '').slice(0, 2000) });
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body', detail: String(parseErr), raw: (rawText || '').slice(0, 2000) }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const { message, session_id, conversation_id, user_info, user_role, conversation_history, type } = body;
 
     // Accept alternative top-level text fields used by some clients
@@ -408,6 +437,7 @@ Current user: ${displayName} (${user_info?.phone || 'No phone'})`;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Chat error:", errorMessage);
+    // Include a short hint and (if available) the last few chars of the raw body
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -18,9 +18,9 @@ const FooterLight = () => {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
           {/* Brand */}
           <div className="text-center md:text-left">
-            <div className="flex justify-center md:justify-start items-center gap-3 mb-4">
+              <div className="flex justify-center md:justify-start items-center gap-3 mb-4">
               <img
-                src="/logo.png"
+                src={import.meta.env.BASE_URL + 'logo.png'}
                 alt="Julin Real Estate logo"
                 className="h-16 md:h-20 lg:h-24 w-auto object-contain"
               />

@@ -30,29 +30,34 @@ const NAV_LINKS: NavItem[] = [
 // Custom Hooks
 const useScrollDetection = (threshold: number) => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const rAF = useRef<number | null>(null);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
-    let ticking = false;
-    let lastScrollY = window.scrollY;
+    let mounted = true;
 
-    const updateScrollState = () => {
-      setIsScrolled(lastScrollY > threshold);
-      ticking = false;
+    const onFrame = () => {
+      if (!mounted) return;
+      setIsScrolled(lastScrollY.current > threshold);
+      rAF.current = null;
     };
 
     const handleScroll = () => {
-      lastScrollY = window.scrollY;
-      if (!ticking) {
-        timeoutRef.current = setTimeout(updateScrollState, SCROLL_UPDATE_THROTTLE);
-        ticking = true;
+      lastScrollY.current = window.scrollY;
+      if (rAF.current == null) {
+        rAF.current = window.requestAnimationFrame(onFrame);
       }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
+    // seed initial state
+    lastScrollY.current = window.scrollY;
+    setIsScrolled(window.scrollY > threshold);
+
     return () => {
+      mounted = false;
       window.removeEventListener("scroll", handleScroll);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (rAF.current != null) window.cancelAnimationFrame(rAF.current);
     };
   }, [threshold]);
 
@@ -88,28 +93,49 @@ const useBreakpoint = (breakpoint: number) => {
 };
 
 const useBodyScrollLock = (isLocked: boolean) => {
+  const lockRef = useRef<{ top: string; position: string; overflow: string; width: string; height: string } | null>(null);
   const scrollYRef = useRef(0);
 
   useEffect(() => {
-    if (isLocked && typeof window !== 'undefined') {
+    if (typeof window === 'undefined') return;
+
+    if (isLocked) {
       scrollYRef.current = window.scrollY;
-      const originalStyle = window.getComputedStyle(document.body).overflow;
-      
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${scrollYRef.current}px`;
-      document.body.style.width = "100%";
-      document.body.style.height = "100vh";
-      
+      const bodyStyle = document.body.style;
+      const computed = window.getComputedStyle(document.body);
+      lockRef.current = {
+        top: bodyStyle.top || '',
+        position: bodyStyle.position || '',
+        overflow: bodyStyle.overflow || computed.overflow || '',
+        width: bodyStyle.width || '',
+        height: bodyStyle.height || ''
+      };
+
+      bodyStyle.overflow = 'hidden';
+      bodyStyle.position = 'fixed';
+      bodyStyle.top = `-${scrollYRef.current}px`;
+      bodyStyle.width = '100%';
+      bodyStyle.height = '100vh';
+
+      // hide main content from assistive tech while modal is open
+      const main = document.querySelector('main') as HTMLElement | null;
+      if (main) main.setAttribute('aria-hidden', 'true');
+
       return () => {
-        document.body.style.overflow = originalStyle;
-        document.body.style.position = "";
-        document.body.style.top = "";
-        document.body.style.width = "";
-        document.body.style.height = "";
+        const prev = lockRef.current;
+        if (prev) {
+          bodyStyle.overflow = prev.overflow;
+          bodyStyle.position = prev.position;
+          bodyStyle.top = prev.top;
+          bodyStyle.width = prev.width;
+          bodyStyle.height = prev.height;
+        }
+        if (main) main.removeAttribute('aria-hidden');
         window.scrollTo(0, scrollYRef.current);
+        lockRef.current = null;
       };
     }
+    return;
   }, [isLocked]);
 };
 
@@ -129,13 +155,14 @@ const useEscapeKey = (callback: () => void, isActive: boolean) => {
 const useScrollProgress = () => {
   const { scrollYProgress } = useScroll();
   const [estimatedReadingTime, setEstimatedReadingTime] = useState<number>(0);
-  const [scrollProgress, setScrollProgress] = useState<number>(0);
+  const [scrollProgress, setScrollProgress] = useState<number>(0); // FLOAT 0-100
   
   const progressPercentage = useTransform(scrollYProgress, [0, 1], [0, 100]);
 
   useEffect(() => {
     const unsubscribe = progressPercentage.on("change", (latest) => {
-      setScrollProgress(Math.round(latest));
+      // keep float precision for animations; round only for UI text
+      setScrollProgress(latest);
     });
     return () => unsubscribe();
   }, [progressPercentage]);
@@ -168,7 +195,7 @@ const useScrollProgress = () => {
     };
   }, []);
 
-  return { scrollProgress, estimatedReadingTime, scrollYProgress };
+  return { scrollProgress, progressRounded: Math.round(scrollProgress), estimatedReadingTime, scrollYProgress };
 };
 
 const useThrottle = (value: number, limit: number) => {
@@ -197,7 +224,6 @@ interface DesktopNavProps {
 }
 
 const DesktopNav = ({ isActive }: DesktopNavProps) => {
-  const activeIndex = NAV_LINKS.findIndex(({ to }) => isActive(to));
 
   return (
     <nav 
@@ -206,7 +232,7 @@ const DesktopNav = ({ isActive }: DesktopNavProps) => {
       role="navigation"
     >
       <div className="relative">
-        <div className="relative flex items-center justify-center gap-1 bg-background/90 backdrop-blur-xl rounded-2xl px-2 py-2 shadow-xl ring-1 ring-border/50">
+        <div className="relative flex items-center justify-center gap-1 bg-background/70 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm ring-1 ring-border/30">
           <ul className="relative flex items-center list-none m-0 p-0">
             {NAV_LINKS.map(({ label, to, ariaLabel, sectionId }, index) => {
               const isLinkActive = isActive(to);
@@ -227,8 +253,8 @@ const DesktopNav = ({ isActive }: DesktopNavProps) => {
                     aria-current={isLinkActive ? "page" : undefined}
                     className={({ isActive: linkActive }) => {
                       const baseClasses = `
-                        relative z-10 block px-6 py-3 text-sm font-medium 
-                        transition-all duration-200 rounded-xl
+                        relative z-10 block px-5 py-2 text-sm font-medium 
+                        transition-all duration-200 rounded-lg
                         focus-visible:outline-none focus-visible:ring-2 
                         focus-visible:ring-primary/50 focus-visible:ring-offset-2 
                         focus-visible:ring-offset-background
@@ -292,9 +318,7 @@ const DesktopNav = ({ isActive }: DesktopNavProps) => {
                     {isLinkActive && (
                       <motion.div
                         layoutId="desktop-nav-underline"
-                        className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] 
-                                 rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary"
-                        style={{ width: "calc(100% - 32px)" }}
+                        className="absolute bottom-2 left-4 right-4 h-[3px] rounded-full bg-gradient-to-r from-primary via-primary/80 to-primary"
                         transition={{
                           type: "spring",
                           stiffness: 380,
@@ -318,19 +342,9 @@ const DesktopNav = ({ isActive }: DesktopNavProps) => {
             })}
           </ul>
           
-          {activeIndex !== -1 && (
-            <motion.div
-              layoutId="desktop-nav-active"
-              className="absolute bottom-0 left-0 right-0 h-1 bg-primary/20"
-              initial={false}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              style={{
-                width: `${100 / NAV_LINKS.length}%`,
-                transform: `translateX(${activeIndex * 100}%)`
-              }}
-              aria-hidden="true"
-            />
-          )}
+          {/* Removed the container-wide active indicator to avoid duplicate/misaligned
+              underlines. Each active link already renders its own underline inside
+              the NavLink, which aligns to the link width. */}
         </div>
       </div>
     </nav>
@@ -343,31 +357,17 @@ interface ScrollIndicatorProps {
 }
 
 const ScrollIndicator = ({ progress, readingTime }: ScrollIndicatorProps) => {
-  const [isVisible, setIsVisible] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleVisibility = () => {
-      const pageHeight = document.documentElement.scrollHeight;
-      const viewportHeight = window.innerHeight;
-      const pageTallEnough = pageHeight > viewportHeight + 200;
-      const shouldShow = progress > 2 && progress < 99 && pageTallEnough;
-      setIsVisible(shouldShow);
-    };
-
-    handleVisibility();
-    const timeoutId = setTimeout(handleVisibility, 500);
-    
-    window.addEventListener("scroll", handleVisibility, { passive: true });
-    window.addEventListener("resize", handleVisibility, { passive: true });
-    
-    return () => {
-      window.removeEventListener("scroll", handleVisibility);
-      window.removeEventListener("resize", handleVisibility);
-      clearTimeout(timeoutId);
-    };
-  }, [progress]);
+  // derive visibility from the single source of truth (progress)
+  const isClient = typeof window !== 'undefined';
+  const pageTallEnough = isClient ? document.documentElement.scrollHeight > window.innerHeight * 1.2 : false;
+  const safeProgress = Math.max(0, Math.min(100, Number(progress || 0)));
+  const R = 20;
+  const C = 2 * Math.PI * R; // circumference
+  const dashOffset = C * (1 - safeProgress / 100);
+  const isVisible = pageTallEnough && safeProgress > 3 && safeProgress < 99;
 
   const handleBackToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -410,10 +410,15 @@ const ScrollIndicator = ({ progress, readingTime }: ScrollIndicatorProps) => {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col items-center gap-3"
       role="progressbar"
-      aria-valuenow={progress}
+      aria-valuenow={Math.round(safeProgress)}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={`Scroll progress: ${progress}%`}
+      aria-label={`Scroll progress`}
+      aria-valuetext={
+        readingTime && readingTime > 0
+          ? `${Math.round(safeProgress)}% — ${remainingTime ?? ''} remaining`
+          : `${Math.round(safeProgress)}%`
+      }
     >
       <div 
         className="relative w-12 h-12 cursor-pointer group"
@@ -447,24 +452,24 @@ const ScrollIndicator = ({ progress, readingTime }: ScrollIndicatorProps) => {
           <motion.circle
             cx="24"
             cy="24"
-            r="20"
+            r={R}
             fill="none"
             stroke="currentColor"
             className="text-primary"
             strokeWidth="2"
             strokeLinecap="round"
-            strokeDasharray="125.6"
-            strokeDashoffset={125.6 * (1 - progress / 100)}
+            strokeDasharray={String(C)}
+            strokeDashoffset={dashOffset}
             initial={false}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
           />
         </svg>
         
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xs font-semibold text-foreground">
-            {progress}%
-          </span>
-        </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-xs font-semibold text-foreground">
+              {Math.round(safeProgress)}%
+            </span>
+          </div>
         
         <AnimatePresence>
           {showTooltip && (
@@ -476,7 +481,7 @@ const ScrollIndicator = ({ progress, readingTime }: ScrollIndicatorProps) => {
             >
               <div className="relative bg-background border border-border rounded-lg px-3 py-2 shadow-lg">
                 <div className="text-sm font-medium text-foreground">
-                  {progress}% scrolled
+                  {Math.round(safeProgress)}% scrolled
                 </div>
                 {remainingTime && (
                   <>
@@ -512,33 +517,8 @@ interface MobileScrollIndicatorProps {
 }
 
 const MobileScrollIndicator = ({ progress }: MobileScrollIndicatorProps) => {
-  const [showProgress, setShowProgress] = useState(false);
-  const lastScrollY = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
-        setShowProgress(true);
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      } else if (currentScrollY < lastScrollY.current || currentScrollY <= 100) {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => {
-          setShowProgress(false);
-        }, 1500);
-      }
-      
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
+  // derive visibility directly from progress to avoid competing listeners
+  const showProgress = progress > 5 && progress < 95;
 
   const handleProgressClick = () => {
     const sections = document.querySelectorAll("section[id], article, main, [class*='content']");
@@ -569,7 +549,7 @@ const MobileScrollIndicator = ({ progress }: MobileScrollIndicatorProps) => {
     }
   };
 
-  const throttledProgress = useThrottle(progress, 100);
+  const throttledProgress = progress; // use smooth RAF-driven progress directly
 
   return (
     <motion.div
@@ -578,7 +558,7 @@ const MobileScrollIndicator = ({ progress }: MobileScrollIndicatorProps) => {
       transition={{ type: "spring", stiffness: 200, damping: 25 }}
       className="fixed bottom-20 left-4 right-4 z-30 md:hidden"
       role="progressbar"
-      aria-valuenow={throttledProgress}
+      aria-valuenow={Math.round(throttledProgress)}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={`Scroll progress: ${throttledProgress}%`}
@@ -607,7 +587,7 @@ const MobileScrollIndicator = ({ progress }: MobileScrollIndicatorProps) => {
         
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-[10px] font-semibold text-primary-foreground mix-blend-difference select-none">
-            {throttledProgress}%
+            {Math.round(throttledProgress)}%
           </span>
         </div>
         
@@ -638,6 +618,7 @@ interface MobileMenuProps {
 
 const MobileMenu = ({ isOpen, onClose, isActive, scrollProgress }: MobileMenuProps) => {
   const location = useLocation();
+  const menuRef = useRef<HTMLElement | null>(null);
   
   useEffect(() => {
     onClose();
@@ -654,6 +635,36 @@ const MobileMenu = ({ isOpen, onClose, isActive, scrollProgress }: MobileMenuPro
         firstLinkRef.current?.focus();
       }, 100);
     }
+  }, [isOpen]);
+
+  // Focus trap: keep focus inside the mobile menu while it's open
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return;
+
+    const el = menuRef.current;
+    const selector = 'a[href], button, input, textarea, select, [tabindex]:not([tabindex="-1"])';
+    const focusable = Array.from(el.querySelectorAll<HTMLElement>(selector)).filter(f => !f.hasAttribute('disabled'));
+    if (focusable.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   return (
@@ -674,6 +685,7 @@ const MobileMenu = ({ isOpen, onClose, isActive, scrollProgress }: MobileMenuPro
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            ref={(node) => { menuRef.current = node as unknown as HTMLElement; }}
             className="md:hidden fixed top-0 right-0 bottom-0 w-80 max-w-full z-50 flex flex-col bg-card border-l shadow-2xl"
             role="dialog"
             aria-modal="true"
@@ -753,29 +765,9 @@ interface BottomNavProps {
 }
 
 const BottomNav = ({ isActive, scrollProgress }: BottomNavProps) => {
-  const [showMiniProgress, setShowMiniProgress] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowMiniProgress(window.scrollY > 100);
-      
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(() => {
-        if (window.scrollY <= 100) {
-          setShowMiniProgress(false);
-        }
-      }, 2000);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  const throttledProgress = useThrottle(scrollProgress, 100);
+  // derive visibility purely from central progress
+  const showMiniProgress = scrollProgress > 3;
+  const throttledProgress = scrollProgress; // keep float from RAF-driven source
 
   return (
     <nav
@@ -789,7 +781,7 @@ const BottomNav = ({ isActive, scrollProgress }: BottomNavProps) => {
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           className="mx-auto max-w-md rounded-2xl bg-background/95 backdrop-blur-xl border shadow-xl overflow-hidden"
         >
-          {showMiniProgress && (
+              {showMiniProgress && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 3, opacity: 1 }}
@@ -917,12 +909,12 @@ export default function Navbar() {
                   to="/"
                   aria-label="Julin Real Estate - Home"
                   className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring 
-                           focus-visible:ring-offset-2 rounded-lg inline-block"
+                           focus-visible:ring-offset-2 rounded-lg inline-block bg-transparent"
                 >
                   <motion.img
-                    src="/logo.png"
+                    src={import.meta.env.BASE_URL + 'logo.png'}
                     alt="Julin Real Estate Logo"
-                    className={`${logoHeight} w-auto object-contain transition-all duration-300 shadow-md`}
+                    className={`${logoHeight} w-auto object-contain transition-all duration-300`}
                     width={160}
                     height={64}
                     whileHover={{ scale: 1.05 }}
@@ -995,8 +987,6 @@ export default function Navbar() {
           scrollProgress={scrollProgress}
         />
       )}
-
-      <div className={`transition-all duration-300 ${navHeight}`} />
     </>
   );
 }

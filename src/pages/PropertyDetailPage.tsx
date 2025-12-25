@@ -153,7 +153,7 @@ const  PropertyDetailPage = () => {
     image: property.image,
     price: property.price,
     priceCurrency: "KES",
-    url: `https://julina.co.ke/properties/${property.id}`,
+    url: `${import.meta.env.BASE_URL}#/properties/${property.id}`,
     address: {
       "@type": "PostalAddress",
       addressLocality: property.location,
@@ -180,7 +180,7 @@ const  PropertyDetailPage = () => {
         
         {/* Open Graph / Social Media */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://julina.co.ke/properties/${property.id}`} />
+        <meta property="og:url" content={`${import.meta.env.BASE_URL}#/properties/${property.id}`} />
         <meta property="og:title" content={property.title} />
         <meta property="og:description" content={seoDescription} />
         <meta property="og:image" content={property.image || ""} />
@@ -188,13 +188,13 @@ const  PropertyDetailPage = () => {
 
         {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
-        <meta property="twitter:url" content={`https://julina.co.ke/properties/${property.id}`} />
+        <meta property="twitter:url" content={`${import.meta.env.BASE_URL}#/properties/${property.id}`} />
         <meta property="twitter:title" content={property.title} />
         <meta property="twitter:description" content={seoDescription} />
         <meta property="twitter:image" content={property.image || ""} />
 
         {/* Canonical & Pagination */}
-        <link rel="canonical" href={`https://julina.co.ke/properties/${property.id}`} />
+        <link rel="canonical" href={`${import.meta.env.BASE_URL}#/properties/${property.id}`} />
 
         {/* Structured Data (JSON-LD) */}
         <script type="application/ld+json">

@@ -54,8 +54,14 @@ export const PreChatForm: React.FC<PreChatFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    console.log('[PreChatForm] submit', { name: form.name, phone: form.phone });
+    const ok = validate();
+    if (!ok) {
+      console.log('[PreChatForm] validation failed', { errors });
+      return;
+    }
 
+    console.log('[PreChatForm] calling onSubmit with', { name: form.name.trim(), phone: form.phone.trim() });
     onSubmit({
       name: form.name.trim(),
       phone: form.phone.trim(),

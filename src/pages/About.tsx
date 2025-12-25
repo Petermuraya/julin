@@ -13,7 +13,7 @@ const AboutPage = () => {
           content="About Julin Real Estate — trusted property listings and verified sellers in Kenya."
         />
         <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://petermuraya.github.io/julin/about" />
+        <link rel="canonical" href={`${import.meta.env.BASE_URL}about`} />
 
         {/* Preconnect and load fonts efficiently */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

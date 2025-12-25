@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MessageCircle, Star, User, AlertTriangle, Eye, Calendar, TrendingUp } from 'lucide-react';
+import { ConversationRating } from '@/components/chat/ConversationRating';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
@@ -302,7 +303,7 @@ const AdminChatDashboard: React.FC = () => {
             </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
+            <div className="space-y-4">
             {/* User Info */}
             {selectedConversation && (
               <div className="bg-muted/50 p-4 rounded-lg">
@@ -326,6 +327,45 @@ const AdminChatDashboard: React.FC = () => {
                     {getFeedback(selectedConversation)}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Rating (admin-only) */}
+            {selectedConversation && !getRating(selectedConversation) && (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Add rating / feedback</h3>
+                <ConversationRating
+                  page="admin"
+                  onSubmit={async ({ rating, sentiment, feedback }) => {
+                    try {
+                      const patch: Record<string, unknown> = { rating, rating_feedback: feedback };
+                      // also store summary JSON with rating + feedback for easy parsing
+                      try {
+                        const existingSummary = selectedConversation.summary ? JSON.parse(selectedConversation.summary) : {};
+                        patch.summary = JSON.stringify({ ...existingSummary, rating, feedback });
+                      } catch {
+                        patch.summary = JSON.stringify({ rating, feedback });
+                      }
+
+                      const { data: d, error: err } = await supabase
+                        .from('chat_conversations')
+                        .update(patch)
+                        .eq('id', selectedConversation.id)
+                        .select()
+                        .maybeSingle?.();
+
+                      if (err) throw err;
+                      // refresh list and selected conversation
+                      await fetchConversations();
+                      const updated = (await supabase.from('chat_conversations').select('*').eq('id', selectedConversation.id).maybeSingle()) as any;
+                      setSelectedConversation((prev) => ({ ...(prev as Conversation), ...(updated?.data || {}) }));
+                      toast({ title: 'Saved', description: 'Rating saved.' });
+                    } catch (e) {
+                      console.error('Failed to save rating', e);
+                      toast({ title: 'Error', description: 'Failed to save rating', variant: 'destructive' });
+                    }
+                  }}
+                />
               </div>
             )}
 
