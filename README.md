@@ -1,6 +1,6 @@
 # Julin — Real Estate Hub
 
-A small, fast real-estate frontend built with Vite, React, TypeScript and Supabase.
+A small, fast real-estate frontend built with Vite, React, TypeScript, and Supabase.
 
 ## Overview
 
