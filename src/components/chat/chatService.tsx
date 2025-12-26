@@ -1,9 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { retry } from '@/lib/utils';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
-const SERVER_API = (import.meta.env.VITE_SERVER_API_URL || '').replace(/\/$/, '');
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
+const SERVER_API = (process.env.NEXT_PUBLIC_SERVER_API_URL || '').replace(/\/$/, '');
 
 export async function restUpsertConversation(payload: Record<string, unknown>) {
   const body = { ...payload };

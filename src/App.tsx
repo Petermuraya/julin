@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 import BackToTop from "@/components/ui/BackToTop";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 
 import Index from "./pages/Index";
@@ -35,43 +34,20 @@ import Debug from "./pages/Debug";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+/**
+ * App now acts as a provider/layout wrapper. It no longer provides client-side
+ * routing (HashRouter). Next.js will mount pages inside this wrapper via pages/_app.tsx.
+ */
+const App = ({ children }: { children?: React.ReactNode }) => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ScrollProgress />
         <Toaster />
         <Sonner />
-        <HashRouter>
-          <ScrollToTop />
-          <AuthRedirectHandler />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/properties" element={<PropertiesPage />} />
-            <Route path="/property/:id" element={<PropertyDetailPage />} />
-            <Route path="/blogs" element={<BlogsPage />} />
-            <Route path="/blog/:slug" element={<BlogDetailPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/debug" element={<Debug />} />
-
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="properties" element={<AdminProperties />} />
-              <Route path="blogs" element={<AdminBlogs />} />
-              <Route path="submissions" element={<AdminSubmissions />} />
-              <Route path="inquiries" element={<AdminInquiries />} />
-              <Route path="chats" element={<AdminChatDashboard />} />
-              <Route path="profile" element={<AdminProfile />} />
-            </Route>
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <ChatLauncher />
-        </HashRouter>
+        {/* children will be Next pages or dynamic imports of src/pages/* */}
+        {children ?? <Index />}
+        <ChatLauncher />
         <BackToTop />
       </TooltipProvider>
     </QueryClientProvider>

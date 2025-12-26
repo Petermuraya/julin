@@ -277,7 +277,7 @@ const ChatLauncher: React.FC = () => {
         <DialogContent className="m-4 h-[90vh] max-w-6xl p-0">
           {/* Accessibility (required by Radix) */}
           <VisuallyHidden>
-            <DialogTitle>chat Assistant</DialogTitle>
+            <DialogTitle>Chat Assistant</DialogTitle>
             <DialogDescription>
               Chat with the AI assistant about properties, pricing, and listings.
             </DialogDescription>

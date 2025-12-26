@@ -1,0 +1,14 @@
+:root {
+  --bg: #fff;
+  --fg: #111;
+}
+html,body,#__next {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing:antialiased;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}

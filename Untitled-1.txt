@@ -1,0 +1,2 @@
+gh pr create --repo Petermuraya/julin --base main --head achievements/playground --title "docs: add achievements practice playbook" --body "Docs: add achievements practice playbook (Pull Shark)"
+gh pr create --repo Petermuraya/julin --base main --head achievements/quickfix --title "fix: small README punctuation (Quickdraw)" --body "Tiny README punctuation fix"
