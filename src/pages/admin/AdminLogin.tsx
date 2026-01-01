@@ -102,7 +102,7 @@ const AdminLogin = () => {
       }
 
       // No session found — likely requires email confirmation or other action.
-      toast({ title: "Check your email", description: "Sign-in did not create a session. Check your email for a confirmation link or complete any required steps.", variant: 'warning' });
+      toast({ title: "Check your email", description: "Sign-in did not create a session. Check your email for a confirmation link or complete any required steps.", variant: 'destructive' });
     } catch (err: unknown) {
       console.error("Auth error:", err);
       const message = err instanceof Error ? err.message : String(err);
@@ -147,7 +147,7 @@ const AdminLogin = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
                   disabled={loading}
-                  autocomplete="username"
+                  autoComplete="username"
                 />
               </div>
             </div>
@@ -163,7 +163,7 @@ const AdminLogin = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   disabled={loading}
-                  autocomplete="current-password"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"

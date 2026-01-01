@@ -21,7 +21,7 @@ const storage = typeof window !== 'undefined' && typeof window.localStorage !== 
 // and instead export a lightweight proxy that throws a helpful error when used.
 function createDisabledClient() {
   const err = new Error('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Initialize these variables to use Supabase client.');
-  const handler: ProxyHandler<unknown> = {
+  const handler: ProxyHandler<object> = {
     get() {
       throw err;
     },

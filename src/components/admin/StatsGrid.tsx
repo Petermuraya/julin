@@ -1,6 +1,7 @@
 import { Home, Clock, MessageSquare, CheckCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "../ui/badge";
+import { Link } from "react-router-dom";
 
 type StatsGridProps = {
   counts: { properties: number; submissions: number; inquiries: number; verified: number };

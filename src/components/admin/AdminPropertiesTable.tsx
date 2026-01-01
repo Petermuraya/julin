@@ -14,6 +14,7 @@ import {
   PaperAirplaneIcon,
   CameraIcon,
 } from "@heroicons/react/24/outline";
+import { Trash2 } from "lucide-react";
 import { Property } from "@/types/property";
 
 interface AdminPropertiesTableProps {

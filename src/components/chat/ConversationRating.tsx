@@ -26,7 +26,7 @@ const sentimentMap = {
 export const ConversationRating: React.FC<ConversationRatingProps> = ({
   page = "chat",
   accent = "emerald",
-  onComplete,
+  onSubmit,
 }) => {
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);

@@ -1,6 +1,4 @@
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-type SupabaseClientAny = SupabaseClient<unknown, unknown, unknown>;
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Minimal Deno typings for this file (avoid global type errors in editors without Deno)
 declare const Deno: {
@@ -446,7 +444,8 @@ Current user: ${displayName} (${user_info?.phone || 'No phone'})`;
 });
 
 // Handle blog suggestion requests
-async function handleBlogSuggestion(body: ChatRequestBody, supabase: SupabaseClientAny) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleBlogSuggestion(body: ChatRequestBody, supabase: any) {
   const ctx = body.context;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -638,7 +637,8 @@ async function handleEnhanceDescription(body: ChatRequestBody) {
 }
 
 // Handle conversation summary requests
-async function handleConversationSummary(body: ChatRequestBody, supabase: SupabaseClientAny) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleConversationSummary(body: ChatRequestBody, supabase: any) {
   const conversationId = body.conversation_id || '';
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
