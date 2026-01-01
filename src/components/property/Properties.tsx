@@ -100,19 +100,7 @@ const Properties = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {properties.map((property, index) => (
                 <div key={property.id} className="animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
-                  <PropertyCard
-                    id={property.id}
-                    title={property.title}
-                    location={property.location}
-                    price={`KES ${Number(property.price).toLocaleString()}`}
-                    size={property.size || "-"}
-                    details={property.description || ""}
-                    phone={property.seller_phone || "+254725671504"}
-                    hasVideo={!!property.video_url}
-                    image={property._firstImage}
-                    imageCount={(property.images || []).length}
-                    status={property.status === "available" ? "For Sale" : (property.status || "Available")}
-                  />
+                  <PropertyCard property={property} />
                 </div>
               ))}
             </div>

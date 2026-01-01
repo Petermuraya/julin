@@ -94,7 +94,7 @@ async function handleRequest(req: Request) {
     return new Response(JSON.stringify({ error: 'Failed to submit' }), { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
   }
 
-  return new Response(JSON.stringify({ success: true, id: insertData?.[0]?.id || null }), { status: 201, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ success: true }), { status: 201, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
 }
 
 Deno.serve(handleRequest);

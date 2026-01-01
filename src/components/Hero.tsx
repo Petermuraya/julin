@@ -332,7 +332,7 @@ const Hero = () => {
               <Link to="/properties" className="flex-1 sm:flex-initial">
                 <Button 
                   variant="hero" 
-                  size={isMobile ? "md" : "lg"}
+                  size={isMobile ? "default" : "lg"}
                   className="w-full sm:w-auto group"
                 >
                   <Search className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
@@ -343,7 +343,7 @@ const Hero = () => {
 
               <Button
                 variant="heroOutline"
-                size={isMobile ? "md" : "lg"}
+                size={isMobile ? "default" : "lg"}
                 className="group"
                 onClick={scrollToSearch}
               >

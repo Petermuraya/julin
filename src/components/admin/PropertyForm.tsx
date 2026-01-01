@@ -87,11 +87,11 @@ export const PropertyForm = ({
       if (resp.error) throw resp.error;
 
       // Normalize various possible response shapes from functions
-      const dataAny = resp.data;
+      const dataAny = resp.data as Record<string, unknown> | string | null | undefined;
       let aiResponse: string = '';
       if (!dataAny) aiResponse = '';
       else if (typeof dataAny === 'string') aiResponse = dataAny;
-      else aiResponse = dataAny?.response || dataAny?.reply || dataAny?.message || JSON.stringify(dataAny);
+      else aiResponse = (dataAny?.response as string) || (dataAny?.reply as string) || (dataAny?.message as string) || JSON.stringify(dataAny);
 
       setForm(prev => ({ ...prev, description: aiResponse }));
 

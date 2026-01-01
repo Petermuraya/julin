@@ -209,6 +209,7 @@ export type Database = {
           message: string
           name: string
           phone: string
+          sender_ip: string | null
           status: string | null
           subject: string | null
           updated_at: string | null
@@ -222,6 +223,7 @@ export type Database = {
           message: string
           name: string
           phone: string
+          sender_ip?: string | null
           status?: string | null
           subject?: string | null
           updated_at?: string | null
@@ -235,6 +237,7 @@ export type Database = {
           message?: string
           name?: string
           phone?: string
+          sender_ip?: string | null
           status?: string | null
           subject?: string | null
           updated_at?: string | null
@@ -273,6 +276,8 @@ export type Database = {
           amenities: string[] | null
           approved_at: string | null
           approved_by: string | null
+          bathrooms: number | null
+          bedrooms: number | null
           county: string | null
           created_at: string
           description: string | null
@@ -301,6 +306,8 @@ export type Database = {
           amenities?: string[] | null
           approved_at?: string | null
           approved_by?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
           county?: string | null
           created_at?: string
           description?: string | null
@@ -329,6 +336,8 @@ export type Database = {
           amenities?: string[] | null
           approved_at?: string | null
           approved_by?: string | null
+          bathrooms?: number | null
+          bedrooms?: number | null
           county?: string | null
           created_at?: string
           description?: string | null

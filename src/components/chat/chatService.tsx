@@ -21,7 +21,7 @@ export async function restUpsertConversation(payload: Record<string, unknown>) {
   }
 
   const doUpsert = async () => {
-    const { data, error } = await supabase.from('chat_conversations').upsert(body, { onConflict: 'conversation_id' }).select();
+    const { data, error } = await supabase.from('chat_conversations').upsert([body as any], { onConflict: 'conversation_id' }).select();
     if (error) throw error;
     return data;
   };
@@ -41,7 +41,7 @@ export async function restInsertMessage(payload: Record<string, unknown> | Array
   }
 
   const doInsert = async () => {
-    const { data, error } = await supabase.from('chat_messages').insert(payload);
+    const { data, error } = await supabase.from('chat_messages').insert(payload as any);
     if (error) throw error;
     return data;
   };
