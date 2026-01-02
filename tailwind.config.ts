@@ -3,7 +3,13 @@ import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./app/**/*.{ts,tsx,js,jsx}",
+    "./pages/**/*.{ts,tsx,js,jsx}",
+    "./components/**/*.{ts,tsx,js,jsx}",
+    "./ui/**/*.{ts,tsx,js,jsx}",
+    "./src/**/*.{ts,tsx,js,jsx}",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -78,9 +84,9 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        'card': 'var(--shadow-md)',
+        card: 'var(--shadow-md)',
         'card-hover': 'var(--shadow-xl)',
-        'glow': 'var(--shadow-glow)',
+        glow: 'var(--shadow-glow)',
       },
       keyframes: {
         "accordion-down": {
