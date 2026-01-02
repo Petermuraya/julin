@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.chat]
 verify_jwt = false
+
+[functions.submit-contact]
+verify_jwt = false

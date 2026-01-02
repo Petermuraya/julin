@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import useInView from "@/hooks/use-in-view";
-import { fetchWithTimeout } from '@/lib/utils';
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -9,11 +8,6 @@ import TypingText from "@/components/ui/TypingText";
 import { PropertySearchBar } from "@/components/property/PropertySearchBar";
 import { PropertyGrid } from "@/components/property/PropertyGrid";
 import type { Property } from '@/types/property';
-
-// Supabase project URL for Edge Function calls (handles CORS for GitHub Pages)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const ENABLE_REALTIME = import.meta.env.VITE_ENABLE_REALTIME === "true";
 
 const PropertiesPage = () => {
   const header = useInView<HTMLDivElement>();
@@ -33,29 +27,18 @@ const PropertiesPage = () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      // Call Supabase Edge Function (handles CORS for all origins)
-      const url = `${SUPABASE_URL}/functions/v1/get-properties`;
-      const response = await fetchWithTimeout(url, {
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        }
-      }, 10000);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch properties: ${response.statusText}`);
-      }
-      const contentType = (response.headers.get('content-type') || '').toLowerCase();
-      if (contentType.includes('text/html')) {
-        const text = await response.text();
-        throw new Error(`Expected JSON but received HTML from ${url} (${response.status}). Response snippet: ${text.slice(0,300)}`);
-      }
+      // Use Supabase client directly for reliable fetching
+      const { data, error } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('status', 'available')
+        .order('created_at', { ascending: false });
 
-      const json = await response.json();
-      // Support both { properties: [...] } and raw array responses
-      const fetched = Array.isArray(json) ? (json as Property[]) : (json?.properties ?? []) as Property[];
-      setAllProperties(fetched || []);
-      applyFilters(fetched || []);
+      if (error) throw error;
+
+      const fetched = (data || []) as Property[];
+      setAllProperties(fetched);
+      applyFilters(fetched);
     } catch (err: unknown) {
       console.error("Error fetching properties:", err);
       const message = err instanceof Error ? err.message : String(err);
@@ -105,54 +88,25 @@ const PropertiesPage = () => {
   useEffect(() => {
     fetchProperties();
 
-    // Set up real-time subscription only when explicitly enabled. Realtime
-    // connections from a static host (e.g. GitHub Pages) often fail with 403
-    // due to Supabase origin restrictions; enable this only when your frontend
-    // and Supabase are configured to allow it (set `VITE_ENABLE_REALTIME=true`).
-    if (!ENABLE_REALTIME) {
-      return;
-    }
-
-    let channel: ReturnType<typeof supabase['channel']> | undefined;
-
-    // Runtime guard: ensure the Supabase client supports realtime before calling.
-    // This prevents runtime "is not a function" errors when the client doesn't
-    // expose `channel` (e.g. in disabled / stubbed clients or limited builds).
-    if (!supabase || typeof (supabase as any).channel !== 'function') {
-      console.warn('Supabase realtime not available — skipping realtime setup');
-      return;
-    }
-
-    try {
-      channel = supabase
-        .channel("properties-page-realtime")
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "properties",
-          },
-          (payload: unknown) => {
-            console.log("Real-time update:", payload);
-            fetchProperties();
-          }
-        )
-        .subscribe();
-    } catch (err) {
-      // Don't crash the page if realtime handshake fails (403, etc.)
-      // The console will still show the underlying error for debugging.
-      console.warn('Realtime subscription failed:', err);
-    }
-
-    type ChannelType = ReturnType<typeof supabase['channel']>;
+    // Set up real-time subscription for properties
+    const channel = supabase
+      .channel("properties-page-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "properties",
+        },
+        (payload: unknown) => {
+          console.log("Real-time update:", payload);
+          fetchProperties();
+        }
+      )
+      .subscribe();
 
     return () => {
-      try {
-        if (channel) supabase.removeChannel(channel as ChannelType);
-      } catch (e) {
-        // ignore cleanup errors
-      }
+      supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

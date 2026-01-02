@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { fetchWithTimeout } from '@/lib/utils';
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Home, DollarSign, Filter, ArrowRight, TrendingUp, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -68,31 +67,33 @@ const Hero = () => {
     return fallbackImages[currentImageIndex % fallbackImages.length];
   };
 
-  // Fetch properties for hero background rotation and stats
+  // Fetch properties for hero background rotation and stats using Supabase client
   useEffect(() => {
     const fetchHeroData = async () => {
       try {
-        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-        const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-        const response = await fetchWithTimeout(`${SUPABASE_URL}/functions/v1/get-properties`, {
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-          }
-        }, 8000);
-        if (response.ok) {
-          const data = await response.json();
-          const props = Array.isArray(data) ? data : data?.properties || [];
-          
-          // Set total count for stats
-          setTotalProperties(props.length);
-          
-          // Filter to only properties with images for background rotation
-          const propertiesWithImages = props.filter(p => p.images?.length > 0 || p.image_url);
-          if (propertiesWithImages.length > 0) {
-            setProperties(propertiesWithImages);
-          }
+        // Use Supabase client directly instead of edge function
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data, error } = await supabase
+          .from('properties')
+          .select('id, title, location, price, property_type, images')
+          .eq('status', 'available')
+          .order('created_at', { ascending: false })
+          .limit(20);
+        
+        if (error) {
+          console.warn('Failed to fetch properties for hero:', error);
+          return;
+        }
+        
+        const props = data || [];
+        
+        // Set total count for stats
+        setTotalProperties(props.length);
+        
+        // Filter to only properties with images for background rotation
+        const propertiesWithImages = props.filter((p) => p.images && p.images.length > 0);
+        if (propertiesWithImages.length > 0) {
+          setProperties(propertiesWithImages as unknown as Property[]);
         }
       } catch (error) {
         console.warn('Failed to fetch properties for hero:', error);
