@@ -1,74 +1,69 @@
 import React, { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 import { AuthContext, type AuthContextValue } from './AuthContextValue.ts';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Check admin role - deferred to avoid deadlock in onAuthStateChange
+  const checkAdminRole = async (userId: string) => {
+    try {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!roleData);
+    } catch (e) {
+      console.error('Failed to check user role', e);
+      setIsAdmin(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
 
-    const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const u = session?.user ?? null;
-      if (!mounted) return;
-      setUser(u);
-
-      if (u) {
-        // Check user_roles table for admin role
-        try {
-          const { data: roleData, error } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', u.id)
-            .eq('role', 'admin')
-            .maybeSingle();
-
-          if (!mounted) return;
-          setIsAdmin(!!roleData);
-        } catch (e) {
-          console.error('Failed to check user role', e);
-          if (!mounted) return;
+    // Set up auth state listener FIRST (synchronous callback only)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, newSession) => {
+        if (!mounted) return;
+        
+        // Synchronous state updates only
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        
+        if (newSession?.user) {
+          // Defer Supabase calls with setTimeout to avoid deadlock
+          setTimeout(() => {
+            if (mounted) {
+              checkAdminRole(newSession.user.id);
+            }
+          }, 0);
+        } else {
           setIsAdmin(false);
         }
-      } else {
-        setIsAdmin(false);
+        
+        setLoading(false);
       }
+    );
 
-      setLoading(false);
-    };
-
-    init();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const u = session?.user ?? null;
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (!mounted) return;
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
       
-      setUser(u);
-
-      if (u) {
-        try {
-          const { data: roleData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', u.id)
-            .eq('role', 'admin')
-            .maybeSingle();
-
-          if (!mounted) return;
-          setIsAdmin(!!roleData);
-        } catch (e) {
-          console.error('Failed to check user role', e);
-          if (!mounted) return;
-          setIsAdmin(false);
-        }
-      } else {
-        setIsAdmin(false);
+      if (existingSession?.user) {
+        checkAdminRole(existingSession.user.id);
       }
+      
+      setLoading(false);
     });
 
     return () => {
@@ -78,12 +73,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signInWithEmail = async (email: string, password?: string) => {
-    // Delegates to Supabase magic link or password flow depending on your setup
-    await supabase.auth.signInWithOtp({ email });
+    if (password) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) throw error;
+    }
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setUser(null);
+    setSession(null);
+    setIsAdmin(false);
   };
 
   return (

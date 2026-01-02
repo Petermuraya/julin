@@ -45,6 +45,7 @@ const BlogsPage = () => {
         const { data, error } = await supabase
           .from("blogs")
           .select("id, slug, title, excerpt, featured_image, author_name, published_at, tags, view_count")
+          .eq("published", true)
           .order("published_at", { ascending: false })
           .limit(12);
 
@@ -52,8 +53,10 @@ const BlogsPage = () => {
         if (!mounted) return;
         setBlogs(((data as unknown) as Blog[]) || []);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setError(msg || "Failed to load blog posts");
+        console.warn('Failed to fetch blogs:', err);
+        // Don't show error for empty blogs - just show empty state
+        if (!mounted) return;
+        setBlogs([]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -118,6 +121,14 @@ const BlogsPage = () => {
 
               ) : error ? (
                 <div className="col-span-3 text-center py-12 text-red-500">{error}</div>
+              ) : blogs.length === 0 ? (
+                <div className="col-span-3 text-center py-16">
+                  <div className="text-muted-foreground mb-4">
+                    <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-xl font-semibold mb-2">No Blog Posts Yet</h3>
+                    <p>Check back soon for the latest real estate insights and tips!</p>
+                  </div>
+                </div>
               ) : (
                 blogs.map((blog, idx) => (
                   <Reveal key={blog.id} delay={idx * 0.04}>
