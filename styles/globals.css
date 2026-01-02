@@ -1,14 +1,15 @@
 :root {
   --bg: #fff;
   --fg: #111;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
 html,body,#__next {
   height: 100%;
 }
 body {
   margin: 0;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--fg);
   -webkit-font-smoothing:antialiased;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
 }
