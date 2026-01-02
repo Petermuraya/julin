@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/ndung/julin-real-estate-hub/app/page.tsx"],"sourcesContent":["'use client';\r\nimport Link from 'next/link';\r\n\r\nexport default function Home() {\r\n  return (\r\n    <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif' }}>\r\n      <h1>Julin Real Estate Hub — App Router</h1>\r\n      <p>App directory enabled. Move your pages from src/pages into /app progressively.</p>\r\n      <nav style={{ marginTop: 16, display: 'flex', gap: 12 }}>\r\n        <Link href=\"/about\">About</Link>\r\n        <Link href=\"/properties\">Properties</Link>\r\n        <Link href=\"/contact\">Contact</Link>\r\n      </nav>\r\n    </main>\r\n  );\r\n}\r\n"],"names":[],"mappings":";;;;;AACA;AADA;;;AAGe,SAAS;IACtB,qBACE,8OAAC;QAAK,OAAO;YAAE,SAAS;YAAI,YAAY;QAAwB;;0BAC9D,8OAAC;0BAAG;;;;;;0BACJ,8OAAC;0BAAE;;;;;;0BACH,8OAAC;gBAAI,OAAO;oBAAE,WAAW;oBAAI,SAAS;oBAAQ,KAAK;gBAAG;;kCACpD,8OAAC,uKAAI;wBAAC,MAAK;kCAAS;;;;;;kCACpB,8OAAC,uKAAI;wBAAC,MAAK;kCAAc;;;;;;kCACzB,8OAAC,uKAAI;wBAAC,MAAK;kCAAW;;;;;;;;;;;;;;;;;;AAI9B"}}]
+}
