@@ -1,19 +1,74 @@
 {
-  "files": [],
-  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
   "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@/components/*": [
+        "components/*"
+      ],
+      "@/components/ui/*": [
+        "ui/*"
+      ],
+      "@/ui/*": [
+        "ui/*"
+      ],
+      "@/lib/*": [
+        "lib/*"
+      ],
+      "@/types/*": [
+        "types/*"
+      ],
+      "@/hooks/*": [
+        "hooks/*"
+      ],
+      "@/contexts/*": [
+        "contexts/*"
+      ],
+      "@/integrations/*": [
+        "integrations/*"
+      ],
+      "@/assets/*": [
+        "public/assets/*",
+        "assets/*"
+      ]
     },
+    "strict": false,
     "noImplicitAny": false,
     "noUnusedParameters": false,
+    "noUnusedLocals": false,
+    "strictNullChecks": false,
     "skipLibCheck": true,
     "allowJs": true,
-    "noUnusedLocals": false,
-    "strictNullChecks": false
-  }
-  ,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "noEmit": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": [
     "PropertyDetailPage_NEW.tsx"
   ]
