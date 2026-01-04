@@ -12,7 +12,7 @@ export type PropertyForm = {
   latitude: string;
   longitude: string;
   bathrooms: string;
-  features: string;
+  
 };
 
 export type Property = {
@@ -31,7 +31,7 @@ export type Property = {
   longitude: number;
   bedrooms?: number;
   bathrooms?: number;
-  features?: string[];
+  
   status: "available" | "pending" | "sold";
   created_at: string;
   updated_at: string;
