@@ -7,7 +7,21 @@ const SERVER_API = (import.meta.env.VITE_SERVER_API_URL || '').replace(/\/$/, ''
 
 export async function restUpsertConversation(payload: Record<string, unknown>) {
   const body = { ...payload };
-  if ('id' in body) delete body.id;
+
+  // Ensure non-null `id` (DB requires it) and `conversation_id` for upsert.
+  const gen = () => {
+    const rand = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID().slice(0, 10)
+      : Math.random().toString(36).slice(2, 12);
+    return `conv_${Date.now()}_${rand}`;
+  };
+
+  if (!body.id) body.id = gen();
+  if (!body.conversation_id) {
+    body.conversation_id = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `cid_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
 
   if (SERVER_API) {
     const proxy = async () => {
