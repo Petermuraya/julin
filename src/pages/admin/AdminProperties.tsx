@@ -31,7 +31,6 @@ const emptyForm: PropertyFormType = {
   latitude: "",
   longitude: "",
   bathrooms: "",
-  features: "",
 };
 
 const AdminProperties = () => {
@@ -449,7 +448,7 @@ const AdminProperties = () => {
       latitude: property.latitude?.toString() || "",
       longitude: property.longitude?.toString() || "",
       bathrooms: property.bathrooms?.toString() || "",
-      features: property.features?.join(", ") || "",
+      
     });
     setExistingImages(property.images || []);
     setExistingVideos(property.video_url ? [property.video_url] : []);
@@ -546,7 +545,7 @@ const AdminProperties = () => {
         latitude: form.latitude ? Number(form.latitude) : null,
         longitude: form.longitude ? Number(form.longitude) : null,
         bathrooms: form.bathrooms ? Number(form.bathrooms) : null,
-        features: form.features ? form.features.split(",").map((f: string) => f.trim()).filter(Boolean) : null,
+        
         is_admin_property: true,
         updated_at: new Date().toISOString(),
       };
