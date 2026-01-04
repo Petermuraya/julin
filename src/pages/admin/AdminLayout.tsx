@@ -28,6 +28,7 @@ const AdminLayout = () => {
 
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: Squares2X2Icon },
+    { href: "/admin/analytics", label: "Analytics", icon: CalendarDaysIcon },
     { href: "/admin/properties", label: "Properties", icon: HomeIcon },
     { href: "/admin/chats", label: "Chat Analytics", icon: ChartBarIcon },
     { href: "/admin/blogs", label: "Blog Posts", icon: DocumentTextIcon },
