@@ -2,12 +2,54 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 createRoot(document.getElementById("root")!).render(
   <AuthProvider>
     <App />
   </AuthProvider>
 );
+
+// Page view logging: record simple page view rows to Supabase `page_views` table
+// Uses anon key and public table; the table should be created (migration added).
+function setupPageViewLogging() {
+  const sendView = async () => {
+    try {
+      // keep payload minimal and avoid storing IP addresses here
+      await supabase.from('page_views').insert({
+        path: location.pathname,
+        url: location.href,
+        referrer: document.referrer || null,
+        user_agent: navigator.userAgent || null,
+      });
+    } catch (err) {
+      // don't block the app for analytics failures
+      console.debug('page view log failed', err);
+    }
+  };
+
+  // log initial view
+  try { sendView(); } catch (e) { /* ignore */ }
+
+  // log SPA navigations: pushState / replaceState
+  const origPush = history.pushState.bind(history);
+  history.pushState = function (data: unknown, title: string, url?: string | null) {
+    const ret = origPush(data as any, title, url);
+    try { sendView(); } catch (e) {}
+    return ret;
+  } as typeof history.pushState;
+
+  const origReplace = history.replaceState.bind(history);
+  history.replaceState = function (data: unknown, title: string, url?: string | null) {
+    const ret = origReplace(data as any, title, url);
+    try { sendView(); } catch (e) {}
+    return ret;
+  } as typeof history.replaceState;
+
+  window.addEventListener('popstate', () => { try { sendView(); } catch (e) {} });
+}
+
+if (typeof window !== 'undefined') setupPageViewLogging();
 
 // Register service worker for PWA support in production only
 if (!import.meta.env.DEV && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
