@@ -17,48 +17,32 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Sample blog data for preview
-const sampleBlogs = [
-  {
-    id: "1",
-    title: "Complete Guide to Buying Land in Kenya",
-    slug: "guide-to-buying-land-in-kenya",
-    excerpt: "Everything you need to know about purchasing land in Kenya.",
-    published: true,
-    published_at: "2024-12-01",
-    author_name: "Julin Real Estate",
-    tags: ["Land", "Buying Guide"],
-    view_count: 156
-  },
-  {
-    id: "2",
-    title: "Top Investment Areas in Nairobi for 2024",
-    slug: "top-investment-areas-nairobi-2024",
-    excerpt: "Discover the most promising neighborhoods for real estate investment.",
-    published: true,
-    published_at: "2024-11-15",
-    author_name: "Julin Real Estate",
-    tags: ["Investment", "Nairobi"],
-    view_count: 243
-  },
-  {
-    id: "3",
-    title: "Understanding Land Titles in Kenya",
-    slug: "understanding-land-titles-kenya",
-    excerpt: "A comprehensive breakdown of different land title types.",
-    published: true,
-    published_at: "2024-11-01",
-    author_name: "Julin Real Estate",
-    tags: ["Legal", "Land Titles"],
-    view_count: 189
-  }
-];
+// AdminBlogs now uses real data from the `blogs` table; removed sample/demo entries.
 
 import Reveal from "@/components/ui/Reveal";
+import { useEffect } from "react";
+import BlogForm from "@/components/admin/BlogForm";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+type BlogRow = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  published: boolean;
+  published_at?: string | null;
+  author_name?: string | null;
+  tags?: string[] | null;
+  view_count?: number;
+};
 
 const AdminBlogs = () => {
   const [blogSuggestions, setBlogSuggestions] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [blogs, setBlogs] = useState<BlogRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Blog | null>(null);
 
   const generateBlogSuggestions = async () => {
     setIsGenerating(true);
@@ -89,6 +73,20 @@ const AdminBlogs = () => {
     }
   };
 
+  const loadBlogs = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('blogs').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      setBlogs(((data as unknown) as BlogRow[]) || []);
+    } catch (err) {
+      console.error('Failed to load blogs:', err);
+      setBlogs([]);
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { loadBlogs(); }, []);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -106,25 +104,17 @@ const AdminBlogs = () => {
           <h1 className="text-3xl font-bold text-foreground">Blog Posts</h1>
           <p className="text-muted-foreground mt-1">Manage your blog content</p>
         </div>
-        <Button disabled>
-          <Plus className="h-4 w-4 mr-2" />
-          New Blog Post
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Blog Post
+          </Button>
+          <Button onClick={loadBlogs} variant="outline">Refresh</Button>
+        </div>
       </div>
 
       {/* Database Notice */}
-      <Card className="border-amber-500/50 bg-amber-500/10">
-        <CardContent className="flex items-center gap-3 p-4">
-          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-foreground">Blog Database Not Configured</p>
-            <p className="text-sm text-muted-foreground">
-              The blogs table needs to be created in Supabase to enable full CRUD functionality. 
-              Currently showing sample content for preview purposes.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Stats Cards */}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -134,8 +124,8 @@ const AdminBlogs = () => {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{sampleBlogs.length}</div>
-            <p className="text-xs text-muted-foreground">Sample data</p>
+            <div className="text-2xl font-bold">{blogs.length}</div>
+            <p className="text-xs text-muted-foreground">From database</p>
           </CardContent>
         </Card>
         <Card>
@@ -145,9 +135,9 @@ const AdminBlogs = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {sampleBlogs.filter(blog => blog.published).length}
+              {blogs.filter(blog => blog.published).length}
             </div>
-            <p className="text-xs text-muted-foreground">Sample data</p>
+            <p className="text-xs text-muted-foreground">From database</p>
           </CardContent>
         </Card>
         <Card>
@@ -157,9 +147,9 @@ const AdminBlogs = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {sampleBlogs.reduce((sum, blog) => sum + blog.view_count, 0)}
+              {blogs.reduce((sum, blog) => sum + (blog.view_count ?? 0), 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Sample data</p>
+            <p className="text-xs text-muted-foreground">From database</p>
           </CardContent>
         </Card>
       </div>
@@ -201,7 +191,7 @@ const AdminBlogs = () => {
       {/* Blogs Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Sample Blog Posts</CardTitle>
+          <CardTitle>Blog Posts</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -216,40 +206,59 @@ const AdminBlogs = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sampleBlogs.map((blog) => (
-                <TableRow key={blog.id}>
+              {blogs.map((b) => (
+                <TableRow key={b.id}>
                   <TableCell className="font-medium max-w-xs">
-                    <div className="truncate" title={blog.title}>
-                      {blog.title}
+                    <div className="truncate" title={b.title}>
+                      {b.title}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={blog.published ? "default" : "secondary"}>
-                      {blog.published ? "Published" : "Draft"}
+                    <Badge variant={b.published ? "default" : "secondary"}>
+                      {b.published ? "Published" : "Draft"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{blog.author_name}</TableCell>
+                  <TableCell>{b.author_name || "-"}</TableCell>
                   <TableCell>
-                    {blog.published_at ? formatDate(blog.published_at) : "-"}
+                    {b.published_at ? formatDate(b.published_at) : "-"}
                   </TableCell>
-                  <TableCell>{blog.view_count}</TableCell>
+                  <TableCell>{b.view_count ?? 0}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" disabled>
-                        {blog.published ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.from('blogs').update({ published: !b.published, published_at: !b.published ? new Date().toISOString() : null }).eq('id', b.id).select().single();
+                            if (error) throw error;
+                            toast.success('Publish status updated');
+                            loadBlogs();
+                          } catch (err) { console.error(err); toast.error('Failed to update'); }
+                        }}
+                      >
+                        {b.published ? (
                           <EyeOff className="h-4 w-4" />
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
                       </Button>
-                      <Button variant="ghost" size="sm" disabled>
+                      <Button variant="ghost" size="sm" onClick={() => { setEditing(b as any); setFormOpen(true); }}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" disabled>
+                      <Button variant="ghost" size="sm" onClick={async () => {
+                        if (!confirm('Delete this blog post?')) return;
+                        try {
+                          const { error } = await supabase.from('blogs').delete().eq('id', b.id);
+                          if (error) throw error;
+                          toast.success('Blog deleted');
+                          loadBlogs();
+                        } catch (err) { console.error(err); toast.error('Delete failed'); }
+                      }}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="sm" asChild>
-                        <a href={`/blog/${blog.slug}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`/blog/${b.slug}`} target="_blank" rel="noopener noreferrer">
                           <Eye className="h-4 w-4" />
                         </a>
                       </Button>
@@ -261,6 +270,18 @@ const AdminBlogs = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Blog Form Dialog */}
+      <Dialog open={formOpen} onOpenChange={(v) => setFormOpen(v)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit Blog' : 'New Blog'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <BlogForm blog={editing as any} onSave={(saved) => { setFormOpen(false); loadBlogs(); }} onCancel={() => setFormOpen(false)} />
+          </div>
+        </DialogContent>
+      </Dialog>
       </div>
     </Reveal>
   );
