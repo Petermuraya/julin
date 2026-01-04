@@ -5,10 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { X, Sparkles, AlertCircle } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Blog } from "@/types/blog";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 interface BlogFormProps {
   blog?: Blog | null;
@@ -34,6 +37,9 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
   const [tagInput, setTagInput] = useState("");
   const [keywordInput, setKeywordInput] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [featuredFile, setFeaturedFile] = useState<File | null>(null);
+  const [uploadingFeatured, setUploadingFeatured] = useState(false);
+  const [featuredUploadProgress, setFeaturedUploadProgress] = useState(0);
 
   const generateSlug = (title: string) => {
     return title
@@ -127,18 +133,107 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
   };
 
   const handleSave = () => {
-    toast.info("Blog saving requires database configuration. Please create the blogs table in Supabase.");
+    // Insert or update blog in Supabase
+    (async () => {
+      try {
+        // basic validation
+        if (!form.title.trim()) return toast.error('Title is required');
+        if (!form.slug.trim()) return toast.error('Slug is required');
+
+        const payload: any = {
+          title: form.title.trim(),
+          slug: form.slug.trim(),
+          excerpt: form.excerpt || null,
+          content: form.content || null,
+          featured_image: form.featured_image || null,
+          author_name: form.author_name || null,
+          published: !!form.published,
+          tags: form.tags && form.tags.length ? form.tags : null,
+          seo_title: form.seo_title || null,
+          seo_description: form.seo_description || null,
+          seo_keywords: form.seo_keywords && form.seo_keywords.length ? form.seo_keywords : null,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (blog && blog.id) {
+          // update
+          const { data, error } = await supabase.from('blogs').update(payload).eq('id', blog.id).select().single();
+          if (error) throw error;
+          toast.success('Blog updated');
+          onSave && onSave(data as Blog);
+        } else {
+          // insert
+          payload.created_at = new Date().toISOString();
+          payload.view_count = 0;
+          if (payload.published) payload.published_at = new Date().toISOString();
+          const { data, error } = await supabase.from('blogs').insert(payload).select().single();
+          if (error) throw error;
+          toast.success('Blog created');
+          onSave && onSave(data as Blog);
+        }
+      } catch (err: unknown) {
+        console.error('Blog save error:', err);
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(msg || 'Failed to save blog');
+      }
+    })();
+  };
+
+  const handleFeaturedFileChange = async (file?: File | null) => {
+    if (!file) return;
+    // Validate file type
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) return toast.error('Unsupported image format. Use JPG, PNG or WebP.');
+    // limit to 5MB
+    if (file.size > 5 * 1024 * 1024) return toast.error('Featured image must be under 5MB');
+
+    // Validate dimensions (min 600x300 recommended)
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    const dimsOk = await new Promise<boolean>((res) => {
+      img.onload = () => {
+        const ok = img.width >= 600 && img.height >= 300;
+        URL.revokeObjectURL(objectUrl);
+        res(ok);
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); res(false); };
+      img.src = objectUrl;
+    });
+    if (!dimsOk) return toast.error('Image must be at least 600x300 pixels');
+
+    // Upload using Supabase Storage (same approach as property uploads)
+    setUploadingFeatured(true);
+    setFeaturedUploadProgress(0);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `blogs/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('blog-images')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        console.error('Featured upload error:', uploadError);
+        throw uploadError;
+      }
+
+      const publicUrl = `${SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/public/blog-images/${encodeURIComponent(filePath)}`;
+      setForm(prev => ({ ...prev, featured_image: publicUrl }));
+      setFeaturedFile(file);
+      setFeaturedUploadProgress(100);
+      toast.success('Featured image uploaded');
+    } catch (err) {
+      console.error('Featured upload error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg || 'Failed to upload image');
+    } finally {
+      setUploadingFeatured(false);
+      setTimeout(() => setFeaturedUploadProgress(0), 800);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Database Notice */}
-      <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/50 rounded-lg">
-        <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-        <p className="text-sm text-muted-foreground">
-          Blog database not configured. Form is available for preview but saving is disabled.
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Basic Information */}
@@ -234,13 +329,40 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
           </div>
 
           <div>
-            <Label htmlFor="featured_image">Featured Image URL</Label>
-            <Input
-              id="featured_image"
-              value={form.featured_image}
-              onChange={(e) => setForm(prev => ({ ...prev, featured_image: e.target.value }))}
-              placeholder="https://example.com/image.jpg"
-            />
+            <Label>Featured Image</Label>
+            <div className="flex items-start gap-4">
+              <div className="w-40 h-24 rounded overflow-hidden bg-slate-100 border border-border flex items-center justify-center">
+                {form.featured_image ? (
+                  // eslint-disable-next-line jsx-a11y/img-redundant-alt
+                  <img src={form.featured_image} alt="featured image" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="text-xs text-muted-foreground p-2">No image</div>
+                )}
+              </div>
+              <div className="flex-1">
+                <input
+                  id="featured_file"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFeaturedFileChange(e.target.files ? e.target.files[0] : null)}
+                />
+                <div className="mt-2">
+                  <Label htmlFor="featured_image">Or image URL</Label>
+                  <Input
+                    id="featured_image"
+                    value={form.featured_image}
+                    onChange={(e) => setForm(prev => ({ ...prev, featured_image: e.target.value }))}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+                {uploadingFeatured && (
+                  <div className="mt-2">
+                    <p className="text-xs text-muted-foreground">Uploading featured image... {featuredUploadProgress}%</p>
+                    <div className="w-full bg-slate-200 rounded-full h-2 mt-1 overflow-hidden"><div className="bg-primary h-2" style={{ width: `${featuredUploadProgress}%` }} /></div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -342,8 +464,8 @@ const BlogForm = ({ blog, onSave, onCancel }: BlogFormProps) => {
             Cancel
           </Button>
         )}
-        <Button onClick={handleSave} disabled>
-          {blog ? "Update" : "Create"} Blog (Database Required)
+        <Button onClick={handleSave}>
+          {blog ? "Update" : "Create"}
         </Button>
       </div>
     </div>
