@@ -31,7 +31,7 @@ import ContactPage from "./pages/Contact";
 import Chat from "./components/chat/Chat";
 import ChatLauncher from "./components/chat/ChatLauncher";
 import AuthRedirectHandler from "./components/AuthRedirectHandler";
-import Debug from "./pages/Debug";
+
 
 const queryClient = new QueryClient();
 
@@ -54,7 +54,7 @@ const App = () => (
             <Route path="/about" element={<AboutPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/chat" element={<Chat />} />
-            <Route path="/debug" element={<Debug />} />
+            
 
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLogin />} />
