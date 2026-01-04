@@ -20,7 +20,13 @@ const AdminProfile = () => {
   const [profile, setProfile] = useState({
     full_name: "",
     phone: "",
+    avatar_url: "",
+    bio: "",
+    website: "",
+    twitter: "",
+    linkedin: "",
   });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [passwords, setPasswords] = useState({
     current: "",
     new: "",
@@ -49,6 +55,11 @@ const AdminProfile = () => {
         setProfile({
           full_name: profileData.full_name || "",
           phone: profileData.phone || "",
+          avatar_url: profileData.avatar_url || "",
+          bio: profileData.bio || "",
+          website: profileData.website || "",
+          twitter: profileData.twitter || "",
+          linkedin: profileData.linkedin || "",
         });
       }
     } catch (err: unknown) {
@@ -63,12 +74,29 @@ const AdminProfile = () => {
     setSaving(true);
     
     try {
+      // If user selected an avatar file, upload it first
+      let avatarUrl = profile.avatar_url || null;
+      if (avatarFile && user) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `avatars/${user.id}/${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, { cacheControl: '3600', upsert: true });
+        if (uploadError) throw uploadError;
+        const { publicUrl } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        avatarUrl = publicUrl || avatarUrl;
+      }
       const { error } = await supabase
         .from("profiles")
         .upsert({
           user_id: user.id,
           full_name: profile.full_name.trim() || null,
           phone: profile.phone.trim() || null,
+          avatar_url: avatarUrl,
+          bio: profile.bio?.trim() || null,
+          website: profile.website?.trim() || null,
+          twitter: profile.twitter?.trim() || null,
+          linkedin: profile.linkedin?.trim() || null,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
       
@@ -169,6 +197,59 @@ const AdminProfile = () => {
               placeholder="Enter your full name"
             />
           </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">Avatar</Label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border border-border">
+                  {profile.avatar_url ? (
+                    // eslint-disable-next-line jsx-a11y/img-redundant-alt
+                    <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm text-slate-500">No avatar</div>
+                  )}
+                </div>
+                <div>
+                  <input
+                    id="avatar"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setAvatarFile(e.target.files ? e.target.files[0] : null)}
+                  />
+                  <p className="text-xs text-slate-500">Max 2MB. JPG/PNG recommended.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <textarea
+                id="bio"
+                value={profile.bio}
+                onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+                placeholder="Short bio for your profile"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                rows={3}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="website">Website</Label>
+                <Input id="website" value={profile.website} onChange={(e) => setProfile((p) => ({ ...p, website: e.target.value }))} placeholder="https://your-site.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="twitter">Twitter</Label>
+                <Input id="twitter" value={profile.twitter} onChange={(e) => setProfile((p) => ({ ...p, twitter: e.target.value }))} placeholder="@yourhandle" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="linkedin">LinkedIn</Label>
+                <Input id="linkedin" value={profile.linkedin} onChange={(e) => setProfile((p) => ({ ...p, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/you" />
+              </div>
+            </div>
 
           <div className="space-y-2">
             <Label htmlFor="phone" className="flex items-center gap-2">
