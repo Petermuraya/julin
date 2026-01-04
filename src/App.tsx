@@ -21,6 +21,7 @@ import AdminInquiries from "./pages/admin/AdminInquiries";
 import AdminChats from "./pages/admin/AdminChats";
 import AdminChatDashboard from "./pages/admin/AdminChatDashboard";
 import AdminProfile from "./pages/admin/AdminProfile";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 import PropertiesPage from "./pages/PropertiesPage";
 import PropertyDetailPage from "./pages/PropertyDetailPage";
@@ -62,6 +63,7 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="properties" element={<AdminProperties />} />
               <Route path="blogs" element={<AdminBlogs />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="submissions" element={<AdminSubmissions />} />
               <Route path="inquiries" element={<AdminInquiries />} />
               <Route path="chats" element={<AdminChatDashboard />} />
