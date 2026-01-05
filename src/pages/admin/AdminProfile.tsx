@@ -7,10 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { User, Lock, Mail, Phone, Save } from "lucide-react";
+import Reveal from "@/components/ui/Reveal";
 
 type SimpleUser = { id: string; email?: string | null };
-
-import Reveal from "@/components/ui/Reveal";
 
 const AdminProfile = () => {
   const [loading, setLoading] = useState(true);
@@ -20,13 +19,7 @@ const AdminProfile = () => {
   const [profile, setProfile] = useState({
     full_name: "",
     phone: "",
-    avatar_url: "",
-    bio: "",
-    website: "",
-    twitter: "",
-    linkedin: "",
   });
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [passwords, setPasswords] = useState({
     current: "",
     new: "",
@@ -55,11 +48,6 @@ const AdminProfile = () => {
         setProfile({
           full_name: profileData.full_name || "",
           phone: profileData.phone || "",
-          avatar_url: profileData.avatar_url || "",
-          bio: profileData.bio || "",
-          website: profileData.website || "",
-          twitter: profileData.twitter || "",
-          linkedin: profileData.linkedin || "",
         });
       }
     } catch (err: unknown) {
@@ -74,29 +62,12 @@ const AdminProfile = () => {
     setSaving(true);
     
     try {
-      // If user selected an avatar file, upload it first
-      let avatarUrl = profile.avatar_url || null;
-      if (avatarFile && user) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `avatars/${user.id}/${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, avatarFile, { cacheControl: '3600', upsert: true });
-        if (uploadError) throw uploadError;
-        const { publicUrl } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        avatarUrl = publicUrl || avatarUrl;
-      }
       const { error } = await supabase
         .from("profiles")
         .upsert({
           user_id: user.id,
           full_name: profile.full_name.trim() || null,
           phone: profile.phone.trim() || null,
-          avatar_url: avatarUrl,
-          bio: profile.bio?.trim() || null,
-          website: profile.website?.trim() || null,
-          twitter: profile.twitter?.trim() || null,
-          linkedin: profile.linkedin?.trim() || null,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
       
@@ -151,7 +122,7 @@ const AdminProfile = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-8 h-8 border-4 border-slate-300 border-t-blue-600 rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-muted border-t-primary rounded-full"></div>
       </div>
     );
   }
@@ -159,162 +130,112 @@ const AdminProfile = () => {
   return (
     <Reveal>
       <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Profile Settings</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-1">Manage your account settings and preferences</p>
-      </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+          <p className="text-muted-foreground mt-1">Manage your account settings and preferences</p>
+        </div>
 
-      {/* Profile Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User size={20} />
-            Profile Information
-          </CardTitle>
-          <CardDescription>Update your personal details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-2">
-              <Mail size={14} />
-              Email Address
-            </Label>
-            <Input
-              id="email"
-              value={user?.email || ""}
-              disabled
-              className="bg-slate-50 dark:bg-slate-800"
-            />
-            <p className="text-xs text-slate-500">Email cannot be changed</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="full_name">Full Name</Label>
-            <Input
-              id="full_name"
-              value={profile.full_name}
-              onChange={(e) => setProfile((p) => ({ ...p, full_name: e.target.value }))}
-              placeholder="Enter your full name"
-            />
-          </div>
-
+        {/* Profile Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User size={20} />
+              Profile Information
+            </CardTitle>
+            <CardDescription>Update your personal details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">Avatar</Label>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-100 border border-border">
-                  {profile.avatar_url ? (
-                    // eslint-disable-next-line jsx-a11y/img-redundant-alt
-                    <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-sm text-slate-500">No avatar</div>
-                  )}
-                </div>
-                <div>
-                  <input
-                    id="avatar"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setAvatarFile(e.target.files ? e.target.files[0] : null)}
-                  />
-                  <p className="text-xs text-slate-500">Max 2MB. JPG/PNG recommended.</p>
-                </div>
-              </div>
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail size={14} />
+                Email Address
+              </Label>
+              <Input
+                id="email"
+                value={user?.email || ""}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
-              <textarea
-                id="bio"
-                value={profile.bio}
-                onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
-                placeholder="Short bio for your profile"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                rows={3}
+              <Label htmlFor="full_name" className="flex items-center gap-2">
+                <User size={14} />
+                Full Name
+              </Label>
+              <Input
+                id="full_name"
+                value={profile.full_name}
+                onChange={(e) => setProfile((p) => ({ ...p, full_name: e.target.value }))}
+                placeholder="Enter your full name"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
-                <Input id="website" value={profile.website} onChange={(e) => setProfile((p) => ({ ...p, website: e.target.value }))} placeholder="https://your-site.com" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="twitter">Twitter</Label>
-                <Input id="twitter" value={profile.twitter} onChange={(e) => setProfile((p) => ({ ...p, twitter: e.target.value }))} placeholder="@yourhandle" />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="flex items-center gap-2">
+                <Phone size={14} />
+                Phone Number
+              </Label>
+              <Input
+                id="phone"
+                value={profile.phone}
+                onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
+                placeholder="Enter your phone number"
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="linkedin">LinkedIn</Label>
-                <Input id="linkedin" value={profile.linkedin} onChange={(e) => setProfile((p) => ({ ...p, linkedin: e.target.value }))} placeholder="https://linkedin.com/in/you" />
-              </div>
+            <Button onClick={handleSaveProfile} disabled={saving}>
+              <Save size={16} className="mr-2" />
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        {/* Change Password */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Lock size={20} />
+              Change Password
+            </CardTitle>
+            <CardDescription>Update your account password</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new_password">New Password</Label>
+              <Input
+                id="new_password"
+                type="password"
+                value={passwords.new}
+                onChange={(e) => setPasswords((p) => ({ ...p, new: e.target.value }))}
+                placeholder="Enter new password"
+              />
             </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="flex items-center gap-2">
-              <Phone size={14} />
-              Phone Number
-            </Label>
-            <Input
-              id="phone"
-              value={profile.phone}
-              onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-              placeholder="Enter your phone number"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm_password">Confirm New Password</Label>
+              <Input
+                id="confirm_password"
+                type="password"
+                value={passwords.confirm}
+                onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
+                placeholder="Confirm new password"
+              />
+            </div>
 
-          <Button onClick={handleSaveProfile} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
-            <Save size={16} className="mr-2" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Change Password */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock size={20} />
-            Change Password
-          </CardTitle>
-          <CardDescription>Update your account password</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="new_password">New Password</Label>
-            <Input
-              id="new_password"
-              type="password"
-              value={passwords.new}
-              onChange={(e) => setPasswords((p) => ({ ...p, new: e.target.value }))}
-              placeholder="Enter new password"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirm_password">Confirm New Password</Label>
-            <Input
-              id="confirm_password"
-              type="password"
-              value={passwords.confirm}
-              onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
-              placeholder="Confirm new password"
-            />
-          </div>
-
-          <Button 
-            onClick={handleChangePassword} 
-            disabled={changingPassword}
-            variant="outline"
-          >
-            <Lock size={16} className="mr-2" />
-            {changingPassword ? "Changing..." : "Change Password"}
-          </Button>
-        </CardContent>
-      </Card>
+            <Button 
+              onClick={handleChangePassword} 
+              disabled={changingPassword}
+              variant="outline"
+            >
+              <Lock size={16} className="mr-2" />
+              {changingPassword ? "Changing..." : "Change Password"}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </Reveal>
   );
