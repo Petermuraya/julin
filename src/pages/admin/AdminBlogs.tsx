@@ -42,7 +42,7 @@ const AdminBlogs = () => {
   const [blogs, setBlogs] = useState<BlogRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Blog | null>(null);
+  const [editing, setEditing] = useState<BlogRow | null>(null);
 
   const generateBlogSuggestions = async () => {
     setIsGenerating(true);

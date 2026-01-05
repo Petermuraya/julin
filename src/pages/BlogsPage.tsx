@@ -70,7 +70,6 @@ const BlogsPage = () => {
   };
 
   useEffect(() => {
-    // reset when query or tag changes
     setPage(1);
     setBlogs([]);
     fetchBlogs({ reset: true });
@@ -78,7 +77,6 @@ const BlogsPage = () => {
   }, []);
 
   useEffect(() => {
-    // Load more when page changes (page 1 already loaded in initial)
     if (page === 1) return;
     fetchBlogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,7 +128,7 @@ const BlogsPage = () => {
                 <div className="relative w-full max-w-xl">
                   <input
                     aria-label="Search blogs"
-                    className="w-full rounded-full py-3 pl-12 pr-4 shadow-sm border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/60"
+                    className="w-full rounded-full py-3 pl-12 pr-4 shadow-sm border border-transparent focus:outline-none focus:ring-2 focus:ring-primary/60 text-foreground bg-background"
                     placeholder="Search by title, excerpt or tag..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -174,112 +172,89 @@ const BlogsPage = () => {
               </aside>
 
               <div className="flex-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {visibleBlogs.length === 0 && !loading ? (
-                    <div className="col-span-full text-center py-20 text-muted-foreground">
-                      <Calendar className="mx-auto mb-4 opacity-50 w-14 h-14" />
-                      <h3 className="text-xl font-semibold">No posts found</h3>
-                      <p className="mt-2">Try a different search or check back later.</p>
-                    </div>
-                  ) : (
-                    (loading ? Array.from({ length: 6 }) : visibleBlogs).map((blog, idx) => {
-                      if (loading) {
+                {error && (
+                  <div className="text-center py-10 text-destructive">
+                    <p>{error}</p>
+                    <Button variant="outline" className="mt-4" onClick={() => fetchBlogs({ reset: true })}>Retry</Button>
+                  </div>
+                )}
+
+                {!error && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {visibleBlogs.length === 0 && !loading ? (
+                      <div className="col-span-full text-center py-20 text-muted-foreground">
+                        <Calendar className="mx-auto mb-4 opacity-50 w-14 h-14" />
+                        <h3 className="text-xl font-semibold">No posts found</h3>
+                        <p className="mt-2">Try a different search or check back later.</p>
+                      </div>
+                    ) : (
+                      (loading ? Array.from({ length: 6 }) : visibleBlogs).map((blog, idx) => {
+                        if (loading) {
+                          return (
+                            <div key={idx} className="h-72 rounded-xl bg-muted animate-pulse" />
+                          );
+                        }
+
+                        const b = blog as Blog;
                         return (
-                          <div key={idx} className="h-72 rounded-xl bg-gray-100 animate-pulse" />
-                        );
-                      }
-
-                      return (
-                        <Reveal key={(blog as Blog).id} delay={idx * 0.04}>
-                          <Card className="group hover:shadow-2xl transition-shadow overflow-hidden">
-                            <div className="aspect-[16/9] overflow-hidden">
-                              <img
-                                src={(blog as Blog).featured_image || "/placeholder.svg"}
-                                alt={(blog as Blog).title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            </div>
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-3">
-                                  <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                    <User className="w-4 h-4" /> {(blog as Blog).author_name || 'Julin'}
+                          <Reveal key={b.id} delay={idx * 0.04}>
+                            <Card className="group hover:shadow-2xl transition-shadow overflow-hidden h-full flex flex-col">
+                              <div className="aspect-[16/9] overflow-hidden">
+                                <img
+                                  src={b.featured_image || "/placeholder.svg"}
+                                  alt={b.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                              </div>
+                              <CardHeader className="pb-2">
+                                <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground mb-2">
+                                  <span className="flex items-center gap-1">
+                                    <User className="w-3 h-3" /> {b.author_name || 'Julin'}
+                                  </span>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" /> {formatDate(b.published_at)}
+                                  </span>
+                                  <span>•</span>
+                                  <span>{estimateReadingTime(b.excerpt)}</span>
+                                  <span>•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Eye className="w-3 h-3" /> {b.view_count ?? 0}
+                                  </span>
+                                </div>
+                                <CardTitle className="line-clamp-2 text-lg">
+                                  <Link to={`/blog/${b.slug}`} className="hover:text-primary transition-colors">
+                                    {b.title}
+                                  </Link>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="flex-1 flex flex-col">
+                                <p className="text-muted-foreground mb-4 line-clamp-3 flex-1">{b.excerpt}</p>
+                                <div className="flex items-center justify-between mt-auto">
+                                  <div className="flex flex-wrap gap-1">
+                                    {(b.tags || []).slice(0, 2).map((tag) => (
+                                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                                    ))}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">•</div>
-                                  <div className="text-xs text-muted-foreground">{formatDate((blog as Blog).published_at)}</div>
-                                  <div className="text-xs text-muted-foreground">•</div>
-                                  <div className="text-xs text-muted-foreground">{estimateReadingTime((blog as Blog).excerpt)}</div>
+                                  <Link to={`/blog/${b.slug}`}>
+                                    <Button variant="ghost" size="sm">Read more</Button>
+                                  </Link>
                                 </div>
-                                <div className="text-sm text-muted-foreground">{(blog as Blog).view_count ?? 0} views</div>
-                              </div>
+                              </CardContent>
+                            </Card>
+                          </Reveal>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
 
-                              <CardTitle className="line-clamp-2 text-lg">
-                                <Link to={`/blog/${(blog as Blog).slug}`} className="hover:text-primary transition-colors">
-                                  {(blog as Blog).title}
-                                </Link>
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              <p className="text-muted-foreground mb-4 line-clamp-3">{(blog as Blog).excerpt}</p>
-                              <div className="flex items-center justify-between">
-                                <div className="flex flex-wrap gap-2">
-                                  {((blog as Blog).tags || []).slice(0, 3).map((tag) => (
-                                    <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                                  ))}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Link to={`/blog/${(blog as Blog).slug}`} className="text-sm text-primary hover:underline">Read more</Link>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Reveal>
-                      );
-                    })
-                  )}
-                </div>
-
-                <div className="mt-8 flex justify-center">
-                  {hasMore && (
+                {hasMore && !loading && (
+                  <div className="mt-8 flex justify-center">
                     <Button onClick={() => setPage((p) => p + 1)} variant="outline">Load more</Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <Footer />
-    </>
-  );
-};
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                          <div className="flex items-center gap-1">
-                            <User size={14} />
-                            <span>{blog.author_name || "Julin Real Estate"}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar size={14} />
-                            <span>{formatDate(blog.published_at)}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Eye size={14} />
-                            <span>{blog.view_count ?? 0} views</span>
-                          </div>
-                          <Link to={`/blog/${blog.slug}`}>
-                            <Button variant="outline" size="sm">
-                              Read More
-                            </Button>
-                          </Link>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Reveal>
-                ))
-              )}
             </div>
           </div>
         </section>
