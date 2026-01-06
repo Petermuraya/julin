@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   MapPin,
@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { generateWhatsAppLink } from "@/lib/whatsapp";
 import type { Property } from "@/types/property";
 import useInView from "@/hooks/use-in-view";
+import { normalizeImageUrl } from "@/lib/imageUtils";
 
 interface PropertyCardProps {
   property: Property;
@@ -86,8 +87,8 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
     inquiryMutation.mutate({ property_id: id, buyer_name: buyerName, buyer_phone: buyerPhone, message });
   };
 
-  // Lightbox / gallery
-  const gallery = images || [];
+  // Lightbox / gallery - normalize all image URLs
+  const gallery = (images || []).map(img => normalizeImageUrl(img));
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [index, setIndex] = useState(0);
   const openLightboxAt = useCallback((i: number, e?: React.MouseEvent) => {
@@ -219,7 +220,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
                     <Button size="sm" onClick={(e) => (e.stopPropagation(), setInquiryOpen(true))}>Inquire</Button>
                   </DialogTrigger>
 
-                  <DialogContent onClick={(e) => e.stopPropagation()}>
+                  <DialogContent onClick={(e) => e.stopPropagation()} aria-describedby={undefined}>
                     <DialogHeader>
                       <DialogTitle>Contact Seller</DialogTitle>
                     </DialogHeader>
@@ -248,7 +249,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({ property }) => {
 
       {/* Lightbox dialog */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
+        <DialogContent onClick={(e) => e.stopPropagation()} aria-describedby={undefined}>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Property Gallery</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col items-center gap-4">
             <div className="relative w-full max-w-3xl">
               {gallery.length > 0 ? (

@@ -36,8 +36,14 @@ type BlogRow = {
   view_count?: number;
 };
 
+type BlogSuggestion = {
+  title: string;
+  topic?: string;
+  excerpt?: string;
+};
+
 const AdminBlogs = () => {
-  const [blogSuggestions, setBlogSuggestions] = useState<string[]>([]);
+  const [blogSuggestions, setBlogSuggestions] = useState<BlogSuggestion[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [blogs, setBlogs] = useState<BlogRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,19 +59,23 @@ const AdminBlogs = () => {
 
       if (error) throw error;
 
-      if (data?.suggestions) {
-        setBlogSuggestions(data.suggestions);
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        // Handle both string[] and object[] formats
+        const normalized = data.suggestions.map((s: string | BlogSuggestion) => 
+          typeof s === 'string' ? { title: s, topic: 'General' } : s
+        );
+        setBlogSuggestions(normalized);
         toast.success("Blog suggestions generated!");
       }
     } catch (error) {
       console.error('Error generating suggestions:', error);
       // Fallback suggestions
       setBlogSuggestions([
-        "5 Things to Check Before Buying Land in Kenya",
-        "How to Verify a Land Title Deed",
-        "Best Counties for Real Estate Investment in 2024",
-        "Understanding Property Taxes in Kenya",
-        "Tips for First-Time Home Buyers"
+        { title: "5 Things to Check Before Buying Land in Kenya", topic: "Buying Tips" },
+        { title: "How to Verify a Land Title Deed", topic: "Legal" },
+        { title: "Best Counties for Real Estate Investment in 2025", topic: "Investment" },
+        { title: "Understanding Property Taxes in Kenya", topic: "Taxes" },
+        { title: "Tips for First-Time Home Buyers", topic: "Buying Tips" }
       ]);
       toast.success("Sample suggestions loaded");
     } finally {
@@ -179,8 +189,13 @@ const AdminBlogs = () => {
                   key={index}
                   className="flex items-center justify-between p-3 bg-muted rounded-lg"
                 >
-                  <span className="text-sm">{suggestion}</span>
-                  <Badge variant="outline">Idea</Badge>
+                  <div className="flex-1">
+                    <span className="text-sm font-medium">{suggestion.title}</span>
+                    {suggestion.excerpt && (
+                      <p className="text-xs text-muted-foreground mt-1">{suggestion.excerpt}</p>
+                    )}
+                  </div>
+                  <Badge variant="outline">{suggestion.topic || 'Idea'}</Badge>
                 </div>
               ))}
             </div>
