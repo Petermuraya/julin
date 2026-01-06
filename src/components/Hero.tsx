@@ -7,6 +7,7 @@ import kenyaHeroImage from "@/assets/images/kenya-real-estate-hero.jpg";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMediaQuery } from '@/hooks/use-media-query';
 import type { Property } from '@/types/property';
+import { normalizeImageUrl } from '@/lib/imageUtils';
 
 // Types
 interface InputBlockProps {
@@ -62,7 +63,11 @@ const Hero = () => {
   const getCurrentBackgroundImage = () => {
     if (properties.length > 0 && !imageError) {
       const property = properties[currentImageIndex % properties.length];
-      return property?.images?.[0] || property?.image_url || fallbackImages[0];
+      const imageUrl = property?.images?.[0];
+      if (imageUrl) {
+        return normalizeImageUrl(imageUrl);
+      }
+      return fallbackImages[0];
     }
     return fallbackImages[currentImageIndex % fallbackImages.length];
   };
