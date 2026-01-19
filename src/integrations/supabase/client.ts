@@ -2,14 +2,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  // Helpful runtime warning during development if env vars are missing
-  // (don't throw — allow server-side tooling to import the file safely)
-  console.warn('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Supabase client may not work.');
-}
+// Hardcoded Supabase configuration (VITE_ env vars are not supported in Lovable)
+const SUPABASE_URL = "https://fakkzdfwpucpgndofgcu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZha2t6ZGZ3cHVjcGduZG9mZ2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzODkzMjcsImV4cCI6MjA4MDk2NTMyN30.C_V3yvLOJ30JdY28luXjuX0gLJ_ML0QXxQh181Zvunk";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -17,67 +12,10 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Guard access to `localStorage` to avoid errors in non-browser environments
 const storage = typeof window !== 'undefined' && typeof window.localStorage !== 'undefined' ? window.localStorage : undefined;
 
-// If the env vars are missing, avoid calling `createClient` with empty strings (which throws)
-// and instead export a lightweight proxy that throws a helpful error when used.
-function createDisabledClient() {
-  const err = new Error('[supabase] VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY is not set. Initialize these variables to use Supabase client.');
-  const handler: ProxyHandler<object> = {
-    get() {
-      throw err;
-    },
-    apply() {
-      throw err;
-    },
-    construct() {
-      throw err;
-    }
-  };
-  return new Proxy({}, handler) as unknown as ReturnType<typeof createClient<Database>>;
-}
-
-export const supabase = (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
-  ? createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: {
-        storage,
-        persistSession: true,
-        autoRefreshToken: true,
-      }
-    })
-  : createDisabledClient();
-
-// Debug helper: optional runtime logging for outgoing requests to Supabase endpoints.
-// Enable by setting `localStorage.setItem('debug_supabase', '1')` in the browser, then reload.
-// This wrapper only logs when the flag is set to avoid noisy logs in production.
-try {
-  if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-    const _w = window as unknown as { fetch: (input: RequestInfo, init?: RequestInit) => Promise<Response> };
-    const originalFetch = _w.fetch.bind(_w);
-    _w.fetch = async (input: RequestInfo, init?: RequestInit) => {
-      try {
-        const url = typeof input === 'string' ? input : (input as Request).url;
-        const enabled = typeof window.localStorage !== 'undefined' && window.localStorage.getItem('debug_supabase') === '1';
-        if (enabled && typeof url === 'string' && url.includes('.supabase.co')) {
-          // Mask key when printing
-          const maskedKey = SUPABASE_PUBLISHABLE_KEY ? `${String(SUPABASE_PUBLISHABLE_KEY).slice(0, 6)}...` : 'not-set';
-          console.groupCollapsed('[supabase-debug] outgoing request to Supabase');
-          console.log('URL:', url);
-          console.log('Masked publishable key:', maskedKey);
-          // Print headers if available
-          if (init?.headers) {
-            // Normalized printing for Headers / object
-            const h = init.headers instanceof Headers ? Object.fromEntries(init.headers.entries()) as Record<string, string> : (init.headers as Record<string, string> | undefined);
-            console.log('Request headers:', h);
-            console.log('Authorization:', (h && (h['Authorization'] || h['authorization'])) ?? null);
-            console.log('apikey:', h ? h['apikey'] ?? null : null);
-          }
-          console.groupEnd();
-        }
-      } catch (e) {
-        // swallow
-      }
-      return originalFetch(input, init);
-    };
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storage,
+    persistSession: true,
+    autoRefreshToken: true,
   }
-} catch (err) {
-  // ignore
-}
+});
