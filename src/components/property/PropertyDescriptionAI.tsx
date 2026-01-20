@@ -1,47 +1,67 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Copy, RefreshCw } from 'lucide-react';
+import { Sparkles, Copy, RefreshCw, CheckCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PropertyDescriptionAIProps {
   onDescriptionGenerated?: (description: string) => void;
+  initialDetails?: string;
+  propertyType?: string;
+  location?: string;
+  price?: number;
+  size?: string;
 }
 
 export const PropertyDescriptionAI: React.FC<PropertyDescriptionAIProps> = ({
-  onDescriptionGenerated
+  onDescriptionGenerated,
+  initialDetails = '',
+  propertyType,
+  location,
+  price,
+  size
 }) => {
-  const [propertyDetails, setPropertyDetails] = useState('');
+  const [propertyDetails, setPropertyDetails] = useState(initialDetails);
   const [generatedDescription, setGeneratedDescription] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const generateDescription = async () => {
-    if (!propertyDetails.trim()) return;
+    if (!propertyDetails.trim()) {
+      toast.error('Please enter property details first');
+      return;
+    }
 
     setIsGenerating(true);
     try {
-      const response = await fetch('/api/generate-description', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: {
+          type: 'generate_description',
           propertyDetails: propertyDetails.trim(),
-          userType: 'admin'
-        }),
+          property_type: propertyType,
+          location: location,
+          price: price,
+          size: size
+        }
       });
 
-      const data = await response.json();
-      if (data.description) {
-        setGeneratedDescription(data.description);
-        onDescriptionGenerated?.(data.description);
+      if (error) throw error;
+
+      const description = data?.description || data?.enhanced || data?.response || data?.reply || '';
+      
+      if (description) {
+        setGeneratedDescription(description);
+        onDescriptionGenerated?.(description);
+        toast.success('Description generated successfully!');
+      } else {
+        throw new Error('No description returned');
       }
     } catch (error) {
       console.error('Error generating description:', error);
-      setGeneratedDescription('Failed to generate description. Please try again.');
+      toast.error('Failed to generate description. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -51,55 +71,54 @@ export const PropertyDescriptionAI: React.FC<PropertyDescriptionAIProps> = ({
     try {
       await navigator.clipboard.writeText(generatedDescription);
       setCopied(true);
+      toast.success('Copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
+      toast.error('Failed to copy to clipboard');
     }
   };
 
   const examplePrompts = [
-    "Modern 3BR house in Westlands, Nairobi with garden, 2 car parking, near shopping center",
-    "Commercial plot in Mombasa CBD, 0.5 acres, ready for development",
-    "Luxury apartment in Kilimani, 2BR with city view, gym, and security",
-    "Agricultural land in Nakuru, 10 acres, fertile soil, access road"
+    "Modern 3BR house in Westlands, Nairobi with garden, 2 parking spots, near shopping center",
+    "Prime commercial plot in Mombasa CBD, 0.5 acres, ready for development, all utilities",
+    "Luxury 2BR apartment in Kilimani, city views, gym, 24hr security, swimming pool",
+    "10 acres agricultural land in Nakuru, fertile soil, water access, near main road"
   ];
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-600" />
+    <Card className="w-full">
+      <CardHeader className="pb-4">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Sparkles className="h-5 w-5 text-primary" />
           AI Property Description Generator
         </CardTitle>
-        <p className="text-sm text-gray-600">
-          Generate compelling, SEO-friendly property descriptions for your listings
+        <p className="text-sm text-muted-foreground">
+          Generate compelling, SEO-optimized property descriptions instantly
         </p>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {/* Input Section */}
         <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700">
-            Property Details
-          </label>
           <Textarea
             value={propertyDetails}
             onChange={(e) => setPropertyDetails(e.target.value)}
-            placeholder="Describe the property (location, type, features, amenities, etc.)"
+            placeholder="Describe the property details: type, location, features, amenities, size, unique selling points..."
             className="min-h-[100px] resize-none"
           />
 
-          {/* Example Prompts */}
+          {/* Quick Examples */}
           <div className="space-y-2">
-            <p className="text-xs text-gray-500">Try these examples:</p>
+            <p className="text-xs text-muted-foreground font-medium">Quick examples:</p>
             <div className="flex flex-wrap gap-2">
               {examplePrompts.map((prompt, index) => (
                 <Badge
                   key={index}
                   variant="outline"
-                  className="cursor-pointer hover:bg-gray-100 text-xs"
+                  className="cursor-pointer hover:bg-accent text-xs py-1 px-2"
                   onClick={() => setPropertyDetails(prompt)}
                 >
-                  {prompt.length > 40 ? `${prompt.substring(0, 40)}...` : prompt}
+                  {prompt.length > 35 ? `${prompt.substring(0, 35)}...` : prompt}
                 </Badge>
               ))}
             </div>
@@ -126,11 +145,12 @@ export const PropertyDescriptionAI: React.FC<PropertyDescriptionAIProps> = ({
 
         {/* Generated Description */}
         {generatedDescription && (
-          <div className="space-y-3">
+          <div className="space-y-3 pt-2 border-t border-border">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
                 Generated Description
-              </label>
+              </span>
               <Button
                 variant="outline"
                 size="sm"
@@ -145,41 +165,29 @@ export const PropertyDescriptionAI: React.FC<PropertyDescriptionAIProps> = ({
             <div className="relative">
               <Textarea
                 value={generatedDescription}
-                onChange={(e) => setGeneratedDescription(e.target.value)}
-                className="min-h-[200px] resize-none font-medium"
-                placeholder="Generated description will appear here..."
+                onChange={(e) => {
+                  setGeneratedDescription(e.target.value);
+                  onDescriptionGenerated?.(e.target.value);
+                }}
+                className="min-h-[180px] resize-none bg-accent/30"
               />
-
-              {/* Character Count */}
-              <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-                {generatedDescription.length} characters
+              <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                {generatedDescription.length} chars
               </div>
             </div>
 
             {/* SEO Tips */}
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-primary mb-2">SEO Optimization Tips:</h4>
+              <h4 className="text-sm font-medium text-primary mb-2">✨ SEO Optimized:</h4>
               <ul className="text-xs text-primary/80 space-y-1">
-                <li>• Includes location keywords for local search</li>
-                <li>• Highlights key features and amenities</li>
-                <li>• Uses compelling, benefit-focused language</li>
-                <li>• Optimized length for readability</li>
+                <li>• Location keywords for local search visibility</li>
+                <li>• Key features highlighted for quick scanning</li>
+                <li>• Benefit-focused language that converts</li>
+                <li>• Professional tone that builds trust</li>
               </ul>
             </div>
           </div>
         )}
-
-        {/* Usage Tips */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-800 mb-2">💡 Pro Tips for Better Descriptions:</h4>
-          <ul className="text-xs text-gray-600 space-y-1">
-            <li>• Include specific location details (neighborhood, landmarks)</li>
-            <li>• Mention property size, bedrooms, bathrooms</li>
-            <li>• Highlight unique features (garden, parking, security)</li>
-            <li>• Use emotional language (luxury, peaceful, modern)</li>
-            <li>• Include nearby amenities (schools, shopping, transport)</li>
-          </ul>
-        </div>
       </CardContent>
     </Card>
   );
