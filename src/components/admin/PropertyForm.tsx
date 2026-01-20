@@ -62,42 +62,46 @@ export const PropertyForm = ({
 
     setGeneratingDescription(true);
     try {
-      const details = [
-            form.title,
-            form.location && `located in ${form.location}`,
-            form.size && `size: ${form.size}`,
-            form.property_type && `property type: ${form.property_type}`,
-            form.price && `price: KES ${Number(form.price).toLocaleString()}`,
-            showResidentialFields && form.bathrooms && `${form.bathrooms} bathrooms`,
-          ].filter(Boolean).join(', ');
+      const propertyDetails = [
+        form.title,
+        form.location && `Location: ${form.location}`,
+        form.size && `Size: ${form.size}`,
+        form.property_type && `Type: ${form.property_type}`,
+        form.price && `Price: KES ${Number(form.price).toLocaleString()}`,
+        showResidentialFields && form.bathrooms && `${form.bathrooms} bathroom${Number(form.bathrooms) > 1 ? 's' : ''}`,
+      ].filter(Boolean).join(', ');
 
-      const prompt = `Write a compelling property description for a real estate listing in Kenya with these details: ${details}. Make it professional, highlight key selling points, and keep it under 200 words.`;
-
-      const response = await supabase.functions.invoke('chat', {
+      const { data, error } = await supabase.functions.invoke('chat', {
         body: {
-          messages: [{ role: 'user', content: prompt }],
-          isAdmin: true,
-          type: 'generate_blog'
+          type: 'generate_description',
+          propertyDetails,
+          title: form.title,
+          property_type: form.property_type,
+          location: form.location,
+          price: form.price ? Number(form.price) : undefined,
+          size: form.size,
+          bathrooms: form.bathrooms ? Number(form.bathrooms) : undefined,
         }
       });
 
-      type FnResp = { error?: unknown; data?: unknown };
-      const resp = response as FnResp;
-      if (resp.error) throw resp.error;
+      if (error) throw error;
 
-      // Normalize various possible response shapes from functions
-      const dataAny = resp.data as Record<string, unknown> | string | null | undefined;
-      let aiResponse: string = '';
-      if (!dataAny) aiResponse = '';
-      else if (typeof dataAny === 'string') aiResponse = dataAny;
-      else aiResponse = (dataAny?.response as string) || (dataAny?.reply as string) || (dataAny?.message as string) || JSON.stringify(dataAny);
-
-      setForm(prev => ({ ...prev, description: aiResponse }));
-
-      toast({ title: 'Success', description: 'Description generated successfully' });
+      // Handle various response shapes from the edge function
+      const description = data?.description || data?.enhanced || data?.response || data?.reply || '';
+      
+      if (description) {
+        setForm(prev => ({ ...prev, description }));
+        toast({ title: 'Success', description: 'Description generated successfully!' });
+      } else {
+        throw new Error('No description returned');
+      }
     } catch (err: unknown) {
       console.error('Error generating description:', err);
-      toast({ title: 'Error', description: 'Failed to generate description. Please try again.', variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to generate description. Please try again.', 
+        variant: 'destructive' 
+      });
     } finally {
       setGeneratingDescription(false);
     }
